@@ -125,7 +125,13 @@ export function openAdmin() {
 }
 
 export function renderTicketAdmin() {
-    const glob = users['__GLOBAL_SETTINGS__'];
+    // ★修正: let に変更し、データが無ければ新しく作る処理を追加
+    let glob = users['__GLOBAL_SETTINGS__'];
+    if (!glob) {
+        glob = { isMaster: true };
+        users['__GLOBAL_SETTINGS__'] = glob;
+    }
+    
     if(!glob.ticketConfig) glob.ticketConfig = { normal: { name: '👍 いいねポイント 5こ', icon: '🎟️' }, newRecord: { name: '👍 いいねポイント 1こ', icon: '🎟️' } };
     document.getElementById('admin-ticket-normal').value = glob.ticketConfig.normal.name;
     document.getElementById('admin-ticket-newrecord').value = glob.ticketConfig.newRecord.name;
