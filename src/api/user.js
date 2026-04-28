@@ -13,7 +13,7 @@ export const supabase = createClient(supabaseUrl, supabaseKey);
 // ==========================================
 // 環境設定・変数
 // ==========================================
-export const IS_DEV_MODE = true; // テスト環境ならtrue, 本番環境(児童PCやVercel)ならfalse
+export const IS_DEV_MODE = false; // テスト環境ならtrue, 本番環境(児童PCやVercel)ならfalse
 const TARGET_TABLE = IS_DEV_MODE ? 'test_user_data' : 'user_data'; // 自動でテーブルを振り分け
 
 export const STORAGE_KEY = 'pc_practice_v5_split';
