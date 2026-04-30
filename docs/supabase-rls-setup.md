@@ -40,31 +40,27 @@ supabase/sql/rls_legacy_user_data_baseline.sql
 
 Auth User ID を使って、`lesson_user_access` に行を追加する。
 
-### 管理者
+重要: `lesson_user_access.auth_user_id` は `auth.users.id` に存在するUUIDだけ登録できる。
+`00000000-0000-0000-0000-000000000000` は未登録ユーザー検証用のダミーなので、ここには登録しない。
 
-管理者は全データにアクセスできる。
+SQL Editorで次のテンプレートを使う。
 
 ```sql
-insert into public.lesson_user_access (auth_user_id, user_data_id, role)
-values ('00000000-0000-0000-0000-000000000000', '__admin__', 'admin');
+supabase/sql/insert_lesson_user_access_template.sql
 ```
 
-### 先生
+テンプレート内の次を、実際のAuth User IDへ置き換える。
 
-現在の暫定RLSでは、先生は児童データを広く確認できる。
-
-```sql
-insert into public.lesson_user_access (auth_user_id, user_data_id, role)
-values ('11111111-1111-1111-1111-111111111111', '__teacher__', 'teacher');
+```text
+ADMIN_AUTH_USER_ID_HERE
+TEACHER_AUTH_USER_ID_HERE
+STUDENT_AUTH_USER_ID_HERE
 ```
 
-### 生徒
-
-生徒は自分の `user_data.id` または `test_user_data.id` だけに紐づける。
+生徒の `user_data_id` は、実際の `test_user_data.id` と完全一致させる。
 
 ```sql
-insert into public.lesson_user_access (auth_user_id, user_data_id, role)
-values ('22222222-2222-2222-2222-222222222222', 'テスト太郎', 'student');
+('STUDENT_AUTH_USER_ID_HERE', 'テスト太郎', 'student')
 ```
 
 ## 4. 公開URL用の環境変数を設定する

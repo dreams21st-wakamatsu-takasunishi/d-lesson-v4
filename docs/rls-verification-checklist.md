@@ -19,6 +19,8 @@ Supabase Auth / RLS 設定後に、公開URLで児童名や進捗データが権
 
 `supabase/sql/verify_rls_access.sql` を使う。
 
+重要: `00000000-0000-0000-0000-000000000000` は未登録ユーザー検証用のダミーUUID。`lesson_user_access` には登録しない。
+
 実行前に、次のプレースホルダーを実際のAuth User IDへ置き換える。
 
 ```text
