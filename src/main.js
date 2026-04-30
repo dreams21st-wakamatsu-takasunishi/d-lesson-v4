@@ -44,6 +44,7 @@ import {
 import * as Admin from './ui/admin.js';
 
 import { showCustomAlert, showCustomConfirm } from './ui/modal.js';
+import { createBtn } from './utils/dom.js';
 import { verifyLegacyAdminPass } from './utils/security.js';
 
 import {
@@ -85,7 +86,8 @@ import {
 import {
   startGame,
   backToMenu,
-  retryExam
+  retryExam,
+  startRecommendedStage
 } from './games/core.js';
 /* =========================================================
    [JS] 1. 効果音管理 (Sound) ＆ システム制御 ＆ 音声読み上げ
@@ -1345,9 +1347,9 @@ function processWordClear() {
    [Vite環境用] HTMLから呼び出す関数をグローバルに登録
    ========================================================= */
 const globalFunctions = [
-    toggleSFX, toggleBGM, toggleFullScreen, goToGradeSelect, loginAsMaster, showScreen,
+    toggleSFX, toggleBGM, toggleFullScreen, goToGradeSelect, loginAsMaster, showScreen, showCustomAlert,
 
-    goToMouseMenu, goToKeyboardCategory, goToTextMenu, goToMinigameMenu, goToVisionMenu,
+    goToMouseMenu, goToKeyboardCategory, goToKeyboardMenu, goToWeakTraining, goToTextMenu, goToMinigameMenu, goToVisionMenu,
     goToWordMenu, goToRecords,
 
     handleGlobalBack, handleGlobalHome, handleGlobalLogout,
@@ -1359,7 +1361,7 @@ const globalFunctions = [
 
     retryExam, backToMenu, handleSecretMenuClick,
     showRomajiMenu, renderKeyboardStages, backToKbChapter,
-    showRecordSection, backToRecordMenu,
+    showRecordSection, backToRecordMenu, exportDashboardCSV, startRecommendedStage,
 
     drawGacha, useTicket, changeTheme, changeEffect,
     showVisionCompare,

@@ -8,6 +8,7 @@ import { createConfetti } from '../ui/effects.js';
    ========================================================= */
 let currentTextTask = null, textTimerInterval = null, textTimeLeft = 0;
 let isRubyOn = true, isNaviOn = true;
+let cancelStartHandler = null;
 
 export function toggleRuby() {
     isRubyOn = !isRubyOn;
