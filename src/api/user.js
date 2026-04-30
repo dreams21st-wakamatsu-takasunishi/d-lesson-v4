@@ -1,38 +1,258 @@
-import { createClient } from '@supabase/supabase-js'; // ★追加: Supabaseのツール
+import { createClient } from '@supabase/supabase-js';
 import { SoundManager } from '../utils/sound.js';
-import { calculateGrade, sortGrades, applyTheme, updateGlobalHeader, updateHomeDashboard, showScreen, createConfetti } from '../main.js';
+import { calculateGrade, sortGrades } from '../utils/helpers.js';
+import { showScreen } from '../ui/screen.js';
+import { applyTheme, updateGlobalHeader, updateHomeDashboard } from '../ui/home.js';
+import { createConfetti } from '../ui/effects.js';
+// ==========================================
+// Database (Supabase) connection
+// ==========================================
+// Values come from Vite env vars. Do not hard-code project keys here.
+const env = import.meta.env || {};
+const supabaseUrl = env.VITE_SUPABASE_URL || '';
+const supabaseKey = env.VITE_SUPABASE_PUBLISHABLE_KEY || env.VITE_SUPABASE_ANON_KEY || '';
+
+export const HAS_SUPABASE_CONFIG = Boolean(supabaseUrl && supabaseKey);
+export const ENABLE_LEGACY_SUPABASE_SYNC = env.VITE_ENABLE_LEGACY_SUPABASE_SYNC === 'true';
+export const REQUIRE_SUPABASE_AUTH = env.VITE_REQUIRE_SUPABASE_AUTH === 'true';
+export const supabase = HAS_SUPABASE_CONFIG ? createClient(supabaseUrl, supabaseKey) : null;
 
 // ==========================================
-// データベース (Supabase) 接続設定
+// Environment settings
 // ==========================================
-// ⚠️ 以下2行に、控えておいたURLとAPIキー(anon)を貼り付けてください
-const supabaseUrl = 'https://lmonjfdxtefsvgtdixid.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxtb25qZmR4dGVmc3ZndGRpeGlkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzczNzM1MzEsImV4cCI6MjA5Mjk0OTUzMX0.dFfZDnSjHc7aNTL_EGBhiT9l6zt1ai32H04MJEGAhXg';
-export const supabase = createClient(supabaseUrl, supabaseKey);
-
-// ==========================================
-// 環境設定・変数
-// ==========================================
-export const IS_DEV_MODE = false; // テスト環境ならtrue, 本番環境(児童PCやVercel)ならfalse
-const TARGET_TABLE = IS_DEV_MODE ? 'test_user_data' : 'user_data'; // 自動でテーブルを振り分け
+export const IS_DEV_MODE = env.VITE_SUPABASE_USE_TEST_TABLE === 'true';
+const TARGET_TABLE = env.VITE_SUPABASE_TABLE || (IS_DEV_MODE ? 'test_user_data' : 'user_data');
 
 export const STORAGE_KEY = 'pc_practice_v5_split';
 
 export let users = {};
 export let currentUser = null;
 export let currentSelectedGrade = null;
+let authGatePromise = null;
+let authGateResolve = null;
+let authGateAfterLogin = null;
+
+function canUseLegacyCloudSync() {
+    return Boolean(supabase && ENABLE_LEGACY_SUPABASE_SYNC);
+}
+
+function getLocalOnlySyncStatus() {
+    if (REQUIRE_SUPABASE_AUTH && HAS_SUPABASE_CONFIG) return 'auth only';
+    return HAS_SUPABASE_CONFIG ? 'cloud locked' : 'local only';
+}
+
+function setSyncStatus(text) {
+    const syncStatus = document.getElementById('sync-status');
+    if (syncStatus) syncStatus.innerText = text;
+}
+
+function loadLocalUsers() {
+    const localDataStr = localStorage.getItem(STORAGE_KEY);
+    if (!localDataStr) return;
+
+    try {
+        const parsed = JSON.parse(localDataStr);
+        if (parsed && typeof parsed === 'object') users = parsed;
+    } catch (err) {
+        console.warn('Failed to parse local user data:', err);
+    }
+}
+
+function clearRosterDom() {
+    ['grade-list', 'user-list'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = '';
+    });
+}
+
+function setAuthGateMessage(message, isError = false) {
+    const messageEl = document.getElementById('supabase-auth-message');
+    if (!messageEl) return;
+    messageEl.innerText = message || '';
+    messageEl.style.color = isError ? '#b91c1c' : '#475569';
+}
+
+function setAuthGateBusy(isBusy, message = '') {
+    const submit = document.getElementById('supabase-auth-submit');
+    const email = document.getElementById('supabase-auth-email');
+    const password = document.getElementById('supabase-auth-password');
+    if (submit) {
+        submit.disabled = isBusy;
+        submit.innerText = isBusy ? 'ログイン中...' : 'ログイン';
+    }
+    if (email) email.disabled = isBusy;
+    if (password) password.disabled = isBusy;
+    if (message) setAuthGateMessage(message);
+}
+
+function hideAuthGate() {
+    const gate = document.getElementById('supabase-auth-gate');
+    if (gate) gate.remove();
+}
+
+function showAuthGate(message = '', isError = false, afterLogin = null) {
+    authGateAfterLogin = afterLogin;
+
+    let gate = document.getElementById('supabase-auth-gate');
+    if (!gate) {
+        gate = document.createElement('div');
+        gate.id = 'supabase-auth-gate';
+        document.body.appendChild(gate);
+    }
+
+    gate.style.cssText = 'position:fixed; inset:0; z-index:20000; background:#f6f7fb; display:flex; align-items:center; justify-content:center; padding:24px;';
+    gate.innerHTML = `
+        <form id="supabase-auth-form" style="width:min(420px, 100%); background:#fff; border:1px solid #dbe3ef; border-radius:8px; box-shadow:0 18px 45px rgba(15,23,42,0.18); padding:28px;">
+            <h2 style="margin:0 0 18px; color:#0f172a; font-size:24px; letter-spacing:0;">Dレッスン ログイン</h2>
+            <label style="display:block; color:#334155; font-weight:700; font-size:14px; margin-bottom:12px;">
+                メールアドレス
+                <input id="supabase-auth-email" type="email" autocomplete="username" required style="box-sizing:border-box; width:100%; margin-top:6px; border:1px solid #cbd5e1; border-radius:6px; padding:12px; font-size:16px;">
+            </label>
+            <label style="display:block; color:#334155; font-weight:700; font-size:14px; margin-bottom:18px;">
+                パスワード
+                <input id="supabase-auth-password" type="password" autocomplete="current-password" required style="box-sizing:border-box; width:100%; margin-top:6px; border:1px solid #cbd5e1; border-radius:6px; padding:12px; font-size:16px;">
+            </label>
+            <button id="supabase-auth-submit" class="btn-primary" type="submit" style="width:100%; min-height:46px; font-size:17px;">ログイン</button>
+            <p id="supabase-auth-message" style="min-height:22px; margin:14px 0 0; color:${isError ? '#b91c1c' : '#475569'}; font-size:14px; line-height:1.5;"></p>
+        </form>
+    `;
+
+    setAuthGateMessage(message, isError);
+    const form = document.getElementById('supabase-auth-form');
+    if (form) form.onsubmit = handleAuthFormSubmit;
+
+    const email = document.getElementById('supabase-auth-email');
+    if (email) setTimeout(() => email.focus(), 0);
+}
+
+async function handleAuthFormSubmit(event) {
+    event.preventDefault();
+
+    if (!supabase) {
+        setAuthGateMessage('Supabaseのログイン設定が見つかりません。.env.local を確認してください。', true);
+        return;
+    }
+
+    const email = document.getElementById('supabase-auth-email')?.value.trim();
+    const password = document.getElementById('supabase-auth-password')?.value;
+    if (!email || !password) {
+        setAuthGateMessage('メールアドレスとパスワードを入力してください。', true);
+        return;
+    }
+
+    setAuthGateBusy(true, 'ログイン中...');
+    try {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+
+        hideAuthGate();
+        setSyncStatus('authenticated');
+
+        const resolve = authGateResolve;
+        const afterLogin = authGateAfterLogin;
+        authGatePromise = null;
+        authGateResolve = null;
+        authGateAfterLogin = null;
+
+        if (resolve) resolve(true);
+        if (afterLogin) afterLogin();
+    } catch (err) {
+        console.error('Auth sign-in failed:', err);
+        setAuthGateBusy(false);
+        setAuthGateMessage('メールアドレスまたはパスワードを確認してください。', true);
+    }
+}
+
+async function ensureSupabaseSession() {
+    if (!REQUIRE_SUPABASE_AUTH) return true;
+
+    if (!supabase) {
+        setSyncStatus('auth missing');
+        showAuthGate('Supabaseのログイン設定が見つかりません。.env.local を確認してください。', true);
+        return false;
+    }
+
+    try {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        if (data?.session) {
+            hideAuthGate();
+            setSyncStatus('authenticated');
+            return true;
+        }
+    } catch (err) {
+        console.error('Auth session check failed:', err);
+    }
+
+    if (authGatePromise) return authGatePromise;
+    authGatePromise = new Promise(resolve => {
+        authGateResolve = resolve;
+        showAuthGate('先生または管理者のアカウントでログインしてください。');
+    });
+    return authGatePromise;
+}
+
+export function setCurrentUser(value) {
+    currentUser = value;
+}
+
+export function setCurrentSelectedGrade(value) {
+    currentSelectedGrade = value;
+}
+
+export async function signOutSupabaseAuth() {
+    if (!REQUIRE_SUPABASE_AUTH) return false;
+
+    authGatePromise = null;
+    authGateResolve = null;
+    authGateAfterLogin = null;
+    users = {};
+    clearRosterDom();
+
+    if (supabase) {
+        try {
+            await supabase.auth.signOut();
+        } catch (err) {
+            console.error('Auth sign-out failed:', err);
+        }
+    }
+
+    setSyncStatus('signed out');
+    showAuthGate('ログアウトしました。もう一度ログインしてください。', false, () => { void loadUsers(); });
+    return true;
+}
 
 // ==========================================
-// データ読み込み・保存関数 (Supabase版)
+// Data load/save functions
 // ==========================================
 export async function loadUsers() {
     const titleScreen = document.getElementById('screen-title');
     if (!titleScreen.querySelector('.loading-msg')) {
-        titleScreen.querySelector('.screen-content').insertAdjacentHTML('beforeend', '<div class="loading-msg" style="color:#555; font-size:20px; margin-top:20px;">データベースとつうしん中... 🔄</div>');
+        titleScreen.querySelector('.screen-content').insertAdjacentHTML('beforeend', '<div class="loading-msg" style="color:#555; font-size:20px; margin-top:20px;">データを読み込み中...</div>');
     }
 
+    const hasSession = await ensureSupabaseSession();
+    if (!hasSession) {
+        const loadingMsg = titleScreen.querySelector('.loading-msg');
+        if (loadingMsg) loadingMsg.remove();
+        return;
+    }
+
+    loadLocalUsers();
+
+    if (!canUseLegacyCloudSync()) {
+        if (!users || typeof users !== 'object') users = {};
+        if (typeof loadCustomGlobalSettings === 'function') loadCustomGlobalSettings();
+        setSyncStatus(getLocalOnlySyncStatus());
+        const loadingMsg = titleScreen.querySelector('.loading-msg');
+        if (loadingMsg) loadingMsg.remove();
+        return;
+    }
+
+    let cloudLoadFailed = false;
+
     try {
-        // GASではなく、Supabaseのテーブルからデータを取得
+        // Legacy roster sync reads the full table. Keep it disabled on public URLs.
         const { data, error } = await supabase.from(TARGET_TABLE).select('*');
         if (error) throw error;
 
@@ -40,7 +260,7 @@ export async function loadUsers() {
             let newUsers = {};
             data.forEach(row => { newUsers[row.id] = row.data; });
             
-            // ローカルに残っているデータとの合流処理
+            // Merge local-only progress that has not reached the cloud yet.
             const localDataStr = localStorage.getItem(STORAGE_KEY);
             let localUsers = null;
             if (localDataStr) { try { localUsers = JSON.parse(localDataStr); } catch(err) {} }
@@ -62,18 +282,20 @@ export async function loadUsers() {
             users = newUsers;
             localStorage.setItem(STORAGE_KEY, JSON.stringify(users)); 
         } else {
-            // クラウドが空っぽならローカルから復旧
+            // If the cloud table is empty, keep local data.
             const localDataStr = localStorage.getItem(STORAGE_KEY);
             if (localDataStr) { try { users = JSON.parse(localDataStr); } catch(err) { users = {}; } }
         }
     } catch(e) {
         console.error("通信エラー", e);
-        const d = localStorage.getItem(STORAGE_KEY);
-        if (d) { try { let parsed = JSON.parse(d); if (parsed) users = parsed; } catch(err) {} }
+        loadLocalUsers();
+        cloudLoadFailed = true;
+        setSyncStatus('sync error');
     }
     
     if (!users || typeof users !== 'object') users = {};
     if (typeof loadCustomGlobalSettings === 'function') loadCustomGlobalSettings();
+    if (canUseLegacyCloudSync() && !cloudLoadFailed) setSyncStatus('synced');
 
     const loadingMsg = titleScreen.querySelector('.loading-msg');
     if (loadingMsg) loadingMsg.remove();
@@ -83,12 +305,17 @@ export async function saveUsers(forceOverwrite = false) {
     if (!users || typeof users !== 'object') users = {};
     localStorage.setItem(STORAGE_KEY, JSON.stringify(users));
     updateGlobalHeader(); 
+
+    if (!canUseLegacyCloudSync()) {
+        setSyncStatus(getLocalOnlySyncStatus());
+        return;
+    }
     
-    if (!navigator.onLine) { document.getElementById('sync-status').innerText = '☁️❌'; return; }
-    document.getElementById('sync-status').innerText = '☁️🔄'; 
+    if (!navigator.onLine) { setSyncStatus('offline'); return; }
+    setSyncStatus('syncing');
 
     try {
-        // Supabase用の送信データを作成
+        // Build the legacy upsert payload.
         let upsertData =[];
         if (forceOverwrite) {
             for (let name in users) { upsertData.push({ id: name, data: users[name] }); }
@@ -98,27 +325,14 @@ export async function saveUsers(forceOverwrite = false) {
         }
 
         if (upsertData.length > 0) {
-            // データベースに書き込み (存在すれば上書き、なければ新規作成)
+            // Upsert to Supabase.
             const { error } = await supabase.from(TARGET_TABLE).upsert(upsertData);
             if (error) throw error;
-
-            if (!forceOverwrite) {
-                // 最新データを他PCから取得してマージ
-                const { data: latestData } = await supabase.from(TARGET_TABLE).select('id, data');
-                if (latestData) {
-                    latestData.forEach(row => {
-                        if (row.id !== currentUser && row.id !== '__GLOBAL_SETTINGS__') {
-                            users[row.id] = row.data;
-                        }
-                    });
-                    localStorage.setItem(STORAGE_KEY, JSON.stringify(users));
-                }
-            }
         }
-        document.getElementById('sync-status').innerText = '☁️✅'; 
+        setSyncStatus('synced'); 
     } catch (e) { 
         console.error("保存エラー:", e); 
-        document.getElementById('sync-status').innerText = '☁️❌'; 
+        setSyncStatus('sync error'); 
     }
 }
 
@@ -198,11 +412,11 @@ export function closeStampOverlay() {
     showScreen('screen-category');
 }
 
-// データ保存中に画面を閉じようとした時の警告（安全装置）
+// Warn if the user closes the page while cloud sync is in progress.
 window.addEventListener('beforeunload', (e) => {
     const syncStatus = document.getElementById('sync-status');
-    if (syncStatus && syncStatus.innerText === '☁️🔄') {
+    if (syncStatus && syncStatus.innerText === 'syncing') {
         e.preventDefault();
-        e.returnValue = 'データの保存中です。このまま閉じるとデータが失われる可能性があります。';
+        e.returnValue = 'Data is still syncing. Closing now may lose changes.';
     }
 });

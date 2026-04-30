@@ -1,12 +1,10 @@
 import { users, currentUser, saveUsers, login } from '../api/user.js';
 import { STAGE_ORDER, THEMES, EFFECTS, VISION_STAGES } from '../data/constants.js';
 import { SoundManager } from '../utils/sound.js';
-import { 
-    calculateGrade, sortGrades, showScreen, showCustomAlert, showCustomConfirm, 
-    getStageName, loadCustomGlobalSettings 
-} from '../main.js';
-
-const ADMIN_PASS = '7188';
+import { showCustomAlert, showCustomConfirm } from './modal.js';
+import { showScreen } from './screen.js';
+import { calculateGrade, sortGrades } from '../utils/helpers.js';
+import { verifyLegacyAdminPass } from '../utils/security.js';
 
 let passwordCallback = null;
 export function showPasswordModal(title, callback) {
@@ -114,7 +112,7 @@ export function backToAdminMenu() {
 
 export function openAdmin() { 
     showPasswordModal('管理者パスワード', (pass) => {
-        if(pass === ADMIN_PASS) { 
+        if(verifyLegacyAdminPass(pass)) { 
             updateAdminUserTable(); 
             renderAdminTextTasks(); 
             renderTicketAdmin(); 

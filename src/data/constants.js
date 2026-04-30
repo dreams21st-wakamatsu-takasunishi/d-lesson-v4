@@ -166,3 +166,61 @@ export const ROMAJI_TABLE_DATA = {
 };
 
 HIRAGANA_DATA.forEach(d=>{d.chars.forEach(c=>{ADVICE_HINT_MAP[c.h]=d.id;})});
+
+export const THEMES =[
+    { id: 'default', name: 'いつもの', icon: '🏠', isDynamic: false },
+    { id: 'ocean', name: 'うみのそこ', icon: '🌊', bg: '#e1f5fe', text: '#01579b', btnBg: '#0288d1', btnText: '#fff' },
+    { id: 'magic', name: 'まほうのしろ', icon: '🏰', bg: '#f3e5f5', text: '#6a1b9a', btnBg: '#8e24aa', btnText: '#fff' },
+    { id: 'space', name: 'うちゅう', icon: '🚀', bg: '#1c2541', text: '#66fcf1', btnBg: '#45a29e', btnText: '#1c2541' },
+    { id: 'ninja', name: 'にんじゃ', icon: '🥷', bg: '#212121', text: '#f5f5f5', btnBg: '#616161', btnText: '#fff' },
+    { id: 'sakura', name: 'さくら', icon: '🌸', bg: '#fce4ec', text: '#d81b60', btnBg: '#ec407a', btnText: '#fff' },
+    { id: 'night', name: 'よるのまち', icon: '🌃', bg: '#1a237e', text: '#ffeb3b', btnBg: '#3f51b5', btnText: '#fff' },
+    { id: 'spring', name: 'はるののはら', icon: '🌷', bg: '#f1f8e9', text: '#33691e', btnBg: '#8bc34a', btnText: '#fff' },
+    { id: 'sunflower', name: 'ひまわりばたけ', icon: '🌻', bg: '#fffde7', text: '#f57f17', btnBg: '#fbc02d', btnText: '#fff' },
+    { id: 'autumn', name: 'あきのこうよう', icon: '🍁', bg: '#fff3e0', text: '#bf360c', btnBg: '#ff5722', btnText: '#fff' },
+    { id: 'ice', name: 'こおりのしろ', icon: '❄️', bg: '#e0f7fa', text: '#006064', btnBg: '#00bcd4', btnText: '#fff' },
+    { id: 'volcano', name: 'しゃくねつかざん', icon: '🔥', bg: '#ffebee', text: '#b71c1c', btnBg: '#f44336', btnText: '#fff' },
+    { id: 'forest', name: 'ふかいもり', icon: '🌲', bg: '#e8f5e9', text: '#1b5e20', btnBg: '#4caf50', btnText: '#fff' },
+    { id: 'desert', name: 'さばくのオアシス', icon: '🌴', bg: '#fff8e1', text: '#ff6f00', btnBg: '#ffc107', btnText: '#fff' },
+    { id: 'thunder', name: 'かみなりぐも', icon: '⚡', bg: '#eceff1', text: '#263238', btnBg: '#607d8b', btnText: '#fff' },
+    { id: 'rainbow', name: 'にじのそら', icon: '🌈', bg: '#f3e5f5', text: '#4a148c', btnBg: '#9c27b0', btnText: '#fff' },
+    { id: 'sunset', name: 'ゆうやけ', icon: '🌇', bg: '#fbe9e7', text: '#d84315', btnBg: '#ff7043', btnText: '#fff' },
+    { id: 'beach', name: 'トロピカルビーチ', icon: '🏖️', bg: '#e0f2f1', text: '#004d40', btnBg: '#26a69a', btnText: '#fff' },
+    { id: 'cave', name: 'どうくつたんけん', icon: '🦇', bg: '#3e2723', text: '#d7ccc8', btnBg: '#795548', btnText: '#fff' },
+    { id: 'savanna', name: 'サバンナ', icon: '🦁', bg: '#fff8e1', text: '#e65100', btnBg: '#ff9800', btnText: '#fff' },
+    { id: 'penguin', name: 'ペンギンこおりやま', icon: '🐧', bg: '#e1f5fe', text: '#01579b', btnBg: '#03a9f4', btnText: '#fff' },
+    { id: 'dino', name: 'きょうりゅうじだい', icon: '🦖', bg: '#f0f4c3', text: '#827717', btnBg: '#afb42b', btnText: '#fff' },
+    { id: 'insect', name: 'むしとり', icon: '🦋', bg: '#f9fbe7', text: '#33691e', btnBg: '#c0ca33', btnText: '#fff' },
+    { id: 'deepsea', name: 'しんかい', icon: '🦑', bg: '#000051', text: '#80d8ff', btnBg: '#00b0ff', btnText: '#fff' },
+    { id: 'jungle', name: 'ジャングル', icon: '🐅', bg: '#1b5e20', text: '#c8e6c9', btnBg: '#388e3c', btnText: '#fff' },
+    { id: 'nebula', name: 'うちゅうのせいうん', icon: '🌌', bg: '#12005e', text: '#ea80fc', btnBg: '#651fff', btnText: '#fff' },
+    { id: 'frog', name: 'カエルのいけ', icon: '🐸', bg: '#e0f2f1', text: '#00695c', btnBg: '#00897b', btnText: '#fff' }
+];
+
+export const EFFECTS =[
+    {id:'default', name:'紙吹雪', icon:'🎉', emojis:[]},
+    {id:'effect_star', name:'お星さま', icon:'🌟', emojis:['🌟', '⭐', '✨']},
+    {id:'effect_heart', name:'ハート', icon:'💖', emojis:['💖', '💕', '💗']},
+    {id:'effect_flower', name:'お花', icon:'🌸', emojis:['🌸', '💮', '🌺']},
+    {id:'effect_snow', name:'ゆき', icon:'❄️', emojis:['❄️', '⛄', '🧊']},
+    {id:'eff_spring', name:'さくらふぶき', icon:'🌸', emojis:['🌸', '💮', '🍃']},
+    {id:'eff_sunflower', name:'ひまわり', icon:'🌻', emojis:['🌻', '✨', '💛']},
+    {id:'eff_autumn', name:'もみじとはっぱ', icon:'🍁', emojis:['🍁', '🍂', '🍄']},
+    {id:'eff_ice', name:'ゆきだるま', icon:'⛄', emojis:['⛄', '❄️', '🧊']},
+    {id:'eff_volcano', name:'ほのお', icon:'🔥', emojis:['🔥', '💥', '🎇']},
+    {id:'eff_forest', name:'もりのどうぶつ', icon:'🐻', emojis:['🐻', '🐰', '🦊']},
+    {id:'eff_desert', name:'ヤシのき', icon:'🌴', emojis:['🌴', '🥥', '☀️']},
+    {id:'eff_thunder', name:'かみなり', icon:'⚡', emojis:['⚡', '🌩️', '💧']},
+    {id:'eff_rainbow', name:'にじとくも', icon:'🌈', emojis:['🌈', '☁️', '🕊️']},
+    {id:'eff_sunset', name:'ゆうやけカラス', icon:'🌇', emojis:['🌇', '🐦', '🌆']},
+    {id:'eff_beach', name:'うみのいきもの', icon:'🐠', emojis:['🐠', '🐬', '🐚']},
+    {id:'eff_cave', name:'コウモリ', icon:'🦇', emojis:['🦇', '🕸️', '🌑']},
+    {id:'eff_savanna', name:'サバンナのけもの', icon:'🦁', emojis:['🦁', '🦓', '🦒']},
+    {id:'eff_penguin', name:'ペンギン', icon:'🐧', emojis:['🐧', '🐟', '❄️']},
+    {id:'eff_dino', name:'きょうりゅう', icon:'🦖', emojis:['🦖', '🦕', '🌋']},
+    {id:'eff_insect', name:'むし', icon:'🦋', emojis:['🦋', '🐞', '🐝']},
+    {id:'eff_deepsea', name:'しんかい', icon:'🦑', emojis:['🦑', '🐙', '🫧']},
+    {id:'eff_jungle', name:'トラとサル', icon:'🐅', emojis:['🐅', '🐒', '🍌']},
+    {id:'eff_nebula', name:'ほしとつき', icon:'🌌', emojis:['⭐', '🌙', '🌠']},
+    {id:'eff_frog', name:'カエルとたまじゃくし', icon:'🐸', emojis:['🐸', '💧', '🌿']}
+];
