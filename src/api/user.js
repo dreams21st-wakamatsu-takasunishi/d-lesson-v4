@@ -14,6 +14,7 @@ const supabaseKey = env.VITE_SUPABASE_PUBLISHABLE_KEY || env.VITE_SUPABASE_ANON_
 
 export const HAS_SUPABASE_CONFIG = Boolean(supabaseUrl && supabaseKey);
 export const ENABLE_LEGACY_SUPABASE_SYNC = env.VITE_ENABLE_LEGACY_SUPABASE_SYNC === 'true';
+export const ENABLE_RLS_CLOUD_SYNC = env.VITE_ENABLE_RLS_CLOUD_SYNC === 'true';
 export const REQUIRE_SUPABASE_AUTH = env.VITE_REQUIRE_SUPABASE_AUTH === 'true';
 export const supabase = HAS_SUPABASE_CONFIG ? createClient(supabaseUrl, supabaseKey) : null;
 
@@ -32,11 +33,16 @@ let authGatePromise = null;
 let authGateResolve = null;
 let authGateAfterLogin = null;
 
+function canUseRlsCloudSync() {
+    return Boolean(supabase && REQUIRE_SUPABASE_AUTH && ENABLE_RLS_CLOUD_SYNC);
+}
+
 function canUseLegacyCloudSync() {
-    return Boolean(supabase && ENABLE_LEGACY_SUPABASE_SYNC);
+    return Boolean(supabase && ENABLE_LEGACY_SUPABASE_SYNC && !canUseRlsCloudSync());
 }
 
 function getLocalOnlySyncStatus() {
+    if (ENABLE_RLS_CLOUD_SYNC && !REQUIRE_SUPABASE_AUTH) return 'rls auth missing';
     if (REQUIRE_SUPABASE_AUTH && HAS_SUPABASE_CONFIG) return 'auth only';
     return HAS_SUPABASE_CONFIG ? 'cloud locked' : 'local only';
 }
@@ -69,6 +75,10 @@ function clearRosterDom() {
         const el = document.getElementById(id);
         if (el) el.innerHTML = '';
     });
+}
+
+function shouldPersistUserRow(name, data) {
+    return Boolean(name && data && typeof data === 'object' && name !== 'Master_Debug');
 }
 
 function setAuthGateMessage(message, isError = false) {
@@ -213,6 +223,7 @@ export async function signOutSupabaseAuth() {
     authGateResolve = null;
     authGateAfterLogin = null;
     users = {};
+    if (ENABLE_RLS_CLOUD_SYNC) localStorage.removeItem(STORAGE_KEY);
     clearRosterDom();
 
     if (supabase) {
@@ -244,9 +255,12 @@ export async function loadUsers() {
         return;
     }
 
-    loadLocalUsers();
+    const useRlsCloudSync = canUseRlsCloudSync();
+    const useLegacyCloudSync = canUseLegacyCloudSync();
 
-    if (!canUseLegacyCloudSync()) {
+    if (!useRlsCloudSync) loadLocalUsers();
+
+    if (!useRlsCloudSync && !useLegacyCloudSync) {
         if (!users || typeof users !== 'object') users = {};
         applyCustomGlobalSettingsIfReady();
         setSyncStatus(getLocalOnlySyncStatus());
@@ -258,7 +272,7 @@ export async function loadUsers() {
     let cloudLoadFailed = false;
 
     try {
-        // Legacy roster sync reads the full table. Keep it disabled on public URLs.
+        // RLS sync relies on Supabase policies. Legacy sync must stay disabled on public URLs.
         const { data, error } = await supabase.from(TARGET_TABLE).select('*');
         if (error) throw error;
 
@@ -266,42 +280,52 @@ export async function loadUsers() {
             let newUsers = {};
             data.forEach(row => { newUsers[row.id] = row.data; });
             
-            // Merge local-only progress that has not reached the cloud yet.
-            const localDataStr = localStorage.getItem(STORAGE_KEY);
-            let localUsers = null;
-            if (localDataStr) { try { localUsers = JSON.parse(localDataStr); } catch(err) {} }
+            if (!useRlsCloudSync) {
+                // Merge local-only progress that has not reached the cloud yet.
+                const localDataStr = localStorage.getItem(STORAGE_KEY);
+                let localUsers = null;
+                if (localDataStr) { try { localUsers = JSON.parse(localDataStr); } catch(err) {} }
 
-            if (localUsers) {
-                for (let n in localUsers) {
-                    if (!newUsers[n]) {
-                        newUsers[n] = localUsers[n];
-                    } else {
-                        const props =['coins', 'items', 'tickets', 'activeEffect', 'textRecords', 'textTasks', 'dChallengeHighscore', 'minigameHighscore', 'examRecords', 'globalMistakes', 'ticketHistory', 'loginStamps', 'visionCleared', 'currentWeakKeys', 'group', 'wordProgress'];
-                        props.forEach(p => {
-                            if (newUsers[n][p] === undefined && localUsers[n][p] !== undefined) {
-                                newUsers[n][p] = localUsers[n][p];
-                            }
-                        });
+                if (localUsers) {
+                    for (let n in localUsers) {
+                        if (!newUsers[n]) {
+                            newUsers[n] = localUsers[n];
+                        } else {
+                            const props =['coins', 'items', 'tickets', 'activeEffect', 'textRecords', 'textTasks', 'dChallengeHighscore', 'minigameHighscore', 'examRecords', 'globalMistakes', 'ticketHistory', 'loginStamps', 'visionCleared', 'currentWeakKeys', 'group', 'wordProgress'];
+                            props.forEach(p => {
+                                if (newUsers[n][p] === undefined && localUsers[n][p] !== undefined) {
+                                    newUsers[n][p] = localUsers[n][p];
+                                }
+                            });
+                        }
                     }
                 }
             }
             users = newUsers;
             localStorage.setItem(STORAGE_KEY, JSON.stringify(users)); 
         } else {
-            // If the cloud table is empty, keep local data.
-            const localDataStr = localStorage.getItem(STORAGE_KEY);
-            if (localDataStr) { try { users = JSON.parse(localDataStr); } catch(err) { users = {}; } }
+            if (useRlsCloudSync) {
+                users = {};
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(users));
+            } else {
+                // If the cloud table is empty, keep local data.
+                const localDataStr = localStorage.getItem(STORAGE_KEY);
+                if (localDataStr) { try { users = JSON.parse(localDataStr); } catch(err) { users = {}; } }
+            }
         }
     } catch(e) {
         console.error("通信エラー", e);
-        loadLocalUsers();
+        if (useRlsCloudSync) users = {};
+        else loadLocalUsers();
         cloudLoadFailed = true;
         setSyncStatus('sync error');
     }
     
     if (!users || typeof users !== 'object') users = {};
     applyCustomGlobalSettingsIfReady();
-    if (canUseLegacyCloudSync() && !cloudLoadFailed) setSyncStatus('synced');
+    if ((useRlsCloudSync || useLegacyCloudSync) && !cloudLoadFailed) {
+        setSyncStatus(useRlsCloudSync ? 'rls synced' : 'synced');
+    }
 
     const loadingMsg = titleScreen.querySelector('.loading-msg');
     if (loadingMsg) loadingMsg.remove();
@@ -312,7 +336,10 @@ export async function saveUsers(forceOverwrite = false) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(users));
     updateGlobalHeader(); 
 
-    if (!canUseLegacyCloudSync()) {
+    const useRlsCloudSync = canUseRlsCloudSync();
+    const useLegacyCloudSync = canUseLegacyCloudSync();
+
+    if (!useRlsCloudSync && !useLegacyCloudSync) {
         setSyncStatus(getLocalOnlySyncStatus());
         return;
     }
@@ -321,13 +348,19 @@ export async function saveUsers(forceOverwrite = false) {
     setSyncStatus('syncing');
 
     try {
-        // Build the legacy upsert payload.
+        // Build the cloud upsert payload.
         let upsertData =[];
         if (forceOverwrite) {
-            for (let name in users) { upsertData.push({ id: name, data: users[name] }); }
+            for (let name in users) {
+                if (shouldPersistUserRow(name, users[name])) upsertData.push({ id: name, data: users[name] });
+            }
         } else {
-            if (currentUser && users[currentUser]) upsertData.push({ id: currentUser, data: users[currentUser] });
-            if (users['__GLOBAL_SETTINGS__']) upsertData.push({ id: '__GLOBAL_SETTINGS__', data: users['__GLOBAL_SETTINGS__'] });
+            if (currentUser && shouldPersistUserRow(currentUser, users[currentUser])) {
+                upsertData.push({ id: currentUser, data: users[currentUser] });
+            }
+            if (shouldPersistUserRow('__GLOBAL_SETTINGS__', users['__GLOBAL_SETTINGS__'])) {
+                upsertData.push({ id: '__GLOBAL_SETTINGS__', data: users['__GLOBAL_SETTINGS__'] });
+            }
         }
 
         if (upsertData.length > 0) {
@@ -335,7 +368,7 @@ export async function saveUsers(forceOverwrite = false) {
             const { error } = await supabase.from(TARGET_TABLE).upsert(upsertData);
             if (error) throw error;
         }
-        setSyncStatus('synced'); 
+        setSyncStatus(useRlsCloudSync ? 'rls synced' : 'synced');
     } catch (e) { 
         console.error("保存エラー:", e); 
         setSyncStatus('sync error'); 
