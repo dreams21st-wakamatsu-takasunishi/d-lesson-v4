@@ -1,5 +1,5 @@
 import { showCustomConfirm } from './modal.js';
-import { setCurrentUser, setCurrentSelectedGrade, signOutSupabaseAuth } from '../api/user.js';
+import { currentUser, users, setCurrentUser, setCurrentSelectedGrade, signOutSupabaseAuth } from '../api/user.js';
 
 export function showScreen(id) {
     document.querySelectorAll('.screen').forEach(screen => {
@@ -42,7 +42,8 @@ export function handleGlobalBack() {
 }
 
 export function handleGlobalHome() {
-    showScreen('screen-category');
+    if (currentUser && users[currentUser]) showScreen('screen-category');
+    else showScreen('screen-title');
 }
 
 export function handleGlobalLogout() {

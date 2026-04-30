@@ -5,6 +5,7 @@ import { showCustomAlert, showCustomConfirm } from './modal.js';
 import { showScreen } from './screen.js';
 import { calculateGrade, sortGrades } from '../utils/helpers.js';
 import { verifyLegacyAdminPass } from '../utils/security.js';
+import { getStageName } from '../utils/stages.js';
 
 let passwordCallback = null;
 export function showPasswordModal(title, callback) {

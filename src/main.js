@@ -18,7 +18,6 @@ import {
   KB_CHAPTERS,
   KB_LAYOUT,
   WORD_STAGES,
-  ROMAJI_TABLE_DATA,
   THEMES,
   EFFECTS
 } from './data/constants.js';
@@ -49,6 +48,7 @@ import { showCustomAlert, showCustomConfirm } from './ui/modal.js';
 import { createBtn } from './utils/dom.js';
 import { getRewardText } from './utils/rewards.js';
 import { verifyLegacyAdminPass } from './utils/security.js';
+import { getStageName } from './utils/stages.js';
 
 import {
     showScreen,
@@ -619,6 +619,14 @@ export function shuffle(arr) { for (let i=arr.length-1; i>0; i--) { const j=Math
    ========================================================= */
 let currentKeyboardCategory = 'basic';
 
+function getActiveUserOrTitle() {
+    const u = currentUser ? users[currentUser] : null;
+    if (u) return u;
+    showCustomAlert('ユーザーを選択してください');
+    showScreen('screen-title');
+    return null;
+}
+
 export function showCapsuleAnimation(isRare, callback) {
     const overlay = document.getElementById('capsule-overlay');
     const cap = document.getElementById('gacha-capsule');
@@ -679,7 +687,9 @@ function loginAsMaster() {
 }
 
 function goToWeakTraining() {
-    const mistakes = users[currentUser].globalMistakes || {};
+    const u = getActiveUserOrTitle();
+    if (!u) return;
+    const mistakes = u.globalMistakes || {};
     const hasMistakes = Object.values(mistakes).some(count => count > 0);
     if (hasMistakes) {
         startGame(9888, 'keyboard');
@@ -689,7 +699,9 @@ function goToWeakTraining() {
 }
 
 export function updateMouseButtons() {
-    const l = users[currentUser].mouseLevel; document.getElementById('master-badge').style.display = (l >= 7) ? 'block' : 'none';
+    const u = getActiveUserOrTitle();
+    if (!u) return;
+    const l = u.mouseLevel || 0; document.getElementById('master-badge').style.display = (l >= 7) ? 'block' : 'none';
     for(let i=1; i<=7; i++) {
         const b = document.getElementById(`btn-m${i}`); if(!b) continue;
         b.classList.remove('unlocked','cleared','next-target'); b.style.opacity='1'; b.onclick=null; b.onkeydown=null; b.tabIndex=-1;
@@ -714,7 +726,9 @@ export function updateKeyboardButtons() {
 }
 
 function renderKeyboardChapters() {
-    const seq = users[currentUser].keyboardSequence; 
+    const u = getActiveUserOrTitle();
+    if (!u) return;
+    const seq = u.keyboardSequence || 0;
     const cont = document.getElementById('kb-chapter-container'); 
     cont.innerHTML='';
     
@@ -819,7 +833,9 @@ export function renderKeyboardStages(chap) {
     document.getElementById('kb-bottom-back-btn').style.display = 'none';
     document.getElementById('kb-stage-title').innerText = chap.title;
     
-    const seq = users[currentUser].keyboardSequence; 
+    const u = getActiveUserOrTitle();
+    if (!u) return;
+    const seq = u.keyboardSequence || 0;
     const isUnlocked = (id) => { const x=STAGE_ORDER.indexOf(id); return x===0 || (x!==-1 && seq>=x); };
     const isCleared = (id) => { const x=STAGE_ORDER.indexOf(id); return x!==-1 && seq>x; };
     const targetId = STAGE_ORDER[seq];
@@ -1121,11 +1137,6 @@ function closeRewardOverlay() { SoundManager.playClick(); document.getElementByI
    [JS] 12. ローマ字一覧表ステージ
    ========================================================= */
 
-let romajiMode = ''; 
-let romajiTotalCells = 0;
-let romajiCorrectCells = 0;
-
-
 /* =========================================================
    [JS] 13. ログアウト ＆ ユーティリティ
    ========================================================= */
@@ -1196,7 +1207,8 @@ goToRecords = function() {
 };
 
 function goToWordMenu() { 
-    const u = users[currentUser];
+    const u = getActiveUserOrTitle();
+    if (!u) return;
     if (!u.isMaster) {
         if (!u.examRecords || !u.examRecords['romaji_daku_exam']) {
             // ★改行位置を最適化

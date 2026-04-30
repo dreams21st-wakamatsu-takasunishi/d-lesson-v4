@@ -14,7 +14,8 @@ import {
   FINGER_HOME_MAP,
   COLOR_CLASS_MAP,
   ADVICE_HINT_MAP,
-  KANA_MAP
+  KANA_MAP,
+  ROMAJI_TABLE_DATA
 } from '../data/constants.js';
 
 import { SoundManager } from '../utils/sound.js';
@@ -31,6 +32,7 @@ import {
     updateMouseButtons
 } from '../main.js';
 import { startVisionGame, renderVisionMenu } from './vision.js';
+export { getStageName } from '../utils/stages.js';
 
 let gameMode, currentStage, isProcessing = false;
 let mainQueue =[], currentCount = 0, totalCount = 1;
@@ -40,6 +42,9 @@ let isExam = false, mistakeCount = 0, maxMistakes = 3, mistakeStats = {}, hasMis
 let timerInterval = null, startTime = 0, isTimeAttackMode = false;
 let cancelStartHandler = null; 
 let typedRomajiStr = "";
+let romajiMode = '';
+let romajiTotalCells = 0;
+let romajiCorrectCells = 0;
 
 export let visionScore = 0;
 export let visionTarget = 0;
@@ -806,21 +811,6 @@ function m_drag() {
     els.playArea.onmouseleave=()=>{
         d=false; b.style.cursor='grab'; b.style.transform='scale(1)'; t.classList.remove('ready-to-eat');
     }; 
-}
-
-export function getStageName(sid) {
-    if (sid === 9888) return "[ID:9888] にがてとっくん";
-    let st = KEYBOARD_STAGES.find(s => s.id === sid) || BLIND_STAGES.find(s => s.id === sid) || 
-             BRIDGE_STAGES.find(s => s.id === sid) || EXAMS.find(s => s.id === sid) ||
-             HIRAGANA_DATA.find(s => s.id === sid) || WORD_DATA.find(s => s.id === sid);
-    if (st) return `[ID:${sid}] ${st.title}`;
-
-    if (sid >= 3100 && sid <= 3299) {
-        let base = sid - (sid >= 3200 ? 200 : 100);
-        st = HIRAGANA_DATA.find(s => s.id === base);
-        if (st) return `[ID:${sid}] ${st.title}(ブラインド)`;
-    }
-    return `[ID:${sid}] 未知のステージ`;
 }
 
 export function startRecommendedStage() {}
