@@ -20,7 +20,16 @@ import {
 import { SoundManager } from '../utils/sound.js';
 import { showScreen, showImeWarning } from '../ui/screen.js';
 import { showCustomAlert } from '../ui/modal.js';
-import { createConfetti } from '../main.js';
+import {
+    convertNameToRomaji,
+    createConfetti,
+    currentKeyboardChapter,
+    renderKeyboardStages,
+    showRewardOverlay,
+    shuffle,
+    updateKeyboardButtons,
+    updateMouseButtons
+} from '../main.js';
 import { startVisionGame, renderVisionMenu } from './vision.js';
 
 let gameMode, currentStage, isProcessing = false;

@@ -22,8 +22,10 @@ import {
   THEMES,
   EFFECTS
 } from './data/constants.js';
+import { GACHA_ITEMS } from './data/gacha-items.js';
 
 import { toggleSFX, toggleBGM, SoundManager, initAudio } from './utils/sound.js';
+import { calculateGrade, sortGrades } from './utils/helpers.js';
 
 import {
   users,
@@ -45,6 +47,7 @@ import * as Admin from './ui/admin.js';
 
 import { showCustomAlert, showCustomConfirm } from './ui/modal.js';
 import { createBtn } from './utils/dom.js';
+import { getRewardText } from './utils/rewards.js';
 import { verifyLegacyAdminPass } from './utils/security.js';
 
 import {
@@ -138,12 +141,7 @@ const ACHIEVEMENTS =[
     { id: 'gacha_10', title: 'ガチャマニア', desc: 'アイテム を 10こ以上 あつめる', icon: '🎁', check: u => u.items && u.items.length >= 10 }
 ];
 
-let GACHA_ITEMS =[ { id: 'coin_50', type: 'coin', name: '💰 50コイン', rate: 0.40 } ];
-let itemRate = 0.60 / ((THEMES.length - 1) + (EFFECTS.length - 1)); 
-THEMES.forEach(t => { if(t.id !== 'default') GACHA_ITEMS.push({ id: 'theme_' + t.id, type: 'theme', name: `${t.icon} テーマ：${t.name}`, rate: itemRate }); });
-EFFECTS.forEach(e => { if(e.id !== 'default') GACHA_ITEMS.push({ id: e.id, type: 'effect', name: `${e.icon} 演出：${e.name}`, rate: itemRate }); });
-
-function convertNameToRomaji(name) {
+export function convertNameToRomaji(name) {
     if (!name) return 'NAME';
     let hira = name.replace(/[\u30a1-\u30f6]/g, match => String.fromCharCode(match.charCodeAt(0) - 0x60));
     let romaji = '';
@@ -614,14 +612,14 @@ window.handleSecretMenuClick = () => {
 };
 
 
-function shuffle(arr) { for (let i=arr.length-1; i>0; i--) { const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]]; } for (let i=1; i<arr.length; i++) { let a=arr[i], b=arr[i-1], va=(a.key||a.h||a), vb=(b.key||b.h||b); if (va===vb) { for (let j=i+1; j<arr.length; j++) { let vc=(arr[j].key||arr[j].h||arr[j]); if (vc!==va) {[arr[i],arr[j]]=[arr[j],arr[i]]; break; } } } } return arr; }
+export function shuffle(arr) { for (let i=arr.length-1; i>0; i--) { const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]]; } for (let i=1; i<arr.length; i++) { let a=arr[i], b=arr[i-1], va=(a.key||a.h||a), vb=(b.key||b.h||b); if (va===vb) { for (let j=i+1; j<arr.length; j++) { let vc=(arr[j].key||arr[j].h||arr[j]); if (vc!==va) {[arr[i],arr[j]]=[arr[j],arr[i]]; break; } } } } return arr; }
 
 /* =========================================================
    [JS] 9. UI・画面遷移 ＆ ガチャ・きせかえ管理
    ========================================================= */
 let currentKeyboardCategory = 'basic';
 
-function showCapsuleAnimation(isRare, callback) {
+export function showCapsuleAnimation(isRare, callback) {
     const overlay = document.getElementById('capsule-overlay');
     const cap = document.getElementById('gacha-capsule');
     cap.innerText = isRare ? '🔮' : '💊';
@@ -640,7 +638,7 @@ function showCapsuleAnimation(isRare, callback) {
 function goToMouseMenu() { updateMouseButtons(); showScreen('screen-mouse-menu'); }
 function goToKeyboardCategory() { showScreen('screen-keyboard-category'); }
 
-let currentKeyboardChapter = null;
+export let currentKeyboardChapter = null;
 function goToKeyboardMenu(type) { 
     if (type) currentKeyboardCategory = type; 
     document.getElementById('kb-chapter-container').style.display = 'flex';
@@ -667,7 +665,7 @@ function goToRecords() { renderRecords(); showScreen('screen-records'); }
 function goToVisionMenu() { renderVisionMenu(); showScreen('screen-vision-menu'); }
 
 function loginAsMaster() {
-    showPasswordModal('先生用パスワード', (pass) => {
+    Admin.showPasswordModal('先生用パスワード', (pass) => {
         if(verifyLegacyAdminPass(pass)) {
             if (!users['Master_Debug']) {
                 users['Master_Debug'] = { mouseLevel:7, keyboardSequence:999, examRecords:{}, textRecords:{}, globalMistakes:{}, theme:'default', birthdate:'', isMaster:true };
@@ -690,7 +688,7 @@ function goToWeakTraining() {
     }
 }
 
-function updateMouseButtons() {
+export function updateMouseButtons() {
     const l = users[currentUser].mouseLevel; document.getElementById('master-badge').style.display = (l >= 7) ? 'block' : 'none';
     for(let i=1; i<=7; i++) {
         const b = document.getElementById(`btn-m${i}`); if(!b) continue;
@@ -711,7 +709,7 @@ function updateMouseButtons() {
     }
 }
 
-function updateKeyboardButtons() {
+export function updateKeyboardButtons() {
     renderKeyboardChapters();
 }
 
@@ -813,7 +811,7 @@ function showRomajiMenu() {
     });
 }
 
-function renderKeyboardStages(chap) {
+export function renderKeyboardStages(chap) {
     currentKeyboardChapter = chap; // ★追加
 
     document.getElementById('kb-chapter-container').style.display = 'none';
@@ -909,7 +907,7 @@ function backToRecordMenu() {
     if(users[currentUser]) document.getElementById('global-coin-display').innerText = `💰 ${users[currentUser].coins || 0}`;
 }
 
-function renderRecords() {
+export function renderRecords() {
     backToRecordMenu();
     const u = users[currentUser];
     if(!u) return;
@@ -1107,7 +1105,7 @@ export function createConfetti() {
 }
 
 let rewardCloseCallback = null;
-function showRewardOverlay(title, name, icon, callback) {
+export function showRewardOverlay(title, name, icon, callback) {
     SoundManager.playClear(); createConfetti();
     document.getElementById('reward-title').innerText = title; document.getElementById('reward-name').innerText = name; document.getElementById('reward-icon').innerText = icon;
     document.getElementById('reward-overlay').style.display = 'flex'; rewardCloseCallback = callback;
@@ -1210,6 +1208,8 @@ function goToWordMenu() {
     showScreen('screen-word-menu'); 
 }
 
+let currentWordStageId = null;
+
 function renderWordMenu() {
     const cont = document.getElementById('word-menu-content'); cont.innerHTML = '';
     const u = users[currentUser];
@@ -1306,7 +1306,7 @@ function suspendWordTask() {
 }
 
 function confirmWordClear() {
-    showPasswordModal('【先生確認】\n作品の出来を確認したら\nパスワードを入力:', (pass) => {
+    Admin.showPasswordModal('【先生確認】\n作品の出来を確認したら\nパスワードを入力:', (pass) => {
         if (verifyLegacyAdminPass(pass)) processWordClear();
         else if (pass !== null && pass !== '') alert('パスワードがちがいます');
     });
@@ -1361,7 +1361,7 @@ const globalFunctions = [
 
     retryExam, backToMenu, handleSecretMenuClick,
     showRomajiMenu, renderKeyboardStages, backToKbChapter,
-    showRecordSection, backToRecordMenu, exportDashboardCSV, startRecommendedStage,
+    showRecordSection, backToRecordMenu, exportDashboardCSV, startRecommendedStage, loadCustomGlobalSettings,
 
     drawGacha, useTicket, changeTheme, changeEffect,
     showVisionCompare,

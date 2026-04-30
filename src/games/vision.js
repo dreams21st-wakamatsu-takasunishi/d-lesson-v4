@@ -3,6 +3,7 @@ import { VISION_STAGES } from '../data/constants.js'
 import { SoundManager } from '../utils/sound.js'
 import { showScreen } from '../ui/screen.js'
 import { createBtn } from '../utils/dom.js'
+import { getRewardText } from '../utils/rewards.js'
 import {
     startGame,
     els,
@@ -185,34 +186,6 @@ export function renderVisionMenu() {
         }
         cont.appendChild(wrapper);
     });
-}
-
-function getRewardText(mode, sid) {
-    let u = users[currentUser];
-    if (!u || u.isMaster) return "";
-    let isFirst = false;
-    
-    if (mode === 'mouse') {
-        isFirst = u.mouseLevel < sid; return isFirst ? "💰50" : "💰1";
-    } else if (mode === 'vision') {
-        isFirst = !(u.visionCleared && u.visionCleared.includes(sid));
-        if (String(sid).endsWith('_hard')) return isFirst ? "💰100" : "💰50(更新)";
-        else if (String(sid).endsWith('_easy')) return isFirst ? "💰20" : "💰10(更新)";
-        else return isFirst ? "💰50" : "💰30(更新)";
-    } else if (mode === 'romaji') {
-        return String(sid).endsWith('_exam') ? "💰50" : "💰20";
-    } else if (mode === 'keyboard') {
-        if (sid === 9888) return "💰10";
-        const idx = STAGE_ORDER.indexOf(sid);
-        isFirst = (idx !== -1 && u.keyboardSequence <= idx);
-        let cat = Math.floor(sid / 1000);
-        if (cat === 1) return isFirst ? "💰100" : "💰10";
-        if (cat === 2) return isFirst ? "💰150" : "💰20";
-        if (cat === 3) return isFirst ? "💰200" : "💰30";
-        if (cat === 4) return isFirst ? "💰250" : "💰50";
-        return isFirst ? "💰50" : "💰10";
-    }
-    return "";
 }
 
 export function startVisionGame(sid) {

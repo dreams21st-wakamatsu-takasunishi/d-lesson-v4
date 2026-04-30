@@ -58,6 +58,12 @@ function loadLocalUsers() {
     }
 }
 
+function applyCustomGlobalSettingsIfReady() {
+    if (typeof window !== 'undefined' && typeof window.loadCustomGlobalSettings === 'function') {
+        window.loadCustomGlobalSettings();
+    }
+}
+
 function clearRosterDom() {
     ['grade-list', 'user-list'].forEach(id => {
         const el = document.getElementById(id);
@@ -242,7 +248,7 @@ export async function loadUsers() {
 
     if (!canUseLegacyCloudSync()) {
         if (!users || typeof users !== 'object') users = {};
-        if (typeof loadCustomGlobalSettings === 'function') loadCustomGlobalSettings();
+        applyCustomGlobalSettingsIfReady();
         setSyncStatus(getLocalOnlySyncStatus());
         const loadingMsg = titleScreen.querySelector('.loading-msg');
         if (loadingMsg) loadingMsg.remove();
@@ -294,7 +300,7 @@ export async function loadUsers() {
     }
     
     if (!users || typeof users !== 'object') users = {};
-    if (typeof loadCustomGlobalSettings === 'function') loadCustomGlobalSettings();
+    applyCustomGlobalSettingsIfReady();
     if (canUseLegacyCloudSync() && !cloudLoadFailed) setSyncStatus('synced');
 
     const loadingMsg = titleScreen.querySelector('.loading-msg');

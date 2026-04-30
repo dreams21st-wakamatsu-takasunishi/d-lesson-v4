@@ -684,7 +684,9 @@ export function saveCustomTheme() {
         showCustomAlert('「' + name + '」をガチャのラインナップに追加しました！'); 
     }
     
-    saveUsers(true); loadCustomGlobalSettings(); closeThemeCreator();
+    saveUsers(true);
+    if (typeof window.loadCustomGlobalSettings === 'function') window.loadCustomGlobalSettings();
+    closeThemeCreator();
     document.getElementById('ct-name').value = ''; document.getElementById('ct-present').checked = false;
 }
 
@@ -714,7 +716,9 @@ export function saveCustomEffect() {
         showCustomAlert('「' + name + '」をガチャのラインナップに追加しました！'); 
     }
     
-    saveUsers(true); loadCustomGlobalSettings(); closeEffectCreator();
+    saveUsers(true);
+    if (typeof window.loadCustomGlobalSettings === 'function') window.loadCustomGlobalSettings();
+    closeEffectCreator();
     document.getElementById('ce-name').value = ''; document.getElementById('ce-present').checked = false;
 }
 

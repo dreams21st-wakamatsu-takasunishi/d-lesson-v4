@@ -1,8 +1,10 @@
 import { users, currentUser, saveUsers } from '../api/user.js'
+import { GACHA_ITEMS } from '../data/gacha-items.js'
 import { THEMES, EFFECTS } from '../data/constants.js'
 import { SoundManager } from '../utils/sound.js'
-import { showCustomAlert } from '../ui/modal.js'
-import { createConfetti } from '../main.js'
+import { showCustomAlert, showCustomConfirm } from '../ui/modal.js'
+import { showPasswordModal } from '../ui/admin.js'
+import { createConfetti, renderRecords, showCapsuleAnimation, showRewardOverlay } from '../main.js'
 import { verifyLegacyAdminPass } from '../utils/security.js'
 
 export function drawGacha(times = 1, isRareGuaranteed = false) {
