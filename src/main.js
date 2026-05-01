@@ -92,6 +92,7 @@ import {
   startGame,
   backToMenu,
   retryExam,
+  handleSecretMenuClick,
   startRecommendedStage
 } from './games/core.js';
 /* =========================================================
@@ -605,16 +606,6 @@ function updateMgWordDisplayDChallenge(w) {
 /* =========================================================
    [JS] 8. 共通ゲーム進行 ＆ キーボード・マウスのコアロジック
    ========================================================= */
-window.handleSecretMenuClick = () => { 
-    if(isProcessing)return; 
-    isProcessing=true; 
-    SoundManager.playSuccess(); 
-    els.ctxMenu.style.display='none'; 
-    els.playArea.oncontextmenu = null; 
-    completeTask(300); 
-};
-
-
 export function shuffle(arr) { for (let i=arr.length-1; i>0; i--) { const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]]; } for (let i=1; i<arr.length; i++) { let a=arr[i], b=arr[i-1], va=(a.key||a.h||a), vb=(b.key||b.h||b); if (va===vb) { for (let j=i+1; j<arr.length; j++) { let vc=(arr[j].key||arr[j].h||arr[j]); if (vc!==va) {[arr[i],arr[j]]=[arr[j],arr[i]]; break; } } } } return arr; }
 
 /* =========================================================
@@ -1402,6 +1393,7 @@ const globalFunctions = [
     retryExam, backToMenu, handleSecretMenuClick,
     showRomajiMenu, renderKeyboardStages, backToKbChapter,
     showRecordSection, backToRecordMenu, exportDashboardCSV, startRecommendedStage, loadCustomGlobalSettings,
+    updateGlobalHeader, updateHomeDashboard,
 
     drawGacha, useTicket, changeTheme, changeEffect,
     showVisionCompare,

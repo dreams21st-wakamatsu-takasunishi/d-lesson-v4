@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { SoundManager } from '../utils/sound.js';
 import { calculateGrade, sortGrades } from '../utils/helpers.js';
 import { showScreen } from '../ui/screen.js';
-import { applyTheme, updateGlobalHeader, updateHomeDashboard } from '../ui/home.js';
+import { applyTheme } from '../ui/home.js';
 import { createConfetti } from '../ui/effects.js';
 // ==========================================
 // Database (Supabase) connection
@@ -118,6 +118,12 @@ function clearRosterDom() {
 
 function shouldPersistUserRow(name, data) {
     return Boolean(name && data && typeof data === 'object' && name !== 'Master_Debug');
+}
+
+function updateVisibleUserUi() {
+    if (typeof window === 'undefined') return;
+    if (typeof window.updateGlobalHeader === 'function') window.updateGlobalHeader();
+    if (typeof window.updateHomeDashboard === 'function') window.updateHomeDashboard();
 }
 
 function setAuthGateMessage(message, isError = false) {
@@ -376,7 +382,7 @@ export async function loadUsers() {
 export async function saveUsers(forceOverwrite = false) {
     if (!users || typeof users !== 'object') users = {};
     localStorage.setItem(STORAGE_KEY, JSON.stringify(users));
-    updateGlobalHeader(); 
+    updateVisibleUserUi();
 
     const useRlsCloudSync = canUseRlsCloudSync();
     const useLegacyCloudSync = canUseLegacyCloudSync();
@@ -470,8 +476,7 @@ export function login(n) {
     applyTheme(users[n].theme);
     document.getElementById('welcome-msg').innerText = `ようこそ、${n} さん`;
 
-    updateGlobalHeader(); 
-    updateHomeDashboard(); 
+    updateVisibleUserUi();
 
     const today = new Date().toISOString().split('T')[0];
     if (!users[n].loginStamps.includes(today) && !users[n].isMaster) {

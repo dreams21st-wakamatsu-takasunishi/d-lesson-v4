@@ -731,6 +731,15 @@ function m_menu() {
     els.playArea.onclick=()=>{els.ctxMenu.style.display='none';}; 
 }
 
+export function handleSecretMenuClick() {
+    if (isProcessing) return;
+    isProcessing = true;
+    SoundManager.playSuccess();
+    els.ctxMenu.style.display = 'none';
+    els.playArea.oncontextmenu = null;
+    completeTask(300);
+}
+
 function m_scroll() { 
     els.instText.innerText="コロコロ（ホイール）を まわして、一番下の ボタンを おしてね"; 
     els.playArea.style.display='block'; 
@@ -814,5 +823,26 @@ function m_drag() {
     }; 
 }
 
-export function startRecommendedStage() {}
+export function startRecommendedStage() {
+    const user = currentUser ? users[currentUser] : null;
+    if (!user) {
+        showCustomAlert('ユーザーを選択してください');
+        showScreen('screen-title');
+        return;
+    }
+
+    const mouseLevel = user.mouseLevel || 0;
+    if (mouseLevel < 7) {
+        startGame(mouseLevel + 1, 'mouse');
+        return;
+    }
+
+    const keyboardSequence = user.keyboardSequence || 0;
+    if (keyboardSequence < STAGE_ORDER.length) {
+        startGame(STAGE_ORDER[keyboardSequence], 'keyboard');
+        return;
+    }
+
+    showCustomAlert('すべてクリア済みです。にがてとっくんやガチャであそべます。');
+}
 
