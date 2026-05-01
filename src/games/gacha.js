@@ -1,11 +1,11 @@
-import { users, currentUser, saveUsers } from '../api/user.js'
+import { users, currentUser, saveUsers, hasLessonRole, REQUIRE_SUPABASE_AUTH } from '../api/user.js'
 import { GACHA_ITEMS } from '../data/gacha-items.js'
 import { THEMES, EFFECTS } from '../data/constants.js'
 import { SoundManager } from '../utils/sound.js'
 import { showCustomAlert, showCustomConfirm } from '../ui/modal.js'
 import { showPasswordModal } from '../ui/admin.js'
 import { createConfetti, renderRecords, showCapsuleAnimation, showRewardOverlay } from '../main.js'
-import { verifyLegacyAdminPass } from '../utils/security.js'
+import { hasLegacyAdminPass, verifyLegacyAdminPass } from '../utils/security.js'
 
 export function drawGacha(times = 1, isRareGuaranteed = false) {
     const u = users[currentUser]; const COST = isRareGuaranteed ? 500 : 100 * times;
@@ -64,18 +64,32 @@ export function drawGacha(times = 1, isRareGuaranteed = false) {
 
 export function useTicket(idx) {
     const u = users[currentUser], t = u.tickets[idx];
+    const consumeTicket = () => {
+        u.tickets.splice(idx, 1);
+        if (!u.ticketHistory) u.ticketHistory =[];
+        const now = new Date();
+        const dateStr = `${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${now.getMinutes().toString().padStart(2,'0')}`;
+        u.ticketHistory.push({ ticketName: t.name, date: dateStr, timestamp: now.getTime() });
+
+        saveUsers(false);
+        SoundManager.playClear();
+        showCustomAlert(`✅ 交換しました！\n\n${t.name} を渡してあげてください。`); // ★修正
+        renderRecords();
+    };
+
+    if (hasLessonRole('teacher', 'admin')) {
+        consumeTicket();
+        return;
+    }
+
+    if (REQUIRE_SUPABASE_AUTH && !hasLegacyAdminPass()) {
+        showCustomAlert('先生または管理者アカウントでログインして確認してください。');
+        return;
+    }
+
     showPasswordModal(`【先生確認】\n「${t.name}」を使います。\nパスワードを入力:`, (pass) => {
         if (verifyLegacyAdminPass(pass)) { 
-            u.tickets.splice(idx, 1); 
-            if (!u.ticketHistory) u.ticketHistory =[];
-            const now = new Date();
-            const dateStr = `${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${now.getMinutes().toString().padStart(2,'0')}`;
-            u.ticketHistory.push({ ticketName: t.name, date: dateStr, timestamp: now.getTime() });
-            
-            saveUsers(false); 
-            SoundManager.playClear(); 
-            showCustomAlert(`✅ 交換しました！\n\n${t.name} を渡してあげてください。`); // ★修正
-            renderRecords(); 
+            consumeTicket();
         } else { 
             if (pass !== null && pass !== '') showCustomAlert('パスワードがちがいます'); // ★修正
         }

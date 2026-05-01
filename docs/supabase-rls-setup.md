@@ -127,6 +127,7 @@ VITE_LEGACY_ADMIN_PASS=
 
 - RLS が有効になっているか確認する。
 - anon / authenticated に広すぎる policy が残っていないか確認する。
+- policy一覧に `Allow public read` / `Allow public update` / `Allow public delete` が残っている場合は、`supabase/sql/drop_legacy_public_policies.sql` を実行する。
 - `VITE_ENABLE_LEGACY_SUPABASE_SYNC=true` になっていないか確認する。
 
 ## 7. RLS検証

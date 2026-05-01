@@ -1,10 +1,10 @@
-import { users, currentUser, saveUsers, login } from '../api/user.js';
+import { users, currentUser, saveUsers, login, hasLessonRole, refreshCurrentLessonAccess, REQUIRE_SUPABASE_AUTH } from '../api/user.js';
 import { STAGE_ORDER, THEMES, EFFECTS, VISION_STAGES } from '../data/constants.js';
 import { SoundManager } from '../utils/sound.js';
 import { showCustomAlert, showCustomConfirm } from './modal.js';
 import { showScreen } from './screen.js';
 import { calculateGrade, sortGrades } from '../utils/helpers.js';
-import { verifyLegacyAdminPass } from '../utils/security.js';
+import { hasLegacyAdminPass, verifyLegacyAdminPass } from '../utils/security.js';
 import { getStageName } from '../utils/stages.js';
 
 let passwordCallback = null;
@@ -111,14 +111,30 @@ export function backToAdminMenu() {
     document.getElementById('admin-bottom-back-btn').style.display = 'block';
 }
 
-export function openAdmin() { 
+function openAdminScreen() {
+    updateAdminUserTable();
+    renderAdminTextTasks();
+    renderTicketAdmin();
+    backToAdminMenu();
+    showScreen('screen-admin');
+}
+
+export async function openAdmin() {
+    await refreshCurrentLessonAccess();
+
+    if (hasLessonRole('admin')) {
+        openAdminScreen();
+        return;
+    }
+
+    if (REQUIRE_SUPABASE_AUTH && !hasLegacyAdminPass()) {
+        showCustomAlert('管理者アカウントでログインしてください。');
+        return;
+    }
+
     showPasswordModal('管理者パスワード', (pass) => {
         if(verifyLegacyAdminPass(pass)) { 
-            updateAdminUserTable(); 
-            renderAdminTextTasks(); 
-            renderTicketAdmin(); 
-            backToAdminMenu();
-            showScreen('screen-admin'); 
+            openAdminScreen();
         } else { showCustomAlert('パスワードが違います'); }
     });
 }

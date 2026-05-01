@@ -22,6 +22,17 @@ using ((select auth.uid()) = auth_user_id);
 alter table public.user_data enable row level security;
 alter table public.test_user_data enable row level security;
 
+-- Remove legacy public policies that bypass authenticated access checks.
+drop policy if exists "Allow public read" on public.user_data;
+drop policy if exists "Allow public insert" on public.user_data;
+drop policy if exists "Allow public update" on public.user_data;
+drop policy if exists "Allow public delete" on public.user_data;
+
+drop policy if exists "Allow public read test" on public.test_user_data;
+drop policy if exists "Allow public insert test" on public.test_user_data;
+drop policy if exists "Allow public update test" on public.test_user_data;
+drop policy if exists "Allow public delete test" on public.test_user_data;
+
 drop policy if exists "Authenticated users can read allowed user_data rows" on public.user_data;
 create policy "Authenticated users can read allowed user_data rows"
 on public.user_data

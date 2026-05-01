@@ -235,6 +235,7 @@ export function backToMenu() {
 export function retryExam() { startGame(currentStage, gameMode); }
 
 function handleKeyDown(e) {
+    if (typeof e.key !== 'string') return;
     if (isProcessing ||['Enter', 'Shift', 'Control', 'Alt', 'Meta', 'Tab', 'CapsLock', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
     
     if (e.isComposing || e.key === 'Process' || e.key === 'Unidentified') {

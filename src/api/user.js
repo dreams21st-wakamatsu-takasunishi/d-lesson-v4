@@ -29,6 +29,7 @@ export const STORAGE_KEY = 'pc_practice_v5_split';
 export let users = {};
 export let currentUser = null;
 export let currentSelectedGrade = null;
+export let currentLessonAccess = [];
 let authGatePromise = null;
 let authGateResolve = null;
 let authGateAfterLogin = null;
@@ -45,6 +46,44 @@ function getLocalOnlySyncStatus() {
     if (ENABLE_RLS_CLOUD_SYNC && !REQUIRE_SUPABASE_AUTH) return 'rls auth missing';
     if (REQUIRE_SUPABASE_AUTH && HAS_SUPABASE_CONFIG) return 'auth only';
     return HAS_SUPABASE_CONFIG ? 'cloud locked' : 'local only';
+}
+
+export function getCurrentLessonRole() {
+    const roles = currentLessonAccess.map(access => access?.role).filter(Boolean);
+    if (roles.includes('admin')) return 'admin';
+    if (roles.includes('teacher')) return 'teacher';
+    if (roles.includes('student')) return 'student';
+    return null;
+}
+
+export function hasLessonRole(...roles) {
+    return roles.includes(getCurrentLessonRole());
+}
+
+export async function refreshCurrentLessonAccess() {
+    currentLessonAccess = [];
+    if (!supabase || !REQUIRE_SUPABASE_AUTH) return currentLessonAccess;
+
+    try {
+        const { data: userData, error: userError } = await supabase.auth.getUser();
+        if (userError) throw userError;
+
+        const authUserId = userData?.user?.id;
+        if (!authUserId) return currentLessonAccess;
+
+        const { data, error } = await supabase
+            .from('lesson_user_access')
+            .select('auth_user_id,user_data_id,role')
+            .eq('auth_user_id', authUserId);
+
+        if (error) throw error;
+        currentLessonAccess = Array.isArray(data) ? data : [];
+    } catch (err) {
+        console.error('Failed to load lesson access:', err);
+        currentLessonAccess = [];
+    }
+
+    return currentLessonAccess;
 }
 
 function setSyncStatus(text) {
@@ -222,6 +261,7 @@ export async function signOutSupabaseAuth() {
     authGatePromise = null;
     authGateResolve = null;
     authGateAfterLogin = null;
+    currentLessonAccess = [];
     users = {};
     if (ENABLE_RLS_CLOUD_SYNC) localStorage.removeItem(STORAGE_KEY);
     clearRosterDom();
@@ -257,6 +297,8 @@ export async function loadUsers() {
 
     const useRlsCloudSync = canUseRlsCloudSync();
     const useLegacyCloudSync = canUseLegacyCloudSync();
+
+    await refreshCurrentLessonAccess();
 
     if (!useRlsCloudSync) loadLocalUsers();
 
@@ -358,7 +400,8 @@ export async function saveUsers(forceOverwrite = false) {
             if (currentUser && shouldPersistUserRow(currentUser, users[currentUser])) {
                 upsertData.push({ id: currentUser, data: users[currentUser] });
             }
-            if (shouldPersistUserRow('__GLOBAL_SETTINGS__', users['__GLOBAL_SETTINGS__'])) {
+            const canUpdateGlobalSettings = !useRlsCloudSync || hasLessonRole('admin');
+            if (canUpdateGlobalSettings && shouldPersistUserRow('__GLOBAL_SETTINGS__', users['__GLOBAL_SETTINGS__'])) {
                 upsertData.push({ id: '__GLOBAL_SETTINGS__', data: users['__GLOBAL_SETTINGS__'] });
             }
         }

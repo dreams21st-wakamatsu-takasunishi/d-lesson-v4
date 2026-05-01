@@ -39,7 +39,9 @@ import {
   showStampOverlay,
   closeStampOverlay,
   setCurrentUser,
-  setCurrentSelectedGrade
+  setCurrentSelectedGrade,
+  hasLessonRole,
+  REQUIRE_SUPABASE_AUTH
 } from './api/user.js';
 
 import * as Admin from './ui/admin.js';
@@ -47,7 +49,7 @@ import * as Admin from './ui/admin.js';
 import { showCustomAlert, showCustomConfirm } from './ui/modal.js';
 import { createBtn } from './utils/dom.js';
 import { getRewardText } from './utils/rewards.js';
-import { verifyLegacyAdminPass } from './utils/security.js';
+import { hasLegacyAdminPass, verifyLegacyAdminPass } from './utils/security.js';
 import { getStageName } from './utils/stages.js';
 
 import {
@@ -512,6 +514,7 @@ function spawnMgWordDChallenge() {
 }
 
 function mgHandleKey(e) {
+    if (typeof e.key !== 'string') return;
     if (mgTime <= 0 ||['Shift', 'Enter', 'Control', 'Alt', 'Meta', 'Tab', 'Escape'].includes(e.key)) return;
     if (e.isComposing || e.key === 'Process') { showImeWarning(); return; }
     
@@ -672,14 +675,28 @@ function goToMinigameMenu() {
 function goToRecords() { renderRecords(); showScreen('screen-records'); }
 function goToVisionMenu() { renderVisionMenu(); showScreen('screen-vision-menu'); }
 
+function enterMasterMode() {
+    if (!users['Master_Debug']) {
+        users['Master_Debug'] = { mouseLevel:7, keyboardSequence:999, examRecords:{}, textRecords:{}, globalMistakes:{}, theme:'default', birthdate:'', isMaster:true };
+    }
+    document.getElementById('screen-title').classList.remove('active');
+    login('Master_Debug');
+}
+
 function loginAsMaster() {
+    if (hasLessonRole('teacher', 'admin')) {
+        enterMasterMode();
+        return;
+    }
+
+    if (REQUIRE_SUPABASE_AUTH && !hasLegacyAdminPass()) {
+        showCustomAlert('先生または管理者アカウントでログインしてください。');
+        return;
+    }
+
     Admin.showPasswordModal('先生用パスワード', (pass) => {
         if(verifyLegacyAdminPass(pass)) {
-            if (!users['Master_Debug']) {
-                users['Master_Debug'] = { mouseLevel:7, keyboardSequence:999, examRecords:{}, textRecords:{}, globalMistakes:{}, theme:'default', birthdate:'', isMaster:true };
-            }
-            document.getElementById('screen-title').classList.remove('active');
-            login('Master_Debug');
+            enterMasterMode();
         } else {
             alert('パスワードが違います');
         }
@@ -898,6 +915,7 @@ window.addEventListener('keydown', (e) => {
     }
     if (activeScreen.id === 'screen-game' || activeScreen.id === 'screen-minigame' || activeScreen.id === 'screen-text-game') return;
 
+    if (typeof e.key !== 'string') return;
     const key = e.key.toUpperCase();
     if (['F', 'J', 'ARROWLEFT', 'ARROWRIGHT', 'ARROWUP', 'ARROWDOWN'].includes(key)) {
         e.preventDefault(); const focusables = getFocusableElements(); if (focusables.length === 0) return;
@@ -1318,6 +1336,16 @@ function suspendWordTask() {
 }
 
 function confirmWordClear() {
+    if (hasLessonRole('teacher', 'admin')) {
+        processWordClear();
+        return;
+    }
+
+    if (REQUIRE_SUPABASE_AUTH && !hasLegacyAdminPass()) {
+        showCustomAlert('先生または管理者アカウントでログインして確認してください。');
+        return;
+    }
+
     Admin.showPasswordModal('【先生確認】\n作品の出来を確認したら\nパスワードを入力:', (pass) => {
         if (verifyLegacyAdminPass(pass)) processWordClear();
         else if (pass !== null && pass !== '') alert('パスワードがちがいます');

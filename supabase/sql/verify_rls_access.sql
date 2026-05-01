@@ -57,8 +57,8 @@ rollback;
 -- and use browser login verification as the final check.
 begin;
 set local role authenticated;
-select set_config('request.jwt.claim.sub', 'STUDENT_AUTH_USER_ID_HERE', true);
-select set_config('request.jwt.claims', '{"sub":"STUDENT_AUTH_USER_ID_HERE","role":"authenticated"}', true);
+select set_config('request.jwt.claim.sub', '36c95d17-621a-447d-b44b-638e21219ca1', true);
+select set_config('request.jwt.claims', '{"sub":"36c95d17-621a-447d-b44b-638e21219ca1","role":"authenticated"}', true);
 
 select id, data
 from public.test_user_data
@@ -69,8 +69,8 @@ rollback;
 -- Expected: rows allowed by the current teacher policy.
 begin;
 set local role authenticated;
-select set_config('request.jwt.claim.sub', 'TEACHER_AUTH_USER_ID_HERE', true);
-select set_config('request.jwt.claims', '{"sub":"TEACHER_AUTH_USER_ID_HERE","role":"authenticated"}', true);
+select set_config('request.jwt.claim.sub', 'dcc3b87f-200b-4ec2-8f31-13e127a0884e', true);
+select set_config('request.jwt.claims', '{"sub":"dcc3b87f-200b-4ec2-8f31-13e127a0884e","role":"authenticated"}', true);
 
 select id, data
 from public.test_user_data
@@ -81,8 +81,8 @@ rollback;
 -- Expected: all test_user_data rows.
 begin;
 set local role authenticated;
-select set_config('request.jwt.claim.sub', 'ADMIN_AUTH_USER_ID_HERE', true);
-select set_config('request.jwt.claims', '{"sub":"ADMIN_AUTH_USER_ID_HERE","role":"authenticated"}', true);
+select set_config('request.jwt.claim.sub', 'dfcb2ec8-c64e-4272-8df1-4eeeecb7c799', true);
+select set_config('request.jwt.claims', '{"sub":"dfcb2ec8-c64e-4272-8df1-4eeeecb7c799","role":"authenticated"}', true);
 
 select id, data
 from public.test_user_data
