@@ -1,26 +1,27 @@
--- Security baseline for the current legacy user_data table.
--- Do not run this until Supabase Auth users and lesson_user_access rows exist.
--- With RLS enabled and no matching access row, browser clients cannot read/write rows.
+-- Add optional group-based access scopes for teacher accounts.
+-- Existing teacher rows stay broad because scope_type defaults to 'all'.
 -- Teacher rows are read-only. Student progress writes are limited to admins or the student account itself.
 
-create table if not exists public.lesson_user_access (
-  auth_user_id uuid not null references auth.users(id) on delete cascade,
-  user_data_id text not null,
-  role text not null check (role in ('student', 'teacher', 'admin')),
-  scope_type text not null default 'all' check (scope_type in ('all', 'group')),
-  scope_value text not null default '',
-  created_at timestamptz not null default now(),
-  primary key (auth_user_id, user_data_id)
-);
+alter table public.lesson_user_access
+  add column if not exists scope_type text not null default 'all';
 
-alter table public.lesson_user_access enable row level security;
+alter table public.lesson_user_access
+  add column if not exists scope_value text not null default '';
 
-drop policy if exists "Users can read their own lesson access" on public.lesson_user_access;
-create policy "Users can read their own lesson access"
-on public.lesson_user_access
-for select
-to authenticated
-using ((select auth.uid()) = auth_user_id);
+alter table public.lesson_user_access
+  drop constraint if exists lesson_user_access_scope_type_check;
+
+alter table public.lesson_user_access
+  add constraint lesson_user_access_scope_type_check
+  check (scope_type in ('all', 'group'));
+
+update public.lesson_user_access
+set scope_type = 'all'
+where scope_type is null or scope_type = '';
+
+update public.lesson_user_access
+set scope_value = ''
+where scope_value is null;
 
 create or replace function public.lesson_access_matches_group(
   row_group text,
@@ -41,23 +42,6 @@ $$;
 
 revoke all on function public.lesson_access_matches_group(text, text, text) from public;
 grant execute on function public.lesson_access_matches_group(text, text, text) to authenticated;
-
-alter table public.user_data enable row level security;
-alter table public.test_user_data enable row level security;
-
-grant select, insert, update, delete on public.user_data to authenticated;
-grant select, insert, update, delete on public.test_user_data to authenticated;
-
--- Remove legacy public policies that bypass authenticated access checks.
-drop policy if exists "Allow public read" on public.user_data;
-drop policy if exists "Allow public insert" on public.user_data;
-drop policy if exists "Allow public update" on public.user_data;
-drop policy if exists "Allow public delete" on public.user_data;
-
-drop policy if exists "Allow public read test" on public.test_user_data;
-drop policy if exists "Allow public insert test" on public.test_user_data;
-drop policy if exists "Allow public update test" on public.test_user_data;
-drop policy if exists "Allow public delete test" on public.test_user_data;
 
 drop policy if exists "Authenticated users can read allowed user_data rows" on public.user_data;
 create policy "Authenticated users can read allowed user_data rows"
@@ -137,21 +121,6 @@ with check (
         )
       )
   )
-);
-
-drop policy if exists "Lesson admins can delete user_data rows" on public.user_data;
-create policy "Lesson admins can delete user_data rows"
-on public.user_data
-for delete
-to authenticated
-using (
-  exists (
-    select 1
-    from public.lesson_user_access access
-    where access.auth_user_id = (select auth.uid())
-      and access.role = 'admin'
-  )
-  and user_data.id not in ('__GLOBAL_SETTINGS__', 'Master_Debug', '__admin__', '__teacher__')
 );
 
 drop policy if exists "Authenticated users can read allowed test_user_data rows" on public.test_user_data;
@@ -234,17 +203,6 @@ with check (
   )
 );
 
-drop policy if exists "Lesson admins can delete test_user_data rows" on public.test_user_data;
-create policy "Lesson admins can delete test_user_data rows"
-on public.test_user_data
-for delete
-to authenticated
-using (
-  exists (
-    select 1
-    from public.lesson_user_access access
-    where access.auth_user_id = (select auth.uid())
-      and access.role = 'admin'
-  )
-  and test_user_data.id not in ('__GLOBAL_SETTINGS__', 'Master_Debug', '__admin__', '__teacher__')
-);
+select auth_user_id, user_data_id, role, scope_type, scope_value, created_at
+from public.lesson_user_access
+order by created_at desc;

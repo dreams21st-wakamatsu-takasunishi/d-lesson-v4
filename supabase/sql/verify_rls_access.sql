@@ -9,6 +9,8 @@ select
   auth_users.email,
   access.user_data_id,
   access.role,
+  access.scope_type,
+  access.scope_value,
   access.created_at
 from public.lesson_user_access access
 left join auth.users auth_users on auth_users.id = access.auth_user_id
@@ -76,6 +78,24 @@ select id, data
 from public.test_user_data
 order by id;
 rollback;
+
+-- 3.5. Confirm teacher accounts are read-only in write policies.
+-- Expected: 0 rows. Teacher should appear only in SELECT policies.
+select
+  tablename,
+  policyname,
+  cmd,
+  qual,
+  with_check
+from pg_policies
+where schemaname = 'public'
+  and tablename in ('test_user_data', 'user_data')
+  and cmd in ('INSERT', 'UPDATE', 'DELETE')
+  and (
+    coalesce(qual, '') ilike '%teacher%'
+    or coalesce(with_check, '') ilike '%teacher%'
+  )
+order by tablename, cmd, policyname;
 
 -- 4. Simulate the admin account.
 -- Expected: all test_user_data rows.

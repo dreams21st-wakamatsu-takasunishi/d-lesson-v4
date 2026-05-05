@@ -1,4 +1,4 @@
-import { users, currentUser, saveUsers, hasLessonRole, REQUIRE_SUPABASE_AUTH } from '../api/user.js'
+import { users, currentUser, saveUsers, hasLessonRole, canWriteCurrentUserRow } from '../api/user.js'
 import { GACHA_ITEMS } from '../data/gacha-items.js'
 import { THEMES, EFFECTS } from '../data/constants.js'
 import { SoundManager } from '../utils/sound.js'
@@ -9,6 +9,7 @@ import { hasLegacyAdminPass, verifyLegacyAdminPass } from '../utils/security.js'
 
 export function drawGacha(times = 1, isRareGuaranteed = false) {
     const u = users[currentUser]; const COST = isRareGuaranteed ? 500 : 100 * times;
+    if (!canWriteCurrentUserRow()) return showCustomAlert('先生確認モードでは、ガチャ結果は保存されません。生徒本人または管理者で操作してください。');
     
     if (u.coins < COST) return showCustomAlert(`コインがたりないよ！\nあと ${COST - u.coins} コイン ひつようです。`);
     
@@ -64,6 +65,11 @@ export function drawGacha(times = 1, isRareGuaranteed = false) {
 
 export function useTicket(idx) {
     const u = users[currentUser], t = u.tickets[idx];
+    if (!canWriteCurrentUserRow()) {
+        showCustomAlert('先生確認モードでは、チケット使用は保存されません。管理者アカウントで操作してください。');
+        return;
+    }
+
     const consumeTicket = () => {
         u.tickets.splice(idx, 1);
         if (!u.ticketHistory) u.ticketHistory =[];
@@ -82,7 +88,7 @@ export function useTicket(idx) {
         return;
     }
 
-    if (REQUIRE_SUPABASE_AUTH && !hasLegacyAdminPass()) {
+    if (!hasLegacyAdminPass()) {
         showCustomAlert('先生または管理者アカウントでログインして確認してください。');
         return;
     }
@@ -96,11 +102,11 @@ export function useTicket(idx) {
     });
 }
 
-export function changeTheme(themeId) { applyTheme(themeId); if (users[currentUser]) { users[currentUser].theme = themeId; saveUsers(false); } if (typeof window.renderRecords === 'function') {
+export function changeTheme(themeId) { applyTheme(themeId); if (users[currentUser] && canWriteCurrentUserRow()) { users[currentUser].theme = themeId; saveUsers(false); } if (typeof window.renderRecords === 'function') {
     window.renderRecords();
 } }
 
-export function changeEffect(effId) { users[currentUser].activeEffect = effId; saveUsers(false); if (typeof window.renderRecords === 'function') {
+export function changeEffect(effId) { if (users[currentUser] && canWriteCurrentUserRow()) { users[currentUser].activeEffect = effId; saveUsers(false); } if (typeof window.renderRecords === 'function') {
     window.renderRecords();
 } createConfetti(); }
 

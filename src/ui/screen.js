@@ -38,7 +38,19 @@ export function showImeWarning() {
 }
 
 export function handleGlobalBack() {
-    history.back();
+    const activeScreen = document.querySelector('.screen.active');
+    if (!activeScreen || activeScreen.id === 'screen-title') return;
+
+    const backButton = activeScreen.querySelector('button.bottom-back-btn')
+        || activeScreen.querySelector('.bottom-back-btn button.btn-secondary')
+        || activeScreen.querySelector('.bottom-back-btn button:last-child');
+
+    if (backButton) {
+        backButton.click();
+        return;
+    }
+
+    handleGlobalHome();
 }
 
 export function handleGlobalHome() {
@@ -47,7 +59,7 @@ export function handleGlobalHome() {
 }
 
 export function handleGlobalLogout() {
-    showCustomConfirm('タイトル画面にもどりますか？', () => {
+    showCustomConfirm('ログアウトして、ログイン画面にもどりますか？', () => {
         setCurrentUser(null);
         setCurrentSelectedGrade(null);
         showScreen('screen-title');

@@ -14,6 +14,7 @@ Supabase Auth / RLS 設定後に、公開URLで児童名や進捗データが権
 - `test_user_data` に仮名のテスト児童データがある
 - `supabase/sql/rls_legacy_user_data_baseline.sql` 実行済み
 - `lesson_user_access` 登録済み
+- 先生をグループ指定で使う場合は `supabase/sql/teacher_group_scope_policies.sql` 実行済み
 
 ## Supabase SQL Editorで確認する
 
@@ -33,6 +34,7 @@ STUDENT_AUTH_USER_ID_HERE
 
 - 生徒アカウントでは、自分のテスト児童データだけ見える
 - 先生アカウントでは、想定した範囲のデータだけ見える
+- 先生をグループ指定にした場合は、`scope_value` と一致する `group` の児童だけ見える
 - 管理者アカウントでは、管理対象のテストデータが見える
 - 権限登録していないUUIDでは、何も見えない
 
@@ -54,6 +56,8 @@ VITE_SUPABASE_USE_TEST_TABLE=true
 VITE_ENABLE_LEGACY_SUPABASE_SYNC=false
 VITE_REQUIRE_SUPABASE_AUTH=true
 VITE_ENABLE_RLS_CLOUD_SYNC=true
+VITE_ENABLE_SETTINGS_TABLE=false
+VITE_ALLOW_LEGACY_ADMIN_PASS=false
 ```
 
 公開URL・RLS検証時は、次を設定しない。
@@ -91,7 +95,11 @@ http://127.0.0.1:5174/
 
 5. 先生アカウントでログインする。
 
-- 想定したテスト児童データが見える
+- `全児童` 設定なら全児童が見える
+- `グループ指定` 設定なら指定グループの児童だけが見える
+- 指定外グループの児童名が見えない
+- ヘッダーとホーム画面に `先生確認モード` が表示される
+- ステージ確認後、操作直後も再読み込み後も、児童のコイン・進捗が変わらない
 - 管理者だけに許可したい操作ができてしまわないか確認する
 
 6. 管理者アカウントでログインする。
@@ -123,12 +131,16 @@ SQL検証:
 - 先生UUIDで見えた行:
 - 管理者UUIDで見えた行:
 - 未登録UUIDで見えた行:
+- 先生の書き込み許可ポリシー行数: 0 / それ以外
 
 ブラウザ検証:
 - 未ログインで名簿が見えない: OK / NG
 - 生徒ログインで自分だけ見える: OK / NG
 - 生徒の進捗保存: OK / NG
 - 先生ログイン: OK / NG
+- 先生の担当範囲: 全児童 / グループ指定OK / NG
+- 先生確認モード表示: OK / NG
+- 先生の書き込み防止: OK / NG
 - 管理者ログイン: OK / NG
 - Consoleエラー: なし / あり
 ```

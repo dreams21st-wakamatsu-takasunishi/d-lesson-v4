@@ -25,7 +25,9 @@ VITE_SUPABASE_TABLE=test_user_data
 VITE_SUPABASE_USE_TEST_TABLE=true
 VITE_ENABLE_LEGACY_SUPABASE_SYNC=false
 VITE_ENABLE_RLS_CLOUD_SYNC=false
+VITE_ENABLE_SETTINGS_TABLE=false
 VITE_REQUIRE_SUPABASE_AUTH=true
+VITE_ALLOW_LEGACY_ADMIN_PASS=false
 ```
 
 公開URLでは、次を設定しない。
@@ -35,6 +37,7 @@ VITE_LEGACY_ADMIN_PASS=
 ```
 
 理由: Vite の `VITE_` 変数はビルド後のJavaScriptに含まれるため、公開URLでは管理者パスワードを守る仕組みにならない。
+コード側でも、本番ビルドまたは `VITE_REQUIRE_SUPABASE_AUTH=true` の環境では旧パスワードを無効化している。
 
 RLS設定とアクセス権限の検証が終わった後だけ、クラウド同期を有効にする。
 
@@ -47,22 +50,31 @@ VITE_ENABLE_RLS_CLOUD_SYNC=true
 - Supabase Auth のアカウントを用意する。
 - `lesson_user_access` に、Authユーザーとアクセス可能なデータIDを紐づける。
 - `supabase/sql/rls_legacy_user_data_baseline.sql` を本番前の検証環境で試す。
+- 管理者画面の「Auth連携」を使う場合は、`supabase/sql/admin_lesson_user_access_policies.sql` も実行する。
+- 管理者画面の児童削除・バックアップ復元を使う場合は、`supabase/sql/admin_user_data_delete_policies.sql` も実行する。
+- 先生アカウントの担当範囲をグループで制限する場合は、`supabase/sql/teacher_group_scope_policies.sql` を実行し、`docs/teacher-scope-setup.md` に沿って確認する。
+- 全体設定を児童テーブルから分ける場合は、`supabase/sql/lesson_settings_table.sql` を実行し、`docs/lesson-settings-table.md` に沿って確認する。
 - 詳細手順は [Supabase Auth / RLS 設定手順](supabase-rls-setup.md) に沿って確認する。
 - RLS有効後、未ログイン状態でデータが読めないことを確認する。
 - 生徒アカウントで、他の生徒データが読めないことを確認する。
-- 先生アカウントで、必要な範囲だけ読めることを確認する。
+- 先生アカウントで、必要な範囲だけ読めること、児童データを書き換えないことを確認する。
 - 管理者アカウントで、必要な管理操作だけできることを確認する。
 
 ### 3. データ
 
 - 実名データは、公開設定が完了するまで入れない。
 - テスト公開では、児童名を仮名にする。
-- `user_data.id` に児童名を直接使う構造は、将来的にUID形式へ移行する。
-- バックアップ手順を決めてから本番運用へ移る。
+- 新規児童は `student_...` の内部IDで保存し、画面表示名は `data.displayName` を使う。
+- 既存の名前ID行には、必要に応じて `supabase/sql/prepare_user_display_names.sql` で表示名メタデータを追加する。
+- 実名投入前に `supabase/sql/verify_internal_user_ids.sql` で名前ID行を確認し、必要なら [児童IDの内部ID移行手順](internal-user-id-migration.md) に沿って移行する。
+- バックアップ・復元の操作ログと復元前自動バックアップを確認してから本番運用へ移る。
 
 ### 4. ブラウザ動作確認
 
 [実操作時の未定義エラー確認手順](runtime-undefined-checklist.md) に沿って確認する。
+
+現場運用前の残タスクは [現場運用開始までの残タスク](field-operations-readiness.md) に沿って確認する。
+端末切替時の確認は [端末切替・同期確認手順](device-handoff-guide.md) に沿って確認する。
 
 公開前に最低限確認する操作:
 
@@ -114,6 +126,9 @@ npm.cmd run preview
 - 実操作チェックでアプリ本体の赤いConsoleエラーがない。
 - 公開URLで `VITE_REQUIRE_SUPABASE_AUTH=true` になっている。
 - 公開URLで `VITE_ENABLE_LEGACY_SUPABASE_SYNC=false` になっている。
+- 公開URLで `VITE_ALLOW_LEGACY_ADMIN_PASS=false` になっている。
+- `VITE_ENABLE_SETTINGS_TABLE=true` にする場合は、`lesson_settings` のRLS確認が終わっている。
+- 設定テーブル分離を使う場合は、`supabase/sql/verify_lesson_settings.sql` で診断済み。
 - Supabaseへ保存・読込する場合は、RLS検証後に `VITE_ENABLE_RLS_CLOUD_SYNC=true` になっている。
 - 公開URLに `VITE_LEGACY_ADMIN_PASS` を設定していない。
 - RLSにより、未ログイン・権限外ユーザーがデータを読めない。
@@ -122,14 +137,15 @@ npm.cmd run preview
 
 - 実名データを入れているが、Auth/RLSが未完成。
 - 管理者パスワードをフロントエンド環境変数に入れている。
+- `VITE_ALLOW_LEGACY_ADMIN_PASS=true` を公開URLに設定している。
 - 旧方式の全ユーザー同期が公開URLで有効。
 - Consoleにアプリ本体の `ReferenceError` が出る。
 - テストユーザー以外のデータを使って検証している。
 
 ## 次に実装する候補
 
-1. Authユーザーと児童データを紐づける管理画面またはSQL運用手順を整える。
+1. Auth連携画面で、児童・先生・追加管理者の紐づけ操作を現場手順として確認する。
 2. 管理者操作をブラウザ内パスワードではなく、Authロールまたはサーバー側処理に移す。
-3. `user_data.id` を児童名からUIDへ移行する。
-4. 実名データ投入前のバックアップ・復元手順を作る。
+3. 既存の名前ID行を内部IDへ移行するか、移行せず互換運用にするかを決める。
+4. 実名データ投入前に、バックアップ・復元・復元前自動バックアップを1回ずつテストする。
 5. 公開URLでのSupabase Auth/RLS疎通テストを行う。

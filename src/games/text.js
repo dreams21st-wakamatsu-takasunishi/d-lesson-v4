@@ -1,4 +1,4 @@
-import { users, currentUser, saveUsers } from '../api/user.js';
+import { users, currentUser, saveUsers, canWriteCurrentUserRow, recordPracticeActivity } from '../api/user.js';
 import { SoundManager } from '../utils/sound.js';
 import { showScreen } from '../ui/screen.js';
 import { createConfetti } from '../ui/effects.js';
@@ -261,6 +261,8 @@ export function submitTextPractice() {
 }
 
 function showTextResult() {
+    const canSaveResult = canWriteCurrentUserRow();
+    const originalUserData = users[currentUser] ? JSON.parse(JSON.stringify(users[currentUser])) : null;
     const typeBox = document.getElementById('type-text-box');
     const rawRef = currentTextTask.content;
     const plainRef = rawRef.replace(/\{([^|]+)\|([^}]+)\}/g, '$1');
@@ -270,7 +272,10 @@ function showTextResult() {
 
     if (!users[currentUser].textRecords) users[currentUser].textRecords = {};
     let isNewRecord = false, prev = users[currentUser].textRecords[currentTextTask.id];
-    if (!prev || netCount > prev.score) { users[currentUser].textRecords[currentTextTask.id] = { score: netCount, total: totalCount, miss: missCount }; isNewRecord = true; }
+    if (!prev || netCount > prev.score) {
+        if (canSaveResult) users[currentUser].textRecords[currentTextTask.id] = { score: netCount, total: totalCount, miss: missCount };
+        isNewRecord = canSaveResult;
+    }
     
     let coinGain = 0;
     if (netCount >= 2001) coinGain = 15000;
@@ -285,8 +290,21 @@ function showTextResult() {
     else if (netCount >= 51) coinGain = 30;
     else if (netCount >= 1) coinGain = 20;
 
-    users[currentUser].coins = (users[currentUser].coins || 0) + coinGain; 
-    saveUsers(false); SoundManager.playClear(); createConfetti();
+    if (canSaveResult) {
+        users[currentUser].coins = (users[currentUser].coins || 0) + coinGain;
+        recordPracticeActivity({
+            category: 'text',
+            title: `文章入力 ${currentTextTask.title}`,
+            detail: isNewRecord ? '提出 / 新記録' : '提出',
+            amount: `入力 ${totalCount}文字 / ミス ${missCount}箇所 / 純字数 ${netCount}`,
+            coins: coinGain
+        });
+        saveUsers(false);
+    } else if (originalUserData) {
+        users[currentUser] = originalUserData;
+        coinGain = 0;
+    }
+    SoundManager.playClear(); createConfetti(users[currentUser]?.activeEffect || 'default');
 
     let diffHtml = generateDiffHtml(refClean, typedClean);
 
@@ -298,6 +316,7 @@ function showTextResult() {
         </div>
         <div style="font-size:36px; text-align:center;">純字数： <span style="color:#4CAF50; font-weight:bold;">${netCount}</span> (スコア)</div>
         <div style="font-size:24px; color:#FF9800; text-align:center; margin-top:10px; font-weight:bold;">💰 獲得コイン: ${coinGain} 枚</div>
+        ${!canSaveResult ? '<div style="font-size:18px; color:#607D8B; text-align:center; margin-top:8px;">先生確認モード：結果は保存されません</div>' : ''}
         ${isNewRecord ? '<div style="color:#ffeb3b; font-size:24px; text-shadow: 1px 1px #000; animation:bounce 1s infinite; text-align:center; margin-top:10px;">★しんきろく！★</div>' : ''}
         <div style="margin-top: 15px; padding-top: 15px; border-top: 2px dashed #81d4fa; text-align: left; font-size: 18px; max-height: 150px; overflow-y: auto; background: rgba(255,255,255,0.7); padding: 10px; border-radius: 8px;">
             <div style="font-size:14px; color:#555; font-weight:bold; margin-bottom:5px;">🔍 ミスした場所のふりかえり（赤=お手本 / 緑=あなたの入力）</div>

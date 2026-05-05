@@ -1,4 +1,4 @@
-import { users, currentUser, saveUsers } from '../api/user.js'
+import { users, currentUser, saveUsers, getUserDisplayName, isSystemUserId } from '../api/user.js'
 import { VISION_STAGES } from '../data/constants.js'
 import { SoundManager } from '../utils/sound.js'
 import { showScreen } from '../ui/screen.js'
@@ -52,7 +52,7 @@ export function showVisionCompare() {
     });
     
     Object.keys(users).forEach(n => {
-        if(users[n].isMaster || n === '__GLOBAL_SETTINGS__') return;
+        if(users[n].isMaster || isSystemUserId(n)) return;
         VISION_STAGES.forEach(st => {
            let recN = users[n].examRecords && users[n].examRecords[st.id];
            if(recN) { sumNormal[st.id] += recN; countNormal[st.id]++; }
@@ -110,8 +110,8 @@ export function renderVisionDashboardTable() {
 
     let list =[];
     Object.keys(users).forEach(n => {
-        if (!users[n] || users[n].isMaster || n === '__GLOBAL_SETTINGS__') return;
-        list.push({ name: n, user: users[n] });
+        if (!users[n] || users[n].isMaster || isSystemUserId(n)) return;
+        list.push({ id: n, name: getUserDisplayName(n), user: users[n] });
     });
     list.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
 

@@ -1,10 +1,34 @@
-import { users, currentUser, saveUsers, login, hasLessonRole, refreshCurrentLessonAccess, REQUIRE_SUPABASE_AUTH } from '../api/user.js';
-import { STAGE_ORDER, THEMES, EFFECTS, VISION_STAGES } from '../data/constants.js';
+import {
+    users,
+    currentUser,
+    saveUsers,
+    hasLessonRole,
+    getCurrentLessonRole,
+    getTeacherScopeSummary,
+    refreshCurrentLessonAccess,
+    HAS_SUPABASE_CONFIG,
+    ENABLE_LEGACY_SUPABASE_SYNC,
+    ENABLE_RLS_CLOUD_SYNC,
+    ENABLE_SETTINGS_TABLE,
+    REQUIRE_SUPABASE_AUTH,
+    supabase,
+    GLOBAL_SETTINGS_ID,
+    SETTINGS_TABLE_KEY,
+    createUserDataId,
+    getUserDisplayName,
+    isSystemUserId,
+    replaceUsers,
+    deleteCloudUserRows,
+    userDisplayNameExists,
+    getPracticeLogs,
+    formatPracticeActivity
+} from '../api/user.js';
+import { STAGE_ORDER, THEMES, EFFECTS, VISION_STAGES, WORD_DATA } from '../data/constants.js';
 import { SoundManager } from '../utils/sound.js';
 import { showCustomAlert, showCustomConfirm } from './modal.js';
 import { showScreen } from './screen.js';
 import { calculateGrade, sortGrades } from '../utils/helpers.js';
-import { hasLegacyAdminPass, verifyLegacyAdminPass } from '../utils/security.js';
+import { getLegacyAdminPassStatus, hasLegacyAdminPass, verifyLegacyAdminPass } from '../utils/security.js';
 import { getStageName } from '../utils/stages.js';
 
 let passwordCallback = null;
@@ -37,15 +61,100 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+const ADMIN_AUDIT_STORAGE_KEY = 'd_lesson_admin_audit_log';
+const ADMIN_AUDIT_LIMIT = 200;
+
+function loadAdminAuditLog() {
+    try {
+        const raw = localStorage.getItem(ADMIN_AUDIT_STORAGE_KEY);
+        const parsed = raw ? JSON.parse(raw) : [];
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (err) {
+        console.warn('Failed to load admin audit log:', err);
+        return [];
+    }
+}
+
+function saveAdminAuditLog(log) {
+    localStorage.setItem(ADMIN_AUDIT_STORAGE_KEY, JSON.stringify(log.slice(0, ADMIN_AUDIT_LIMIT)));
+}
+
+function getAdminActorLabel() {
+    if (hasLessonRole('admin')) return 'Supabase admin';
+    if (currentUser && users[currentUser]) return `legacy admin after ${getUserDisplayName(currentUser)}`;
+    return 'legacy admin';
+}
+
+function summarizeAuditDetails(details = {}) {
+    return Object.entries(details)
+        .filter(([, value]) => value !== undefined && value !== null && value !== '')
+        .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`)
+        .join(' / ');
+}
+
+function recordAdminAudit(action, details = {}) {
+    const log = loadAdminAuditLog();
+    log.unshift({
+        id: `audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        at: new Date().toISOString(),
+        actor: getAdminActorLabel(),
+        action,
+        details
+    });
+    saveAdminAuditLog(log);
+    renderAdminAuditLog();
+}
+
+export function renderAdminAuditLog() {
+    const tbody = document.getElementById('admin-audit-tbody');
+    if (!tbody) return;
+    const log = loadAdminAuditLog();
+    tbody.innerHTML = '';
+
+    if (log.length === 0) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 3;
+        td.style.cssText = 'border:1px solid #ddd; padding:10px; color:#777; text-align:center;';
+        td.innerText = 'まだ操作ログがありません';
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        return;
+    }
+
+    log.slice(0, 80).forEach(entry => {
+        const tr = document.createElement('tr');
+        const dateTd = document.createElement('td');
+        dateTd.style.cssText = 'border:1px solid #ddd; padding:6px; white-space:nowrap;';
+        dateTd.innerText = entry.at ? new Date(entry.at).toLocaleString('ja-JP') : '';
+        tr.appendChild(dateTd);
+
+        const actionTd = document.createElement('td');
+        actionTd.style.cssText = 'border:1px solid #ddd; padding:6px; white-space:nowrap;';
+        actionTd.innerText = entry.action || '';
+        tr.appendChild(actionTd);
+
+        const detailTd = document.createElement('td');
+        detailTd.style.cssText = 'border:1px solid #ddd; padding:6px; word-break:break-word;';
+        detailTd.innerText = summarizeAuditDetails({ actor: entry.actor, ...(entry.details || {}) });
+        tr.appendChild(detailTd);
+
+        tbody.appendChild(tr);
+    });
+}
+
 export function adminAddUser() {
     const name = document.getElementById('admin-add-name').value.trim();
     const birth = document.getElementById('admin-add-birth').value;
     const grp = document.getElementById('admin-add-group').value.trim(); 
     if(!name) return showCustomAlert("名前を入力してください");
-    if(users[name]) return showCustomAlert("その名前はすでに登録されています");
+    if(userDisplayNameExists(name)) return showCustomAlert("その名前はすでに登録されています");
     if(!birth) return showCustomAlert("生年月日を入力してください");
     const grade = calculateGrade(birth);
-    users[name] = { birthdate: birth, grade: grade, mouseLevel: 1, keyboardSequence: 0, coins: 0, items: [], tickets:[], loginStamps:[], group: grp };
+    let userId = createUserDataId();
+    while (users[userId]) userId = createUserDataId();
+    users[userId] = { displayName: name, userDataId: userId, birthdate: birth, grade: grade, mouseLevel: 1, keyboardSequence: 0, coins: 0, items: [], tickets:[], loginStamps:[], group: grp };
+    recordAdminAudit('児童追加', { user: name, userDataId: userId, birthdate: birth, group: grp });
     saveUsers(true);
     document.getElementById('admin-add-name').value = '';
     document.getElementById('admin-add-group').value = '';
@@ -63,22 +172,182 @@ export function adminBulkAddUsers() {
         let name = parts[0].trim();
         let birth = parts.length > 1 ? parts[1].trim() : "2015-04-01";
         let grp = parts.length > 2 ? parts[2].trim() : ""; 
-        if(name && !users[name]) {
+        if(name && !userDisplayNameExists(name)) {
             let grade = calculateGrade(birth);
-            users[name] = { birthdate: birth, grade: grade, mouseLevel: 1, keyboardSequence: 0, coins: 0, items: [], tickets:[], loginStamps:[], group: grp };
+            let userId = createUserDataId();
+            while (users[userId]) userId = createUserDataId();
+            users[userId] = { displayName: name, userDataId: userId, birthdate: birth, grade: grade, mouseLevel: 1, keyboardSequence: 0, coins: 0, items: [], tickets:[], loginStamps:[], group: grp };
             added++;
         }
     });
+    recordAdminAudit('児童一括追加', { count: added });
     saveUsers(true); updateAdminUserTable(); renderDashboardTable();
     document.getElementById('admin-bulk-names').value = '';
     showCustomAlert(`${added} 人を追加しました！`);
 }
 
+function escapeCsvCell(value) {
+    const text = String(value ?? '');
+    if (/[",\r\n]/.test(text)) return `"${text.replace(/"/g, '""')}"`;
+    return text;
+}
+
+function parseCsvLine(line) {
+    const cells = [];
+    let cell = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        const next = line[i + 1];
+        if (ch === '"' && inQuotes && next === '"') {
+            cell += '"';
+            i++;
+        } else if (ch === '"') {
+            inQuotes = !inQuotes;
+        } else if (ch === ',' && !inQuotes) {
+            cells.push(cell.trim());
+            cell = '';
+        } else {
+            cell += ch;
+        }
+    }
+    cells.push(cell.trim());
+    return cells;
+}
+
+function normalizeCsvKey(key) {
+    const value = String(key || '').trim().toLowerCase();
+    if (['id', 'user_id', 'user_data_id', 'userdataid'].includes(value)) return 'userDataId';
+    if (['name', 'displayname', 'display_name', '名前'].includes(value)) return 'displayName';
+    if (['birth', 'birthdate', 'birthday', '生年月日'].includes(value)) return 'birthdate';
+    if (['group', 'class', 'グループ'].includes(value)) return 'group';
+    return value;
+}
+
+export function exportStudentCsv() {
+    const rows = [['user_data_id', 'name', 'birthdate', 'group']];
+    Object.keys(users)
+        .filter(userId => users[userId] && !users[userId].isMaster && !isSystemUserId(userId))
+        .sort((a, b) => getUserDisplayName(a).localeCompare(getUserDisplayName(b), 'ja'))
+        .forEach(userId => {
+            const user = users[userId];
+            rows.push([
+                userId,
+                getUserDisplayName(userId),
+                user.birthdate || user.birth || '',
+                user.group || ''
+            ]);
+        });
+
+    const csv = rows.map(row => row.map(escapeCsvCell).join(',')).join('\r\n');
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `d-lesson_students_${getBackupDateStamp()}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    recordAdminAudit('児童CSV出力', { students: rows.length - 1 });
+}
+
+export function applyStudentCsvUpdates() {
+    const textarea = document.getElementById('admin-bulk-update-csv');
+    const raw = textarea?.value || '';
+    const lines = raw.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+    if (lines.length < 2) return showCustomAlert('ヘッダー行と更新する児童行を入力してください。');
+
+    const headers = parseCsvLine(lines[0]).map(normalizeCsvKey);
+    const idIndex = headers.indexOf('userDataId');
+    if (idIndex === -1) return showCustomAlert('CSVに user_data_id 列が必要です。');
+
+    let updated = 0;
+    let skipped = 0;
+    const duplicateNames = [];
+
+    for (let i = 1; i < lines.length; i++) {
+        const cells = parseCsvLine(lines[i]);
+        const row = {};
+        headers.forEach((header, idx) => { row[header] = cells[idx] ?? ''; });
+
+        const userId = row.userDataId;
+        if (!userId || !users[userId] || isSystemUserId(userId)) {
+            skipped++;
+            continue;
+        }
+
+        const user = users[userId];
+        let changed = false;
+        const before = {
+            displayName: getUserDisplayName(userId),
+            birthdate: user.birthdate || user.birth || '',
+            group: user.group || ''
+        };
+
+        if (Object.prototype.hasOwnProperty.call(row, 'displayName')) {
+            const displayName = row.displayName.trim();
+            if (displayName && displayName !== before.displayName) {
+                if (userDisplayNameExists(displayName, userId)) {
+                    duplicateNames.push(displayName);
+                    skipped++;
+                    continue;
+                }
+                user.displayName = displayName;
+                changed = true;
+            }
+        }
+
+        if (Object.prototype.hasOwnProperty.call(row, 'birthdate')) {
+            const birthdate = row.birthdate.trim();
+            if (birthdate && birthdate !== before.birthdate) {
+                user.birthdate = birthdate;
+                user.grade = calculateGrade(birthdate);
+                changed = true;
+            }
+        }
+
+        if (Object.prototype.hasOwnProperty.call(row, 'group')) {
+            const group = row.group.trim();
+            if (group !== before.group) {
+                user.group = group;
+                changed = true;
+            }
+        }
+
+        if (changed) updated++;
+    }
+
+    if (updated > 0) {
+        recordAdminAudit('児童CSV一括更新', { updated, skipped });
+        saveUsers(true);
+        updateAdminUserTable();
+        renderDashboardTable();
+    }
+
+    const duplicateText = duplicateNames.length ? `\n重複名のため反映しなかった名前: ${duplicateNames.join(', ')}` : '';
+    showCustomAlert(`CSV反映が完了しました。\n更新: ${updated}件\nスキップ: ${skipped}件${duplicateText}`);
+}
+
 export function adminDeleteUser() {
     const n = getSelUser();
     if(n) { 
-        showCustomConfirm(`${n}さんを削除しますか？`, () => {
-            delete users[n]; saveUsers(true); updateAdminUserTable(); renderDashboardTable();
+        showCustomConfirm(`${getUserDisplayName(n)}さんを削除しますか？`, async () => {
+            const displayName = getUserDisplayName(n);
+            try {
+                await deleteCloudUserRows(n);
+                delete users[n];
+                const saved = await saveUsers(true);
+                if (!saved) throw new Error('Failed to persist deletion');
+                recordAdminAudit('児童削除', { user: displayName, userDataId: n });
+                updateAdminUserTable();
+                renderDashboardTable();
+                showCustomAlert(`${displayName} さんを削除しました。`);
+            } catch (err) {
+                console.error('Delete user failed:', err);
+                showCustomAlert('削除に失敗しました。データは変更されていません。');
+            }
         });
     }
 }
@@ -88,8 +357,9 @@ export function adminAddCoins() {
     const amt = parseInt(document.getElementById('admin-custom-coin-amount').value, 10);
     if(isNaN(amt) || amt <= 0) return showCustomAlert('正しいコイン数を入力してください');
     users[n].coins = (users[n].coins || 0) + amt; 
+    recordAdminAudit('コイン付与', { user: getUserDisplayName(n), userDataId: n, amount: amt, coins: users[n].coins });
     saveUsers(true); 
-    showCustomAlert(`${n} さんに ${amt} コインを付与しました！\n（現在のコイン: ${users[n].coins}枚）`); 
+    showCustomAlert(`${getUserDisplayName(n)} さんに ${amt} コインを付与しました！\n（現在のコイン: ${users[n].coins}枚）`);
 }
 
 export function showAdminSection(secId) {
@@ -102,6 +372,10 @@ export function showAdminSection(secId) {
         target.style.display = 'flex';
         target.style.flexDirection = 'column';
         if(secId === 'admin-sec-dashboard') switchDashTab('basic'); 
+        if(secId === 'admin-sec-practice-history') renderPracticeHistoryAdmin();
+        if(secId === 'admin-sec-auth-link') renderAuthLinkingAdmin();
+        if(secId === 'admin-sec-backup') renderAdminAuditLog();
+        if(secId === 'admin-sec-ops-guide') renderOpsGuideAdmin();
     }
 }
 
@@ -115,6 +389,7 @@ function openAdminScreen() {
     updateAdminUserTable();
     renderAdminTextTasks();
     renderTicketAdmin();
+    renderPracticeHistoryAdmin();
     backToAdminMenu();
     showScreen('screen-admin');
 }
@@ -127,8 +402,11 @@ export async function openAdmin() {
         return;
     }
 
-    if (REQUIRE_SUPABASE_AUTH && !hasLegacyAdminPass()) {
-        showCustomAlert('管理者アカウントでログインしてください。');
+    if (!hasLegacyAdminPass()) {
+        const message = REQUIRE_SUPABASE_AUTH
+            ? '管理者アカウントでログインしてください。'
+            : '旧管理者パスワードは無効です。ローカル検証では .env.local の VITE_ALLOW_LEGACY_ADMIN_PASS=true を確認してください。';
+        showCustomAlert(message);
         return;
     }
 
@@ -141,10 +419,10 @@ export async function openAdmin() {
 
 export function renderTicketAdmin() {
     // ★修正: let に変更し、データが無ければ新しく作る処理を追加
-    let glob = users['__GLOBAL_SETTINGS__'];
+    let glob = users[GLOBAL_SETTINGS_ID];
     if (!glob) {
         glob = { isMaster: true };
-        users['__GLOBAL_SETTINGS__'] = glob;
+        users[GLOBAL_SETTINGS_ID] = glob;
     }
     
     if(!glob.ticketConfig) glob.ticketConfig = { normal: { name: '👍 いいねポイント 5こ', icon: '🎟️' }, newRecord: { name: '👍 いいねポイント 1こ', icon: '🎟️' } };
@@ -155,8 +433,8 @@ export function renderTicketAdmin() {
     if(!histList) return; histList.innerHTML = '';
     let allHistory =[];
     Object.keys(users).forEach(n => {
-        if (!users[n].isMaster && n !== '__GLOBAL_SETTINGS__' && users[n].ticketHistory) {
-            users[n].ticketHistory.forEach(h => { allHistory.push({ user: n, ticketName: h.ticketName, date: h.date, timestamp: h.timestamp }); });
+        if (!users[n].isMaster && !isSystemUserId(n) && users[n].ticketHistory) {
+            users[n].ticketHistory.forEach(h => { allHistory.push({ user: getUserDisplayName(n), ticketName: h.ticketName, date: h.date, timestamp: h.timestamp }); });
         }
     });
     allHistory.sort((a, b) => b.timestamp - a.timestamp);
@@ -175,22 +453,93 @@ export function saveTicketSettings() {
     const nName = document.getElementById('admin-ticket-normal').value.trim();
     const rName = document.getElementById('admin-ticket-newrecord').value.trim();
     if(!nName || !rName) return showCustomAlert('チケット名を入力してください');
-    if (!users['__GLOBAL_SETTINGS__']) users['__GLOBAL_SETTINGS__'] = { isMaster:true };
-    if (!users['__GLOBAL_SETTINGS__'].ticketConfig) users['__GLOBAL_SETTINGS__'].ticketConfig = { normal:{icon:'🎟️'}, newRecord:{icon:'🎟️'} };
-    users['__GLOBAL_SETTINGS__'].ticketConfig.normal.name = nName; users['__GLOBAL_SETTINGS__'].ticketConfig.newRecord.name = rName;
+    if (!users[GLOBAL_SETTINGS_ID]) users[GLOBAL_SETTINGS_ID] = { isMaster:true };
+    if (!users[GLOBAL_SETTINGS_ID].ticketConfig) users[GLOBAL_SETTINGS_ID].ticketConfig = { normal:{icon:'🎟️'}, newRecord:{icon:'🎟️'} };
+    users[GLOBAL_SETTINGS_ID].ticketConfig.normal.name = nName; users[GLOBAL_SETTINGS_ID].ticketConfig.newRecord.name = rName;
+    recordAdminAudit('チケット設定変更', { normal: nName, newRecord: rName });
     saveUsers(true); showCustomAlert('チケット設定を保存しました！');
 }
 
+function renderOpsStatusCard(label, value, tone = 'neutral') {
+    const colors = {
+        good: ['#e8f5e9', '#2e7d32'],
+        warn: ['#fff8e1', '#ef6c00'],
+        bad: ['#ffebee', '#c62828'],
+        neutral: ['#eceff1', '#37474f']
+    };
+    const [bg, color] = colors[tone] || colors.neutral;
+    return `
+        <div style="background:${bg}; border:1px solid ${color}; border-radius:8px; padding:12px;">
+            <div style="font-size:12px; color:#546e7a; margin-bottom:4px;">${escapeHtml(label)}</div>
+            <div style="font-size:18px; font-weight:bold; color:${color};">${escapeHtml(value)}</div>
+        </div>
+    `;
+}
+
+export function renderOpsGuideAdmin() {
+    const grid = document.getElementById('ops-status-grid');
+    if (!grid) return;
+
+    const syncText = document.getElementById('sync-status')?.innerText || '未確認';
+    const role = getCurrentLessonRole() || (REQUIRE_SUPABASE_AUTH ? '未登録/未ログイン' : '旧方式');
+    const teacherScope = getTeacherScopeSummary();
+    const teacherScopeTone = teacherScope === '全児童' ? 'warn' : (teacherScope === 'なし' ? 'neutral' : 'good');
+    const legacyPassStatus = getLegacyAdminPassStatus();
+    const legacyPassTone = legacyPassStatus === 'ローカルのみ有効' ? 'warn' : 'good';
+    const studentCount = Object.keys(users).filter(userId => users[userId] && !users[userId].isMaster && !isSystemUserId(userId)).length;
+    const syncTone = /synced|rls synced/.test(syncText) ? 'good' : (/error|offline|locked/.test(syncText) ? 'bad' : 'warn');
+
+    grid.innerHTML = [
+        renderOpsStatusCard('先生範囲', teacherScope, teacherScopeTone),
+        renderOpsStatusCard('Supabase設定', HAS_SUPABASE_CONFIG ? 'あり' : 'なし', HAS_SUPABASE_CONFIG ? 'good' : 'warn'),
+        renderOpsStatusCard('Auth必須', REQUIRE_SUPABASE_AUTH ? '有効' : '無効', REQUIRE_SUPABASE_AUTH ? 'good' : 'bad'),
+        renderOpsStatusCard('旧パスワード', legacyPassStatus, legacyPassTone),
+        renderOpsStatusCard('RLS同期', ENABLE_RLS_CLOUD_SYNC ? '有効' : '無効', ENABLE_RLS_CLOUD_SYNC ? 'good' : 'warn'),
+        renderOpsStatusCard('設定テーブル', ENABLE_SETTINGS_TABLE ? SETTINGS_TABLE_KEY : '旧方式', ENABLE_SETTINGS_TABLE ? 'good' : 'warn'),
+        renderOpsStatusCard('旧同期', ENABLE_LEGACY_SUPABASE_SYNC ? '有効' : '無効', ENABLE_LEGACY_SUPABASE_SYNC ? 'bad' : 'good'),
+        renderOpsStatusCard('現在ロール', role, role === 'admin' ? 'good' : 'warn'),
+        renderOpsStatusCard('保存状態', syncText, syncTone),
+        renderOpsStatusCard('児童数', `${studentCount}人`, studentCount > 0 ? 'good' : 'warn')
+    ].join('');
+}
+
+export function copyDeviceHandoffChecklist() {
+    const text = [
+        'Dレッスン 端末切替チェック',
+        '1. 古い端末で保存状態が「rls synced」または「synced」になっていることを確認',
+        '2. 管理者画面 > バックアップ でJSONバックアップを保存',
+        '3. 新しい端末でDレッスンを開き、Supabase Authでログイン',
+        '4. 児童一覧、進捗、コインが見えることを確認',
+        '5. 短い練習を1つクリアし、保存状態が同期済みになることを確認',
+        '6. 旧端末を共有端末として使わない場合はログアウト'
+    ].join('\n');
+    copyText(text);
+}
+
 export function getSelUser() { const r = document.querySelector('input[name="asel"]:checked'); return r ? r.value : null; }
-export function adminResetUser() { const n = getSelUser(); if(n) { showCustomConfirm('リセットしますか？', () => { users[n].mouseLevel=0; users[n].keyboardSequence=0; users[n].examRecords={}; users[n].textRecords={}; users[n].globalMistakes={}; users[n].theme='default'; saveUsers(true); updateAdminUserTable(); }); } }
-export function adminForceProgress() { const n = getSelUser(); if(n) { showCustomConfirm('全開放しますか？', () => { users[n].mouseLevel=7; users[n].keyboardSequence=STAGE_ORDER.length; saveUsers(true); updateAdminUserTable(); }); } }
-export function adminCreateMasterUser() { users['Master_Debug'] = { mouseLevel:7, keyboardSequence:999, examRecords:{}, textRecords:{}, globalMistakes:{}, theme:'default', birthdate:'', isMaster:true }; saveUsers(true); updateAdminUserTable(); showCustomAlert('マスターユーザーを作成しました'); }
-export function playAsMaster() { if (!users['Master_Debug']) { showCustomAlert('先にマスター作成ボタンを押してください。'); return; } document.getElementById('screen-admin').classList.remove('active'); login('Master_Debug'); }
+export function adminResetUser() {
+    const n = getSelUser();
+    if(n) {
+        showCustomConfirm('リセットしますか？', () => {
+            recordAdminAudit('進捗リセット', { user: getUserDisplayName(n), userDataId: n });
+            users[n].mouseLevel=0; users[n].keyboardSequence=0; users[n].examRecords={}; users[n].textRecords={}; users[n].globalMistakes={}; users[n].theme='default'; saveUsers(true); updateAdminUserTable();
+        });
+    }
+}
+export function adminForceProgress() {
+    const n = getSelUser();
+    if(n) {
+        showCustomConfirm('全開放しますか？', () => {
+            recordAdminAudit('進捗全開放', { user: getUserDisplayName(n), userDataId: n });
+            users[n].mouseLevel=7; users[n].keyboardSequence=STAGE_ORDER.length; saveUsers(true); updateAdminUserTable();
+        });
+    }
+}
 
 let editTargetUser = null;
 export function openEditProgress() {
     const n = getSelUser(); if (!n) return showCustomAlert('ユーザーを選択してください');
-    editTargetUser = n; document.getElementById('edit-modal-title').innerText = `${n} さんの進捗編集`;
+    editTargetUser = n; document.getElementById('edit-modal-title').innerText = `${getUserDisplayName(n)} さんの進捗編集`;
     document.getElementById('edit-mouse-level').value = users[n].mouseLevel || 0;
     const kbSelect = document.getElementById('edit-keyboard-seq'); kbSelect.innerHTML = `<option value="0">0: 初期状態</option>`;
     STAGE_ORDER.forEach((sid, idx) => { kbSelect.innerHTML += `<option value="${idx + 1}">${idx + 1}: ${getStageName(sid)} までクリア済</option>`; });
@@ -222,6 +571,12 @@ export function saveEditProgress() {
     let currentThemeCheckId = THEMES.find(t=>t.id === users[editTargetUser].theme)?.isCustom ? users[editTargetUser].theme : 'theme_' + users[editTargetUser].theme;
     if(users[editTargetUser].theme !== 'default' && !newItems.includes(currentThemeCheckId) && !newItems.includes(users[editTargetUser].theme)) { users[editTargetUser].theme = 'default'; }
     if(users[editTargetUser].activeEffect !== 'default' && !newItems.includes(users[editTargetUser].activeEffect)) { users[editTargetUser].activeEffect = 'default'; }
+    recordAdminAudit('進捗編集', {
+        user: getUserDisplayName(editTargetUser),
+        userDataId: editTargetUser,
+        mouseLevel: users[editTargetUser].mouseLevel,
+        keyboardSequence: users[editTargetUser].keyboardSequence
+    });
     saveUsers(true); updateAdminUserTable(); closeEditProgress(); showCustomAlert('進捗とアイテム情報を保存しました。');
 }
 
@@ -241,33 +596,879 @@ export function switchDashTab(tab) {
     }
 }
 
-export function updateAdminUserTable() {
-    const tbody = document.getElementById('admin-user-tbody'); tbody.innerHTML = '';
-    let list = Object.keys(users).filter(n => !users[n].isMaster && n !== '__GLOBAL_SETTINGS__').map(n => ({ name: n, user: users[n] }));
-    list.sort((a,b) => a.name.localeCompare(b.name, 'ja'));
-    list.forEach(item => {
-        let uBirth = item.user.birthdate || item.user.birth;
-        let dispGrade = (item.user.grade && String(item.user.grade) !== 'undefined') ? item.user.grade : calculateGrade(uBirth);
-        
-        let tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td style="padding:5px; border:1px solid #ddd;"><input type="radio" name="asel" class="admin-user-check" value="${item.name}"></td>
-            <td style="padding:5px; border:1px solid #ddd; font-weight:bold;">${item.name}</td>
-            <td style="padding:5px; border:1px solid #ddd;">${dispGrade}</td>
-            <td style="padding:5px; border:1px solid #ddd;"><input type="text" value="${item.user.group || ''}" onchange="updateUserGroup('${item.name}', this.value)" style="width:80px; padding:2px; font-size:12px; border:1px solid #ccc;"></td>
-            <td style="padding:5px; border:1px solid #ddd;">Lv.${item.user.mouseLevel || 1}</td>
-            <td style="padding:5px; border:1px solid #ddd;">${item.user.keyboardSequence || 0}/${STAGE_ORDER.length}</td>
-        `;
+function updateAdminFilterSelect(select, values, allLabel, currentValue) {
+    if (!select) return;
+    select.innerHTML = '';
+
+    const allOpt = document.createElement('option');
+    allOpt.value = 'all';
+    allOpt.innerText = allLabel;
+    select.appendChild(allOpt);
+
+    values.forEach(value => {
+        if (!value) return;
+        const opt = document.createElement('option');
+        opt.value = value;
+        opt.innerText = value;
+        select.appendChild(opt);
+    });
+
+    select.value = values.includes(currentValue) ? currentValue : 'all';
+}
+
+function getLocalDateKey(value) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
+function collectPracticeHistoryRows() {
+    const rows = [];
+    Object.keys(users)
+        .filter(userId => users[userId] && !users[userId].isMaster && !isSystemUserId(userId))
+        .forEach(userId => {
+            const user = users[userId];
+            const grade = (user.grade && String(user.grade) !== 'undefined') ? user.grade : calculateGrade(user.birthdate || user.birth);
+            const group = user.group || '';
+            getPracticeLogs(userId).forEach(log => {
+                const atMs = Date.parse(log.at);
+                if (!atMs) return;
+                const info = formatPracticeActivity(log);
+                rows.push({
+                    userId,
+                    name: getUserDisplayName(userId),
+                    grade,
+                    group,
+                    dateKey: getLocalDateKey(log.at),
+                    timeText: new Date(atMs).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }),
+                    atMs,
+                    title: info.title,
+                    detail: log.detail || '',
+                    amount: log.amount || '',
+                    coins: Number(log.coins || 0)
+                });
+            });
+        });
+
+    rows.sort((a, b) => b.atMs - a.atMs || a.name.localeCompare(b.name, 'ja'));
+    return rows;
+}
+
+function updatePracticeDateSelect(select, rows) {
+    if (!select) return '';
+    const currentValue = select.value;
+    const counts = new Map();
+    rows.forEach(row => counts.set(row.dateKey, (counts.get(row.dateKey) || 0) + 1));
+    const dates = Array.from(counts.keys()).sort((a, b) => b.localeCompare(a));
+
+    select.innerHTML = '';
+    if (dates.length === 0) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.innerText = '記録なし';
+        select.appendChild(opt);
+        return '';
+    }
+
+    dates.forEach(dateKey => {
+        const opt = document.createElement('option');
+        opt.value = dateKey;
+        opt.innerText = `${dateKey} (${counts.get(dateKey)}件)`;
+        select.appendChild(opt);
+    });
+
+    const selected = dates.includes(currentValue) ? currentValue : dates[0];
+    select.value = selected;
+    return selected;
+}
+
+function getFilteredPracticeHistoryRows() {
+    const allRows = collectPracticeHistoryRows();
+    const dateSelect = document.getElementById('admin-practice-date');
+    const gradeSelect = document.getElementById('admin-practice-grade');
+    const groupSelect = document.getElementById('admin-practice-group');
+    const searchInput = document.getElementById('admin-practice-search');
+
+    const selectedDate = updatePracticeDateSelect(dateSelect, allRows);
+    const grades = sortGrades(Array.from(new Set(allRows.map(row => row.grade).filter(Boolean))));
+    const groups = Array.from(new Set(allRows.map(row => row.group).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'ja'));
+    updateAdminFilterSelect(gradeSelect, grades, 'すべての学年', gradeSelect?.value || 'all');
+    updateAdminFilterSelect(groupSelect, groups, 'すべてのグループ', groupSelect?.value || 'all');
+
+    const selectedGrade = gradeSelect?.value || 'all';
+    const selectedGroup = groupSelect?.value || 'all';
+    const searchText = (searchInput?.value || '').trim().toLowerCase();
+
+    const rows = allRows.filter(row => {
+        if (!selectedDate || row.dateKey !== selectedDate) return false;
+        if (selectedGrade !== 'all' && row.grade !== selectedGrade) return false;
+        if (selectedGroup !== 'all' && row.group !== selectedGroup) return false;
+        if (!searchText) return true;
+        const haystack = `${row.name} ${row.userId} ${row.group} ${row.title} ${row.detail} ${row.amount}`.toLowerCase();
+        return haystack.includes(searchText);
+    });
+
+    return { rows, allRows, selectedDate };
+}
+
+function renderPracticeSummaryCard(container, label, value, color) {
+    const card = document.createElement('div');
+    card.style.cssText = `background:#fff; border:2px solid ${color}; border-radius:8px; padding:12px; text-align:center;`;
+    const labelEl = document.createElement('div');
+    labelEl.innerText = label;
+    labelEl.style.cssText = 'font-size:13px; color:#546e7a; font-weight:bold; margin-bottom:6px;';
+    const valueEl = document.createElement('div');
+    valueEl.innerText = value;
+    valueEl.style.cssText = `font-size:24px; color:${color}; font-weight:bold;`;
+    card.appendChild(labelEl);
+    card.appendChild(valueEl);
+    container.appendChild(card);
+}
+
+function appendPracticeCell(tr, text, extraStyle = '') {
+    const td = document.createElement('td');
+    td.style.cssText = `border:1px solid #ddd; padding:8px; vertical-align:top; ${extraStyle}`;
+    td.innerText = text;
+    tr.appendChild(td);
+}
+
+export function renderPracticeHistoryAdmin() {
+    const tbody = document.getElementById('admin-practice-tbody');
+    const summary = document.getElementById('admin-practice-summary');
+    if (!tbody || !summary) return;
+
+    const { rows, allRows, selectedDate } = getFilteredPracticeHistoryRows();
+    tbody.innerHTML = '';
+    summary.innerHTML = '';
+
+    const activeStudents = new Set(rows.map(row => row.userId)).size;
+    const totalCoins = rows.reduce((sum, row) => sum + row.coins, 0);
+    renderPracticeSummaryCard(summary, '選択日', selectedDate || '記録なし', '#795548');
+    renderPracticeSummaryCard(summary, '取り組んだ児童', `${activeStudents}人`, '#2196F3');
+    renderPracticeSummaryCard(summary, '取り組み件数', `${rows.length}件`, '#4CAF50');
+    renderPracticeSummaryCard(summary, '獲得コイン合計', `${totalCoins}コイン`, '#FF9800');
+
+    if (allRows.length === 0) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 8;
+        td.style.cssText = 'border:1px solid #ddd; padding:18px; text-align:center; color:#777;';
+        td.innerText = 'まだ取り組み記録がありません。児童が練習を終えるとここに表示されます。';
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        return;
+    }
+
+    if (rows.length === 0) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 8;
+        td.style.cssText = 'border:1px solid #ddd; padding:18px; text-align:center; color:#777;';
+        td.innerText = '条件に合う取り組み記録はありません。';
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        return;
+    }
+
+    rows.forEach(row => {
+        const tr = document.createElement('tr');
+        appendPracticeCell(tr, row.timeText, 'white-space:nowrap; color:#607d8b; font-weight:bold;');
+        appendPracticeCell(tr, row.name, 'font-weight:bold; color:#263238;');
+        appendPracticeCell(tr, row.grade || '-');
+        appendPracticeCell(tr, row.group || '-');
+        appendPracticeCell(tr, row.title);
+        appendPracticeCell(tr, row.detail || '-');
+        appendPracticeCell(tr, row.amount || '-');
+        appendPracticeCell(tr, row.coins ? `+${row.coins}` : '', 'text-align:right; color:#f57c00; font-weight:bold;');
         tbody.appendChild(tr);
     });
 }
 
+export function clearPracticeHistoryFilters() {
+    const gradeSelect = document.getElementById('admin-practice-grade');
+    const groupSelect = document.getElementById('admin-practice-group');
+    const searchInput = document.getElementById('admin-practice-search');
+    if (gradeSelect) gradeSelect.value = 'all';
+    if (groupSelect) groupSelect.value = 'all';
+    if (searchInput) searchInput.value = '';
+    renderPracticeHistoryAdmin();
+}
+
+export function exportPracticeHistoryCsv() {
+    const { rows, selectedDate } = getFilteredPracticeHistoryRows();
+    if (rows.length === 0) return showCustomAlert('出力する取り組み記録がありません。');
+
+    const csvRows = [['date', 'time', 'student_name', 'grade', 'group', 'practice', 'detail', 'amount', 'coins']];
+    rows.forEach(row => {
+        csvRows.push([
+            selectedDate,
+            row.timeText,
+            row.name,
+            row.grade || '',
+            row.group || '',
+            row.title,
+            row.detail || '',
+            row.amount || '',
+            row.coins || 0
+        ]);
+    });
+
+    const csv = csvRows.map(row => row.map(escapeCsvCell).join(',')).join('\r\n');
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `d-lesson_practice_${selectedDate || 'all'}_${getBackupDateStamp()}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    recordAdminAudit('取り組み履歴CSV出力', { date: selectedDate, rows: rows.length });
+}
+
+export function updateAdminUserTable() {
+    const tbody = document.getElementById('admin-user-tbody'); tbody.innerHTML = '';
+    const searchInput = document.getElementById('admin-user-search');
+    const gradeFilter = document.getElementById('admin-user-grade-filter');
+    const groupFilter = document.getElementById('admin-user-group-filter');
+    const countLabel = document.getElementById('admin-user-count');
+    const searchText = (searchInput?.value || '').trim().toLowerCase();
+    const selectedGrade = gradeFilter?.value || 'all';
+    const selectedGroup = groupFilter?.value || 'all';
+
+    let list = Object.keys(users)
+        .filter(n => users[n] && !users[n].isMaster && !isSystemUserId(n))
+        .map(n => {
+            const uBirth = users[n].birthdate || users[n].birth;
+            const grade = (users[n].grade && String(users[n].grade) !== 'undefined') ? users[n].grade : calculateGrade(uBirth);
+            return { id: n, name: getUserDisplayName(n), grade, group: users[n].group || '', user: users[n] };
+        });
+
+    const grades = sortGrades(Array.from(new Set(list.map(item => item.grade).filter(Boolean))));
+    const groups = Array.from(new Set(list.map(item => item.group).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'ja'));
+    updateAdminFilterSelect(gradeFilter, grades, 'すべての学年', selectedGrade);
+    updateAdminFilterSelect(groupFilter, groups, 'すべてのグループ', selectedGroup);
+
+    list = list.filter(item => {
+        if (gradeFilter && gradeFilter.value !== 'all' && item.grade !== gradeFilter.value) return false;
+        if (groupFilter && groupFilter.value !== 'all' && item.group !== groupFilter.value) return false;
+        if (!searchText) return true;
+        const haystack = `${item.name} ${item.id} ${item.group}`.toLowerCase();
+        return haystack.includes(searchText);
+    });
+
+    list.sort((a,b) => a.name.localeCompare(b.name, 'ja'));
+    if (countLabel) countLabel.innerText = `${list.length}件`;
+
+    if (list.length === 0) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 7;
+        td.style.cssText = 'padding:14px; border:1px solid #ddd; color:#777; text-align:center;';
+        td.innerText = '条件に合う児童がいません';
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        return;
+    }
+
+    list.forEach(item => {
+        let uBirth = item.user.birthdate || item.user.birth;
+        let dispGrade = item.grade;
+        
+        let tr = document.createElement('tr');
+        const selectTd = document.createElement('td');
+        selectTd.style.cssText = 'padding:5px; border:1px solid #ddd;';
+        const radio = document.createElement('input');
+        radio.type = 'radio';
+        radio.name = 'asel';
+        radio.className = 'admin-user-check';
+        radio.value = item.id;
+        selectTd.appendChild(radio);
+        tr.appendChild(selectTd);
+
+        const nameTd = document.createElement('td');
+        nameTd.style.cssText = 'padding:5px; border:1px solid #ddd; font-weight:bold;';
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.value = item.name;
+        nameInput.style.cssText = 'width:120px; padding:2px; font-size:12px; border:1px solid #ccc;';
+        nameInput.onchange = () => updateUserDisplayName(item.id, nameInput.value);
+        nameTd.appendChild(nameInput);
+        tr.appendChild(nameTd);
+
+        const birthTd = document.createElement('td');
+        birthTd.style.cssText = 'padding:5px; border:1px solid #ddd;';
+        const birthInput = document.createElement('input');
+        birthInput.type = 'date';
+        birthInput.value = uBirth || '';
+        birthInput.style.cssText = 'width:120px; padding:2px; font-size:12px; border:1px solid #ccc;';
+        birthInput.onchange = () => updateUserBirthdate(item.id, birthInput.value);
+        birthTd.appendChild(birthInput);
+        tr.appendChild(birthTd);
+
+        const gradeTd = document.createElement('td');
+        gradeTd.style.cssText = 'padding:5px; border:1px solid #ddd;';
+        gradeTd.innerText = dispGrade;
+        tr.appendChild(gradeTd);
+
+        const groupTd = document.createElement('td');
+        groupTd.style.cssText = 'padding:5px; border:1px solid #ddd;';
+        const groupInput = document.createElement('input');
+        groupInput.type = 'text';
+        groupInput.value = item.user.group || '';
+        groupInput.style.cssText = 'width:80px; padding:2px; font-size:12px; border:1px solid #ccc;';
+        groupInput.onchange = () => updateUserGroup(item.id, groupInput.value);
+        groupTd.appendChild(groupInput);
+        tr.appendChild(groupTd);
+
+        const mouseTd = document.createElement('td');
+        mouseTd.style.cssText = 'padding:5px; border:1px solid #ddd;';
+        mouseTd.innerText = `Lv.${item.user.mouseLevel || 1}`;
+        tr.appendChild(mouseTd);
+
+        const keyboardTd = document.createElement('td');
+        keyboardTd.style.cssText = 'padding:5px; border:1px solid #ddd;';
+        keyboardTd.innerText = `${item.user.keyboardSequence || 0}/${STAGE_ORDER.length}`;
+        tr.appendChild(keyboardTd);
+
+        tbody.appendChild(tr);
+    });
+}
+
+export function clearAdminUserFilters() {
+    const searchInput = document.getElementById('admin-user-search');
+    const gradeFilter = document.getElementById('admin-user-grade-filter');
+    const groupFilter = document.getElementById('admin-user-group-filter');
+    if (searchInput) searchInput.value = '';
+    if (gradeFilter) gradeFilter.value = 'all';
+    if (groupFilter) groupFilter.value = 'all';
+    updateAdminUserTable();
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function progressPercent(value, total) {
+    if (!total) return 0;
+    return Math.max(0, Math.min(100, Math.floor((value / total) * 100)));
+}
+
+function reportBar(label, value, total, color) {
+    const pct = progressPercent(value, total);
+    return `
+        <div style="margin-bottom:10px;">
+            <div style="display:flex; justify-content:space-between; gap:10px; font-weight:bold; font-size:14px;">
+                <span>${escapeHtml(label)}</span><span>${value}/${total} (${pct}%)</span>
+            </div>
+            <div style="height:14px; background:#eee; border-radius:8px; overflow:hidden; margin-top:4px;">
+                <div style="width:${pct}%; height:100%; background:${color};"></div>
+            </div>
+        </div>
+    `;
+}
+
+function reportSection(title, body) {
+    return `
+        <section style="border:1px solid #ddd; border-radius:8px; padding:14px; background:#fff; break-inside:avoid;">
+            <h4 style="margin:0 0 10px; color:#37474f; border-bottom:1px solid #eee; padding-bottom:6px;">${escapeHtml(title)}</h4>
+            ${body}
+        </section>
+    `;
+}
+
+function formatRecordSeconds(value) {
+    return typeof value === 'number' ? `${value.toFixed(1)}秒` : '-';
+}
+
+function buildPracticeLogReportHtml(userId) {
+    const logs = getPracticeLogs(userId).slice(0, 12);
+    if (!logs.length) {
+        return '<p style="color:#777; margin:0;">取り組み履歴はまだありません。</p>';
+    }
+
+    return `<table style="width:100%; border-collapse:collapse; font-size:13px;">
+        <thead>
+            <tr>
+                <th style="border:1px solid #ddd; padding:6px;">日時</th>
+                <th style="border:1px solid #ddd; padding:6px;">練習</th>
+                <th style="border:1px solid #ddd; padding:6px;">内容</th>
+                <th style="border:1px solid #ddd; padding:6px;">コイン</th>
+            </tr>
+        </thead>
+        <tbody>${logs.map(log => {
+            const info = formatPracticeActivity(log);
+            const at = Date.parse(log.at);
+            const when = at ? new Date(at).toLocaleString('ja-JP') : '-';
+            return `<tr>
+                <td style="border:1px solid #ddd; padding:6px; white-space:nowrap;">${escapeHtml(when)}</td>
+                <td style="border:1px solid #ddd; padding:6px;">${escapeHtml(info.title)}</td>
+                <td style="border:1px solid #ddd; padding:6px;">${escapeHtml(info.detail)}</td>
+                <td style="border:1px solid #ddd; padding:6px; text-align:right;">${escapeHtml(info.coinsText || '-')}</td>
+            </tr>`;
+        }).join('')}</tbody>
+    </table>`;
+}
+
+function getTopMistakes(user) {
+    const mistakes = user.globalMistakes || {};
+    return Object.keys(mistakes)
+        .filter(key => mistakes[key] > 0)
+        .sort((a, b) => mistakes[b] - mistakes[a])
+        .slice(0, 8)
+        .map(key => `${key === 'SPACE' ? '空白' : key}(${mistakes[key]})`);
+}
+
+function buildStudentReportHtml(userId) {
+    const user = users[userId];
+    const records = user.examRecords || {};
+    const textRecords = user.textRecords || {};
+    const wordProgress = user.wordProgress || {};
+    const textTasks = users[GLOBAL_SETTINGS_ID]?.textTasks || [];
+    const mouseLevel = user.mouseLevel || 0;
+    const keyboardSequence = user.keyboardSequence || 0;
+    const visionDone = VISION_STAGES.reduce((count, stage) => {
+        return count + ['_easy', '', '_hard'].filter(suffix => records[stage.id + suffix]).length;
+    }, 0);
+    const wordDone = Object.values(wordProgress).filter(progress => progress?.status === 'cleared').length;
+
+    const keyboardNext = keyboardSequence < STAGE_ORDER.length
+        ? getStageName(STAGE_ORDER[keyboardSequence]).replace(/\[ID:\d+\]\s*/, '')
+        : '完了';
+
+    const textRows = Object.keys(textRecords)
+        .map(taskId => {
+            const task = textTasks.find(t => t.id === taskId);
+            const rec = textRecords[taskId] || {};
+            return { title: task?.title || taskId, score: rec.score || 0, miss: rec.miss || 0, total: rec.total || 0 };
+        })
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 5);
+
+    const textHtml = textRows.length
+        ? `<table style="width:100%; border-collapse:collapse; font-size:13px;">
+            <thead><tr><th style="border:1px solid #ddd; padding:6px;">課題</th><th style="border:1px solid #ddd; padding:6px;">純字数</th><th style="border:1px solid #ddd; padding:6px;">入力</th><th style="border:1px solid #ddd; padding:6px;">ミス</th></tr></thead>
+            <tbody>${textRows.map(row => `<tr><td style="border:1px solid #ddd; padding:6px;">${escapeHtml(row.title)}</td><td style="border:1px solid #ddd; padding:6px; text-align:right;">${row.score}</td><td style="border:1px solid #ddd; padding:6px; text-align:right;">${row.total}</td><td style="border:1px solid #ddd; padding:6px; text-align:right;">${row.miss}</td></tr>`).join('')}</tbody>
+        </table>`
+        : '<p style="color:#777; margin:0;">文章練習の記録はまだありません。</p>';
+
+    const visionRows = VISION_STAGES.map(stage => {
+        const easy = records[stage.id + '_easy'];
+        const normal = records[stage.id];
+        const hard = records[stage.id + '_hard'];
+        if (!easy && !normal && !hard) return '';
+        return `<tr><td style="border:1px solid #ddd; padding:6px;">${escapeHtml(stage.title)}</td><td style="border:1px solid #ddd; padding:6px;">${formatRecordSeconds(easy)}</td><td style="border:1px solid #ddd; padding:6px;">${formatRecordSeconds(normal)}</td><td style="border:1px solid #ddd; padding:6px;">${formatRecordSeconds(hard)}</td></tr>`;
+    }).filter(Boolean);
+    const visionHtml = visionRows.length
+        ? `<table style="width:100%; border-collapse:collapse; font-size:13px;">
+            <thead><tr><th style="border:1px solid #ddd; padding:6px;">種目</th><th style="border:1px solid #ddd; padding:6px;">Easy</th><th style="border:1px solid #ddd; padding:6px;">Normal</th><th style="border:1px solid #ddd; padding:6px;">Hard</th></tr></thead>
+            <tbody>${visionRows.join('')}</tbody>
+        </table>`
+        : '<p style="color:#777; margin:0;">ビジョンのタイム記録はまだありません。</p>';
+
+    const mistakeList = getTopMistakes(user);
+    const mistakeHtml = mistakeList.length
+        ? `<p style="margin:0; font-weight:bold; color:#d84315;">${escapeHtml(mistakeList.join(' / '))}</p>`
+        : '<p style="margin:0; color:#2e7d32; font-weight:bold;">目立った苦手キーはありません。</p>';
+    const practiceLogHtml = buildPracticeLogReportHtml(userId);
+
+    return `
+        <div style="font-family:system-ui, sans-serif; color:#263238;">
+            <div style="display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap; border-bottom:2px solid #009688; padding-bottom:12px; margin-bottom:14px;">
+                <div>
+                    <div style="font-size:28px; font-weight:bold;">${escapeHtml(getUserDisplayName(userId))}</div>
+                    <div style="color:#607d8b; font-size:13px;">user_data_id: ${escapeHtml(userId)}</div>
+                </div>
+                <div style="font-size:14px; line-height:1.7;">
+                    <div>学年: <b>${escapeHtml(user.grade || calculateGrade(user.birthdate || user.birth))}</b></div>
+                    <div>生年月日: <b>${escapeHtml(user.birthdate || user.birth || '-')}</b></div>
+                    <div>グループ: <b>${escapeHtml(user.group || '-')}</b></div>
+                    <div>作成日: <b>${new Date().toLocaleDateString('ja-JP')}</b></div>
+                </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:12px; margin-bottom:12px;">
+                ${reportSection('全体進捗', `
+                    ${reportBar('マウス', mouseLevel, 7, '#2196F3')}
+                    ${reportBar('キーボード', keyboardSequence, STAGE_ORDER.length, '#FF9800')}
+                    ${reportBar('ビジョン記録', visionDone, VISION_STAGES.length * 3, '#9C27B0')}
+                    ${reportBar('ことば入力', wordDone, WORD_DATA.length, '#4CAF50')}
+                `)}
+                ${reportSection('現在の状態', `
+                    <p style="margin:0 0 6px;">次のキーボード: <b>${escapeHtml(keyboardNext)}</b></p>
+                    <p style="margin:0 0 6px;">コイン: <b>${user.coins || 0}</b></p>
+                    <p style="margin:0 0 6px;">アイテム: <b>${(user.items || []).length}</b></p>
+                    <p style="margin:0;">練習スタンプ: <b>${(user.loginStamps || []).length}</b></p>
+                `)}
+                ${reportSection('苦手キー', mistakeHtml)}
+            </div>
+
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:12px;">
+                ${reportSection('文章練習', textHtml)}
+                ${reportSection('ビジョントレーニング', visionHtml)}
+                ${reportSection('直近の取り組み', practiceLogHtml)}
+            </div>
+        </div>
+    `;
+}
+
+export function openStudentReport() {
+    const userId = getSelUser();
+    if (!userId || !users[userId]) return showCustomAlert('ユーザーを選択してください');
+    const modal = document.getElementById('student-report-modal');
+    const title = document.getElementById('student-report-title');
+    const content = document.getElementById('student-report-content');
+    if (!modal || !title || !content) return;
+
+    title.innerText = `${getUserDisplayName(userId)} さんのレポート`;
+    content.dataset.userId = userId;
+    content.innerHTML = buildStudentReportHtml(userId);
+    recordAdminAudit('児童レポート表示', { user: getUserDisplayName(userId), userDataId: userId });
+    modal.style.display = 'flex';
+}
+
+export function closeStudentReport() {
+    const modal = document.getElementById('student-report-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+export function printStudentReport() {
+    const content = document.getElementById('student-report-content');
+    if (!content || !content.innerHTML.trim()) return;
+    const userId = content.dataset.userId;
+    const title = userId && users[userId] ? `${getUserDisplayName(userId)} さんのレポート` : '児童レポート';
+    const printWindow = window.open('', '_blank', 'width=900,height=700');
+    if (!printWindow) return showCustomAlert('印刷画面を開けませんでした。ポップアップ設定を確認してください。');
+    printWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>@page{margin:14mm;}body{background:#fff;margin:0;padding:0;}section{break-inside:avoid;}button{display:none;}</style></head><body>${content.innerHTML}</body></html>`);
+    printWindow.document.close();
+    printWindow.focus();
+    recordAdminAudit('児童レポート印刷', { user: title, userDataId: userId || '' });
+    printWindow.print();
+}
+
+export function updateUserDisplayName(userId, newName) {
+    const displayName = newName.trim();
+    if (!users[userId]) return;
+    if (!displayName) {
+        showCustomAlert('名前を入力してください');
+        updateAdminUserTable();
+        return;
+    }
+    if (userDisplayNameExists(displayName, userId)) {
+        showCustomAlert('その名前はすでに登録されています');
+        updateAdminUserTable();
+        return;
+    }
+    const oldName = getUserDisplayName(userId);
+    users[userId].displayName = displayName;
+    recordAdminAudit('表示名変更', { userDataId: userId, before: oldName, after: displayName });
+    saveUsers(true);
+    updateAdminUserTable();
+    renderDashboardTable();
+}
+
+export function updateUserBirthdate(userId, newBirthdate) {
+    if (!users[userId]) return;
+    if (!newBirthdate) {
+        showCustomAlert('生年月日を入力してください');
+        updateAdminUserTable();
+        return;
+    }
+
+    const oldBirthdate = users[userId].birthdate || users[userId].birth || '';
+    users[userId].birthdate = newBirthdate;
+    users[userId].grade = calculateGrade(newBirthdate);
+    recordAdminAudit('生年月日変更', { user: getUserDisplayName(userId), userDataId: userId, before: oldBirthdate, after: newBirthdate });
+    saveUsers(true);
+    updateAdminUserTable();
+    renderDashboardTable();
+}
+
 export function updateUserGroup(name, newGroup) {
     if(users[name]) { 
+        const oldGroup = users[name].group || '';
         users[name].group = newGroup.trim(); 
-        saveUsers(false); 
+        recordAdminAudit('グループ変更', { user: getUserDisplayName(name), userDataId: name, before: oldGroup, after: users[name].group });
+        saveUsers(true);
+        updateAdminUserTable();
         renderDashboardTable(); 
     }
+}
+
+function isUuid(value) {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || '').trim());
+}
+
+function getRoleAccessDataId(role) {
+    if (role === 'admin') return '__admin__';
+    if (role === 'teacher') return '__teacher__';
+    return null;
+}
+
+function isMissingLessonScopeColumnError(error) {
+    const message = `${error?.code || ''} ${error?.message || ''}`;
+    return /scope_type|scope_value|42703/i.test(message);
+}
+
+function normalizeTeacherScope(scopeType, scopeValue) {
+    const type = scopeType === 'group' ? 'group' : 'all';
+    const value = type === 'group'
+        ? String(scopeValue || '').split(',').map(group => group.trim()).filter(Boolean).join(',')
+        : '';
+    return { scopeType: type, scopeValue: value };
+}
+
+function formatTeacherScope(scopeType, scopeValue) {
+    const { scopeType: type, scopeValue: value } = normalizeTeacherScope(scopeType, scopeValue);
+    return type === 'group' ? `グループ: ${value || '未指定'}` : '全児童';
+}
+
+function getTeacherScopeFormValues() {
+    const scopeType = document.getElementById('auth-teacher-scope-type')?.value || 'all';
+    const scopeValue = document.getElementById('auth-teacher-scope-value')?.value || '';
+    return normalizeTeacherScope(scopeType, scopeValue);
+}
+
+function ensureAuthLinkingReady() {
+    if (!REQUIRE_SUPABASE_AUTH || !supabase) {
+        showCustomAlert('Supabase Auth設定が有効な環境で使用してください。');
+        return false;
+    }
+    if (!hasLessonRole('admin')) {
+        showCustomAlert('管理者アカウントでログインしてください。');
+        return false;
+    }
+    return true;
+}
+
+async function upsertLessonUserAccess(authUserId, userDataId, role, scope = {}) {
+    if (!ensureAuthLinkingReady()) return false;
+    if (!isUuid(authUserId)) {
+        showCustomAlert('Auth User ID はUUID形式で入力してください。');
+        return false;
+    }
+    if (!userDataId || !role) return false;
+
+    const { scopeType, scopeValue } = role === 'teacher'
+        ? normalizeTeacherScope(scope.scopeType, scope.scopeValue)
+        : { scopeType: 'all', scopeValue: '' };
+
+    if (role === 'teacher' && scopeType === 'group' && !scopeValue) {
+        showCustomAlert('先生の担当範囲がグループ指定ですが、グループ名が入力されていません。');
+        return false;
+    }
+
+    const basePayload = { auth_user_id: authUserId.trim(), user_data_id: userDataId, role };
+    const scopedPayload = role === 'teacher'
+        ? { ...basePayload, scope_type: scopeType, scope_value: scopeValue }
+        : basePayload;
+
+    let { error } = await supabase
+        .from('lesson_user_access')
+        .upsert(scopedPayload, { onConflict: 'auth_user_id,user_data_id' });
+
+    if (error && role === 'teacher' && scopeType === 'all' && isMissingLessonScopeColumnError(error)) {
+        const fallback = await supabase
+            .from('lesson_user_access')
+            .upsert(basePayload, { onConflict: 'auth_user_id,user_data_id' });
+        error = fallback.error;
+    }
+
+    if (error) {
+        console.error('lesson_user_access upsert failed:', error);
+        const migrationHint = isMissingLessonScopeColumnError(error)
+            ? '\nsupabase/sql/teacher_group_scope_policies.sql を実行してから再登録してください。'
+            : '\nsupabase/sql/admin_lesson_user_access_policies.sql を実行済みか確認してください。';
+        showCustomAlert(`Auth連携の登録に失敗しました。${migrationHint}`);
+        return false;
+    }
+
+    recordAdminAudit('Auth連携登録', {
+        role,
+        userDataId,
+        authUserId: authUserId.trim(),
+        scope: role === 'teacher' ? formatTeacherScope(scopeType, scopeValue) : ''
+    });
+    await refreshCurrentLessonAccess();
+    await renderAuthAccessOverview();
+    showCustomAlert('Auth連携を登録しました。');
+    return true;
+}
+
+export async function linkRoleAuthUser(role) {
+    const inputId = role === 'admin' ? 'auth-admin-user-id' : 'auth-teacher-user-id';
+    const input = document.getElementById(inputId);
+    const authUserId = input?.value.trim();
+    const userDataId = getRoleAccessDataId(role);
+    const label = role === 'admin' ? '管理者' : '先生';
+    if (!userDataId) return;
+    const teacherScope = role === 'teacher' ? getTeacherScopeFormValues() : {};
+
+    showCustomConfirm(`${label}ロールを登録しますか？`, async () => {
+        const ok = await upsertLessonUserAccess(authUserId, userDataId, role, teacherScope);
+        if (ok && input) input.value = '';
+    });
+}
+
+export async function linkStudentAuthUser(userDataId, inputId) {
+    const input = document.getElementById(inputId);
+    const authUserId = input?.value.trim();
+    const displayName = getUserDisplayName(userDataId);
+
+    showCustomConfirm(`${displayName} さんを生徒アカウントに紐づけますか？`, async () => {
+        const ok = await upsertLessonUserAccess(authUserId, userDataId, 'student');
+        if (ok && input) input.value = '';
+    });
+}
+
+function sqlString(value) {
+    return String(value || '').replace(/'/g, "''");
+}
+
+function buildAccessSql(authUserId, userDataId, role, scope = {}) {
+    const safeAuthUserId = sqlString(authUserId || 'AUTH_USER_ID_HERE');
+    const safeUserDataId = sqlString(userDataId);
+    const safeRole = sqlString(role);
+    const { scopeType, scopeValue } = role === 'teacher'
+        ? normalizeTeacherScope(scope.scopeType, scope.scopeValue)
+        : { scopeType: 'all', scopeValue: '' };
+    if (role === 'teacher') {
+        const safeScopeType = sqlString(scopeType);
+        const safeScopeValue = sqlString(scopeValue);
+        return `insert into public.lesson_user_access (auth_user_id, user_data_id, role, scope_type, scope_value)\nvalues ('${safeAuthUserId}', '${safeUserDataId}', '${safeRole}', '${safeScopeType}', '${safeScopeValue}')\non conflict (auth_user_id, user_data_id) do update\nset role = excluded.role,\n    scope_type = excluded.scope_type,\n    scope_value = excluded.scope_value;`;
+    }
+    return `insert into public.lesson_user_access (auth_user_id, user_data_id, role)\nvalues ('${safeAuthUserId}', '${safeUserDataId}', '${safeRole}')\non conflict (auth_user_id, user_data_id) do update\nset role = excluded.role;`;
+}
+
+async function copyText(text) {
+    try {
+        await navigator.clipboard.writeText(text);
+        showCustomAlert('コピーしました。');
+    } catch (err) {
+        console.warn('Clipboard copy failed:', err);
+        showCustomAlert(text);
+    }
+}
+
+export function copyStudentAccessSql(userDataId, inputId) {
+    const input = document.getElementById(inputId);
+    copyText(buildAccessSql(input?.value.trim(), userDataId, 'student'));
+}
+
+export function copyRoleAccessSql(role) {
+    const inputId = role === 'admin' ? 'auth-admin-user-id' : 'auth-teacher-user-id';
+    const input = document.getElementById(inputId);
+    const userDataId = getRoleAccessDataId(role);
+    if (!userDataId) return;
+    copyText(buildAccessSql(input?.value.trim(), userDataId, role, role === 'teacher' ? getTeacherScopeFormValues() : {}));
+}
+
+export async function renderAuthAccessOverview() {
+    const tbody = document.getElementById('auth-access-tbody');
+    const status = document.getElementById('auth-access-status');
+    if (!tbody || !status) return;
+    tbody.innerHTML = '';
+
+    if (!supabase || !REQUIRE_SUPABASE_AUTH) {
+        status.innerText = 'Supabase Auth未使用';
+        return;
+    }
+
+    let { data, error } = await supabase
+        .from('lesson_user_access')
+        .select('auth_user_id,user_data_id,role,scope_type,scope_value,created_at')
+        .order('created_at', { ascending: false });
+
+    if (error && isMissingLessonScopeColumnError(error)) {
+        const fallback = await supabase
+            .from('lesson_user_access')
+            .select('auth_user_id,user_data_id,role,created_at')
+            .order('created_at', { ascending: false });
+        data = fallback.data;
+        error = fallback.error;
+    }
+
+    if (error) {
+        status.innerText = '管理者用RLS未適用または読込権限なし';
+        return;
+    }
+
+    status.innerText = `${data?.length || 0}件`;
+    (data || []).forEach(row => {
+        const tr = document.createElement('tr');
+        [row.role, row.user_data_id, row.scope_type || 'all', row.scope_value || '', row.auth_user_id].forEach(value => {
+            const td = document.createElement('td');
+            td.style.cssText = 'border:1px solid #ddd; padding:6px; word-break:break-all;';
+            td.innerText = value || '';
+            tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+    });
+}
+
+export async function renderAuthLinkingAdmin() {
+    const tbody = document.getElementById('auth-link-student-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    const list = Object.keys(users)
+        .filter(userId => users[userId] && !users[userId].isMaster && !isSystemUserId(userId))
+        .map(userId => ({ id: userId, name: getUserDisplayName(userId), user: users[userId] }))
+        .sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+
+    list.forEach((item, index) => {
+        const inputId = `auth-student-${index}`;
+        const tr = document.createElement('tr');
+
+        const nameTd = document.createElement('td');
+        nameTd.style.cssText = 'border:1px solid #ddd; padding:6px; font-weight:bold;';
+        nameTd.innerText = item.name;
+        tr.appendChild(nameTd);
+
+        const idTd = document.createElement('td');
+        idTd.style.cssText = 'border:1px solid #ddd; padding:6px; word-break:break-all; font-family:monospace;';
+        idTd.innerText = item.id;
+        tr.appendChild(idTd);
+
+        const inputTd = document.createElement('td');
+        inputTd.style.cssText = 'border:1px solid #ddd; padding:6px;';
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.id = inputId;
+        input.placeholder = 'Auth User ID';
+        input.style.cssText = 'width:220px; max-width:100%; padding:6px; font-size:13px;';
+        inputTd.appendChild(input);
+        tr.appendChild(inputTd);
+
+        const actionTd = document.createElement('td');
+        actionTd.style.cssText = 'border:1px solid #ddd; padding:6px; white-space:nowrap;';
+        const linkBtn = document.createElement('button');
+        linkBtn.className = 'btn-primary';
+        linkBtn.style.cssText = 'font-size:13px; padding:6px 10px; margin-right:6px;';
+        linkBtn.innerText = '登録';
+        linkBtn.onclick = () => linkStudentAuthUser(item.id, inputId);
+        actionTd.appendChild(linkBtn);
+
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'btn-secondary';
+        copyBtn.style.cssText = 'font-size:13px; padding:6px 10px;';
+        copyBtn.innerText = 'SQL';
+        copyBtn.onclick = () => copyStudentAccessSql(item.id, inputId);
+        actionTd.appendChild(copyBtn);
+        tr.appendChild(actionTd);
+
+        tbody.appendChild(tr);
+    });
+
+    await renderAuthAccessOverview();
 }
 
 export function renderDashboardTable() {
@@ -288,7 +1489,7 @@ export function renderDashboardTable() {
         let isDataFixed = false;
 
         Object.keys(users).forEach(n => { 
-            if(!users[n] || users[n].isMaster || n === '__GLOBAL_SETTINGS__') return;
+            if(!users[n] || users[n].isMaster || isSystemUserId(n)) return;
             
             let uBirth = users[n].birthdate || users[n].birth;
             let uGrade = users[n].grade;
@@ -305,7 +1506,7 @@ export function renderDashboardTable() {
             if (fGrade !== 'all' && uGrade !== fGrade) return;
             if (fGroup !== 'all' && (users[n].group || '') !== fGroup) return; 
             
-            list.push({ name: n, user: users[n] });
+            list.push({ id: n, name: getUserDisplayName(n), user: users[n] });
         });
 
         if (isDataFixed) saveUsers(false); 
@@ -381,8 +1582,8 @@ export function renderVisionDashboardTable() {
 
     let list =[];
     Object.keys(users).forEach(n => {
-        if (!users[n] || users[n].isMaster || n === '__GLOBAL_SETTINGS__') return;
-        list.push({ name: n, user: users[n] });
+        if (!users[n] || users[n].isMaster || isSystemUserId(n)) return;
+        list.push({ id: n, name: getUserDisplayName(n), user: users[n] });
     });
     list.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
 
@@ -432,11 +1633,11 @@ export function adminAddTextTask() {
     const content = document.getElementById('admin-text-content').value;
     if (!title || !time || !content.trim()) return showCustomAlert("タイトル、制限時間、お手本文章をすべて入力してください。");
     
-    if (!users['__GLOBAL_SETTINGS__']) users['__GLOBAL_SETTINGS__'] = { isMaster:true };
-    if (!users['__GLOBAL_SETTINGS__'].textTasks) users['__GLOBAL_SETTINGS__'].textTasks =[];
+    if (!users[GLOBAL_SETTINGS_ID]) users[GLOBAL_SETTINGS_ID] = { isMaster:true };
+    if (!users[GLOBAL_SETTINGS_ID].textTasks) users[GLOBAL_SETTINGS_ID].textTasks =[];
     
     if (editingTextTaskId) {
-        let task = users['__GLOBAL_SETTINGS__'].textTasks.find(t => t.id === editingTextTaskId);
+        let task = users[GLOBAL_SETTINGS_ID].textTasks.find(t => t.id === editingTextTaskId);
         if (task) {
             task.title = title;
             task.time = time;
@@ -445,10 +1646,12 @@ export function adminAddTextTask() {
         }
         editingTextTaskId = null;
         document.getElementById('btn-admin-text-save').innerText = '課題を追加';
+        recordAdminAudit('文章課題更新', { title, time, star });
         showCustomAlert('課題を更新しました！');
     } else {
         const taskId = 'tt_' + Date.now();
-        users['__GLOBAL_SETTINGS__'].textTasks.push({ id: taskId, title: title, time: time, star: star, content: content });
+        users[GLOBAL_SETTINGS_ID].textTasks.push({ id: taskId, title: title, time: time, star: star, content: content });
+        recordAdminAudit('文章課題追加', { title, time, star });
         showCustomAlert('新しい課題を追加しました！');
     }
     
@@ -461,7 +1664,7 @@ export function adminAddTextTask() {
 }
 
 export function editTextTask(id) {
-    const task = users['__GLOBAL_SETTINGS__'].textTasks.find(t => t.id === id);
+    const task = users[GLOBAL_SETTINGS_ID].textTasks.find(t => t.id === id);
     if (!task) return;
     editingTextTaskId = id;
     document.getElementById('admin-text-title').value = task.title;
@@ -473,19 +1676,20 @@ export function editTextTask(id) {
 }
 
 export function moveTextTask(idx, dir) {
-    const tasks = users['__GLOBAL_SETTINGS__'].textTasks;
+    const tasks = users[GLOBAL_SETTINGS_ID].textTasks;
     if (dir === -1 && idx > 0) {
         [tasks[idx-1], tasks[idx]] =[tasks[idx], tasks[idx-1]];
     } else if (dir === 1 && idx < tasks.length - 1) {
         [tasks[idx+1], tasks[idx]] = [tasks[idx], tasks[idx+1]];
     }
+    recordAdminAudit('文章課題並び替え', { index: idx + 1, direction: dir === -1 ? 'up' : 'down' });
     saveUsers(true);
     renderAdminTextTasks();
 }
 
 export function renderAdminTextTasks() {
     const list = document.getElementById('admin-text-task-list'); list.innerHTML = '';
-    const glob = users['__GLOBAL_SETTINGS__'];
+    const glob = users[GLOBAL_SETTINGS_ID];
     if (!glob || !glob.textTasks || glob.textTasks.length === 0) { list.innerHTML = '<li style="color:#999; text-align:center;">まだ課題がありません</li>'; return; }
     glob.textTasks.forEach((task, idx) => {
         const li = document.createElement('li');
@@ -511,7 +1715,9 @@ export function renderAdminTextTasks() {
 
 export function deleteTextTask(idx, title) { 
     showCustomConfirm(`本当に課題「${title}」を削除しますか？`, () => {
-        users['__GLOBAL_SETTINGS__'].textTasks.splice(idx, 1); saveUsers(true); renderAdminTextTasks(); 
+        users[GLOBAL_SETTINGS_ID].textTasks.splice(idx, 1);
+        recordAdminAudit('文章課題削除', { title });
+        saveUsers(true); renderAdminTextTasks();
     });
 }
 
@@ -600,46 +1806,105 @@ export function processAutoRuby() {
     showCustomAlert('✨ 自動ルビ振りが完了しました！\n\n上のテキストボックスの内容を確認し、問題なければ「課題を追加・更新」ボタンを押してください。');
 }
 
-export function exportData() {
-    const dataStr = JSON.stringify(users, null, 2);
+function getBackupDateStamp() {
+    const date = new Date();
+    return `${date.getFullYear()}${(date.getMonth()+1).toString().padStart(2,'0')}${date.getDate().toString().padStart(2,'0')}_${date.getHours().toString().padStart(2,'0')}${date.getMinutes().toString().padStart(2,'0')}`;
+}
+
+function countStudentRows(collection) {
+    if (!collection || typeof collection !== 'object') return 0;
+    return Object.keys(collection).filter(userId => collection[userId] && !collection[userId].isMaster && !isSystemUserId(userId)).length;
+}
+
+function buildBackupPayload() {
+    return {
+        app: 'd-lesson',
+        version: 3,
+        exportedAt: new Date().toISOString(),
+        users,
+        adminAuditLog: loadAdminAuditLog()
+    };
+}
+
+function downloadJsonFile(payload, prefix) {
+    const dataStr = JSON.stringify(payload, null, 2);
     const blob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    const date = new Date();
-    const dateStr = `${date.getFullYear()}${(date.getMonth()+1).toString().padStart(2,'0')}${date.getDate().toString().padStart(2,'0')}`;
-    a.download = `d-lesson_backup_${dateStr}.json`;
+    a.download = `${prefix}_${getBackupDateStamp()}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    return a.download;
+}
+
+function buildImportSummary(file, importedData, importedUsers) {
+    const exportedAt = importedData?.exportedAt ? new Date(importedData.exportedAt).toLocaleString('ja-JP') : '不明';
+    const auditCount = Array.isArray(importedData?.adminAuditLog) ? importedData.adminAuditLog.length : 0;
+    return [
+        '【復元前の確認】現在のデータが上書きされます。',
+        '',
+        `ファイル: ${file.name}`,
+        `バックアップ日時: ${exportedAt}`,
+        `児童データ: ${countStudentRows(importedUsers)}件`,
+        `設定データ: ${importedUsers?.[GLOBAL_SETTINGS_ID] ? 'あり' : 'なし'}`,
+        `操作ログ: ${auditCount}件`,
+        '',
+        '現在のデータは、復元前に自動バックアップとして保存します。',
+        'この内容で復元しますか？'
+    ].join('\n');
+}
+
+export function exportData() {
+    recordAdminAudit('データバックアップ', { students: countStudentRows(users) });
+    const backup = buildBackupPayload();
+    downloadJsonFile(backup, 'd-lesson_backup');
 }
 
 export function importData(event) {
     const file = event.target.files[0];
     if (!file) return;
-    showCustomConfirm('【警告】現在のデータがすべて上書きされます！\n本当に復元してよろしいですか？', () => {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            try {
-                const importedUsers = JSON.parse(e.target.result);
-                if (typeof importedUsers === 'object' && importedUsers !== null) {
-                    // ★注意: ここのusersはmain.js側の参照なので、user.js側のusersを直接更新させる工夫が必要
-                    // ひとまずこのままでもlocalStorage経由で復元できますが、画面リロード推奨
-                    localStorage.setItem('pc_practice_v5_split', JSON.stringify(importedUsers));
-                    saveUsers(true);
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const importedData = JSON.parse(e.target.result);
+            const importedUsers = importedData?.users || importedData;
+            if (typeof importedUsers !== 'object' || importedUsers === null || Array.isArray(importedUsers)) {
+                showCustomAlert('データ形式が正しくありません。');
+                event.target.value = '';
+                return;
+            }
+
+            showCustomConfirm(buildImportSummary(file, importedData, importedUsers), async () => {
+                try {
+                    const autoBackup = buildBackupPayload();
+                    const autoBackupFile = downloadJsonFile(autoBackup, 'd-lesson_before_restore');
+                    await replaceUsers(importedUsers, true);
+                    recordAdminAudit('データ復元', {
+                        file: file.name,
+                        students: countStudentRows(importedUsers),
+                        autoBackup: autoBackupFile
+                    });
                     showCustomAlert('データを正常に復元しました！\n画面を再読み込みします。');
                     setTimeout(() => location.reload(), 1500);
-                } else {
-                    showCustomAlert('データ形式が正しくありません。');
+                } catch (err) {
+                    console.error('Restore failed:', err);
+                    showCustomAlert('復元に失敗しました。現在のデータは変更されていません。');
                 }
-            } catch (err) {
-                showCustomAlert('ファイルの読み込みに失敗しました。JSONファイルを選択してください。');
-            }
-            event.target.value = '';
-        };
-        reader.readAsText(file);
-    });
+            });
+        } catch (err) {
+            showCustomAlert('ファイルの読み込みに失敗しました。JSONファイルを選択してください。');
+        }
+        event.target.value = '';
+    };
+    reader.onerror = () => {
+        showCustomAlert('ファイルの読み込みに失敗しました。');
+        event.target.value = '';
+    };
+    reader.readAsText(file);
 }
 
 export function openThemeCreator() { 
@@ -684,14 +1949,14 @@ export function saveCustomTheme() {
     const bg = document.getElementById('ct-bg').value, text = document.getElementById('ct-text').value, btnBg = document.getElementById('ct-btn-bg').value, btnText = document.getElementById('ct-btn-text').value;
     const isPresent = document.getElementById('ct-present').checked; 
     
-    if (!users['__GLOBAL_SETTINGS__']) users['__GLOBAL_SETTINGS__'] = { isMaster:true }; if (!users['__GLOBAL_SETTINGS__'].globalMistakes) users['__GLOBAL_SETTINGS__'].globalMistakes = {};
-    if (!Array.isArray(users['__GLOBAL_SETTINGS__'].globalMistakes.customThemes)) users['__GLOBAL_SETTINGS__'].globalMistakes.customThemes =[];
+    if (!users[GLOBAL_SETTINGS_ID]) users[GLOBAL_SETTINGS_ID] = { isMaster:true }; if (!users[GLOBAL_SETTINGS_ID].globalMistakes) users[GLOBAL_SETTINGS_ID].globalMistakes = {};
+    if (!Array.isArray(users[GLOBAL_SETTINGS_ID].globalMistakes.customThemes)) users[GLOBAL_SETTINGS_ID].globalMistakes.customThemes =[];
     const newId = 'ct_' + Date.now(); 
-    users['__GLOBAL_SETTINGS__'].globalMistakes.customThemes.push({ id: newId, name: name, bg: bg, text: text, btnBg: btnBg, btnText: btnText });
+    users[GLOBAL_SETTINGS_ID].globalMistakes.customThemes.push({ id: newId, name: name, bg: bg, text: text, btnBg: btnBg, btnText: btnText });
     
     if (isPresent) {
         Object.keys(users).forEach(n => {
-            if (n !== '__GLOBAL_SETTINGS__') {
+            if (!isSystemUserId(n)) {
                 if (!users[n].items) users[n].items =[];
                 if (!users[n].items.includes(newId)) users[n].items.push(newId);
             }
@@ -701,6 +1966,7 @@ export function saveCustomTheme() {
         showCustomAlert('「' + name + '」をガチャのラインナップに追加しました！'); 
     }
     
+    recordAdminAudit('カスタムテーマ追加', { name, present: isPresent ? 'yes' : 'no' });
     saveUsers(true);
     if (typeof window.loadCustomGlobalSettings === 'function') window.loadCustomGlobalSettings();
     closeThemeCreator();
@@ -716,14 +1982,14 @@ export function saveCustomEffect() {
     if(emojis.length === 0) return showCustomAlert('絵文字を1つ以上入力してください');
     const isPresent = document.getElementById('ce-present').checked; 
     
-    if (!users['__GLOBAL_SETTINGS__']) users['__GLOBAL_SETTINGS__'] = { isMaster:true }; if (!users['__GLOBAL_SETTINGS__'].globalMistakes) users['__GLOBAL_SETTINGS__'].globalMistakes = {};
-    if (!Array.isArray(users['__GLOBAL_SETTINGS__'].globalMistakes.customEffects)) users['__GLOBAL_SETTINGS__'].globalMistakes.customEffects =[];
-    const newId = 'ce_' + Date.now(); 
-    users['__GLOBAL_SETTINGS__'].globalMistakes.customEffects.push({ id: newId, name: name, emojis: emojis });
+    if (!users[GLOBAL_SETTINGS_ID]) users[GLOBAL_SETTINGS_ID] = { isMaster:true }; if (!users[GLOBAL_SETTINGS_ID].globalMistakes) users[GLOBAL_SETTINGS_ID].globalMistakes = {};
+    if (!Array.isArray(users[GLOBAL_SETTINGS_ID].globalMistakes.customEffects)) users[GLOBAL_SETTINGS_ID].globalMistakes.customEffects =[];
+    const newId = 'ce_' + Date.now();
+    users[GLOBAL_SETTINGS_ID].globalMistakes.customEffects.push({ id: newId, name: name, emojis: emojis });
     
     if (isPresent) {
         Object.keys(users).forEach(n => {
-            if (n !== '__GLOBAL_SETTINGS__') {
+            if (!isSystemUserId(n)) {
                 if (!users[n].items) users[n].items =[];
                 if (!users[n].items.includes(newId)) users[n].items.push(newId);
             }
@@ -733,6 +1999,7 @@ export function saveCustomEffect() {
         showCustomAlert('「' + name + '」をガチャのラインナップに追加しました！'); 
     }
     
+    recordAdminAudit('カスタム演出追加', { name, present: isPresent ? 'yes' : 'no' });
     saveUsers(true);
     if (typeof window.loadCustomGlobalSettings === 'function') window.loadCustomGlobalSettings();
     closeEffectCreator();
@@ -742,7 +2009,7 @@ export function saveCustomEffect() {
 export function openCustomManager() { const modal = document.getElementById('admin-custom-manage-modal'); if (!modal) return; renderCustomManagerList(); modal.style.display = 'flex'; }
 export function closeCustomManager() { document.getElementById('admin-custom-manage-modal').style.display = 'none'; }
 export function renderCustomManagerList() {
-    const glob = users['__GLOBAL_SETTINGS__'], themeUl = document.getElementById('manage-theme-list'), effectUl = document.getElementById('manage-effect-list');
+    const glob = users[GLOBAL_SETTINGS_ID], themeUl = document.getElementById('manage-theme-list'), effectUl = document.getElementById('manage-effect-list');
     if (!themeUl || !effectUl) return; themeUl.innerHTML = ''; effectUl.innerHTML = '';
     let hasTheme = false;
     if (glob && glob.globalMistakes && Array.isArray(glob.globalMistakes.customThemes)) {
@@ -763,8 +2030,9 @@ export function renderCustomManagerList() {
 }
 export function deleteCustomElement(type, idx, name) {
     showCustomConfirm(`本当に「${name}」を削除しますか？\n（※削除後、設定を反映するためにページが再読み込みされます）`, () => {
-        const glob = users['__GLOBAL_SETTINGS__'];
+    const glob = users[GLOBAL_SETTINGS_ID];
         if (type === 'theme') glob.globalMistakes.customThemes.splice(idx, 1); else if (type === 'effect') glob.globalMistakes.customEffects.splice(idx, 1);
+        recordAdminAudit('カスタム要素削除', { type, name });
         saveUsers(true); showCustomAlert('削除しました。画面を再読み込みします。'); setTimeout(() => location.reload(), 1500);
     });
 }

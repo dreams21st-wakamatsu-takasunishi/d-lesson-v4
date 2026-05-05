@@ -43,6 +43,28 @@ Auth User ID を使って、`lesson_user_access` に行を追加する。
 重要: `lesson_user_access.auth_user_id` は `auth.users.id` に存在するUUIDだけ登録できる。
 `00000000-0000-0000-0000-000000000000` は未登録ユーザー検証用のダミーなので、ここには登録しない。
 
+最初の管理者アカウントだけは、必ずSQL Editorで登録する。管理者行が1件入った後は、管理者画面の「Auth連携」から先生・生徒・追加管理者を登録できる。
+
+管理者画面から `lesson_user_access` を登録・一覧表示する場合は、次もSQL Editorで実行する。
+
+```sql
+supabase/sql/admin_lesson_user_access_policies.sql
+```
+
+管理者画面から児童削除・バックアップ復元を行う場合は、次もSQL Editorで実行する。
+
+```sql
+supabase/sql/admin_user_data_delete_policies.sql
+```
+
+先生アカウントをグループ単位で制限する場合は、次も実行する。
+
+```sql
+supabase/sql/teacher_group_scope_policies.sql
+```
+
+SQL Editorにはファイル名だけではなく、ファイルの中身を貼り付けて実行する。
+
 SQL Editorで次のテンプレートを使う。
 
 ```sql
@@ -57,11 +79,13 @@ TEACHER_AUTH_USER_ID_HERE
 STUDENT_AUTH_USER_ID_HERE
 ```
 
-生徒の `user_data_id` は、実際の `test_user_data.id` と完全一致させる。
+生徒の `user_data_id` は、実際の `test_user_data.id` と完全一致させる。新規児童は `student_...` の内部IDになり、画面上の名前は `data.displayName` に入る。
 
 ```sql
-('STUDENT_AUTH_USER_ID_HERE', 'テスト太郎', 'student')
+('STUDENT_AUTH_USER_ID_HERE', 'student_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx', 'student')
 ```
+
+既存の名前ID行を内部IDへ移す場合は、[児童IDの内部ID移行手順](internal-user-id-migration.md) に沿って確認する。
 
 ## 4. 公開URL用の環境変数を設定する
 
@@ -75,6 +99,8 @@ VITE_SUPABASE_USE_TEST_TABLE=true
 VITE_ENABLE_LEGACY_SUPABASE_SYNC=false
 VITE_REQUIRE_SUPABASE_AUTH=true
 VITE_ENABLE_RLS_CLOUD_SYNC=true
+VITE_ENABLE_SETTINGS_TABLE=false
+VITE_ALLOW_LEGACY_ADMIN_PASS=false
 ```
 
 公開URLでは設定しない。
@@ -99,7 +125,9 @@ VITE_LEGACY_ADMIN_PASS=
 ### 先生
 
 - 先生アカウントでログインできる。
-- 必要な児童データを確認できる。
+- `全児童` 設定なら全児童、`グループ指定` 設定なら指定グループの児童だけを確認できる。
+- ヘッダーとホーム画面に `先生確認モード` が表示される。
+- 先生アカウントでは児童データを書き換えない。ステージ確認をしても、操作直後と再読み込み後のコイン・進捗が変わらないことを確認する。
 - 想定外の管理操作ができないか確認する。
 
 ### 生徒
@@ -114,13 +142,14 @@ VITE_LEGACY_ADMIN_PASS=
 ### ログイン後に誰も表示されない
 
 - `lesson_user_access` に Auth User ID が登録されているか確認する。
-- `user_data_id` が `test_user_data.id` と一致しているか確認する。
+- `user_data_id` が `test_user_data.id` と一致しているか確認する。`data.displayName` ではなく、行の `id` を使う。
 - `VITE_SUPABASE_TABLE` が検証対象テーブルと一致しているか確認する。
 
 ### 保存できない
 
 - Console に Supabase の RLS エラーが出ていないか確認する。
 - `lesson_user_access.role` が正しいか確認する。
+- 先生が見える範囲がおかしい場合、`lesson_user_access.scope_type` / `scope_value` と児童データの `group` が一致しているか確認する。
 - 生徒の場合、自分以外の `user_data_id` に保存しようとしていないか確認する。
 
 ### すべての児童名が見えてしまう
@@ -138,6 +167,19 @@ SQL Editorでの簡易確認には、次のテンプレートを使う。
 
 ```sql
 supabase/sql/verify_rls_access.sql
+```
+
+全体設定を `lesson_settings` に分ける場合は、RLS検証後に次も実行する。
+
+```sql
+supabase/sql/lesson_settings_table.sql
+```
+
+その後、`VITE_ENABLE_SETTINGS_TABLE=true` にして [lesson_settings 移行手順](lesson-settings-table.md) に沿って確認する。
+診断には次も使える。
+
+```sql
+supabase/sql/verify_lesson_settings.sql
 ```
 
 ## 8. 本番データへ移る条件

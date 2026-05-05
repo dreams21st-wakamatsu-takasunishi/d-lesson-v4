@@ -9,6 +9,7 @@
 - `VITE_REQUIRE_SUPABASE_AUTH=true` のとき、Supabase Auth のログイン前に名簿画面を出さない。
 - Authログアウト時に、画面上に残っている学年・ユーザー一覧を消す。
 - 旧管理者パスワードの直書きをやめ、必要な場合だけ `.env.local` の `VITE_LEGACY_ADMIN_PASS` で渡す。
+- 旧管理者パスワードは、本番ビルドまたは `VITE_REQUIRE_SUPABASE_AUTH=true` ではコード側でも無効化する。
 
 `.env.local` の例:
 
@@ -18,6 +19,7 @@ VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxxx
 VITE_SUPABASE_TABLE=test_user_data
 VITE_ENABLE_LEGACY_SUPABASE_SYNC=false
 VITE_REQUIRE_SUPABASE_AUTH=true
+VITE_ALLOW_LEGACY_ADMIN_PASS=false
 # VITE_LEGACY_ADMIN_PASS=change-this-local-only
 ```
 
@@ -29,10 +31,11 @@ VITE_REQUIRE_SUPABASE_AUTH=true
 
 `VITE_LEGACY_ADMIN_PASS` は公開URLでは設定しない。
 この値はビルド後のJavaScriptに含まれるため、教室内テスト用の簡易ロックとしてだけ使う。
+ローカル退避として使う場合も、`VITE_REQUIRE_SUPABASE_AUTH=false` かつ `VITE_ALLOW_LEGACY_ADMIN_PASS=true` の開発サーバーでのみ有効になる。
 
 ## 現在のリスク
 
-- 旧データ構造は `user_data` の各行に児童名を `id` として持っている。
+- 旧データ構造は `user_data` の各行に児童名を `id` として持っている。アプリ側は `displayName` と内部IDを分ける準備済み。
 - 旧起動導線は、ログイン前に全児童データを読み込んで学年・名前を表示する。
 - 管理者パスワードはフロントエンド内にあるため、公開URLでは本格的な保護にならない。
 - `localStorage` には端末で読める形のデータが残る。
@@ -42,7 +45,7 @@ VITE_REQUIRE_SUPABASE_AUTH=true
 
 1. Supabase Auth を入れる。
 2. 児童・先生・管理者を Auth ユーザーに紐づける。
-3. 児童名をURL/JS/DB主キーから直接見えないUUIDに置き換える。
+3. 新規児童は `student_...` の内部IDで作成し、画面表示は `data.displayName` を使う。
 4. RLSで「児童は自分だけ」「先生は担当分だけ」「管理者は全体」を制御する。
 5. 管理者操作は、ブラウザ内パスワードではなく Auth ロールまたは Edge Function 経由にする。
 
@@ -51,7 +54,7 @@ VITE_REQUIRE_SUPABASE_AUTH=true
 1. Supabase の Authentication で先生・管理者用アカウントを作る。
 2. 公開URL用の `.env.local` では `VITE_REQUIRE_SUPABASE_AUTH=true` にする。
 3. `supabase/sql/rls_legacy_user_data_baseline.sql` を実行する前に、Authユーザーとアクセス対応表を準備する。
-4. 児童名を `user_data.id` に直接置く構造を、UUIDベースの構造へ移行する。
+4. 既存行には `supabase/sql/prepare_user_display_names.sql` で `displayName` / `userDataId` を追加し、必要に応じて `verify_internal_user_ids.sql` と `migrate_test_user_data_named_ids.sql` で内部IDへ移す。
 5. 管理者パスワードをフロント内チェックから外し、Authロールまたはサーバー側処理へ移す。
 
 ## 参考資料

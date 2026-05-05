@@ -24,8 +24,6 @@ import {
 import { GACHA_ITEMS } from './data/gacha-items.js';
 
 import { toggleSFX, toggleBGM, SoundManager, initAudio } from './utils/sound.js';
-import { calculateGrade, sortGrades } from './utils/helpers.js';
-
 import {
   users,
   currentUser,
@@ -41,7 +39,15 @@ import {
   setCurrentUser,
   setCurrentSelectedGrade,
   hasLessonRole,
-  REQUIRE_SUPABASE_AUTH
+  GLOBAL_SETTINGS_ID,
+  MASTER_DEBUG_ID,
+  getUserDisplayName,
+  isSystemUserId,
+  canWriteCurrentUserRow,
+  recordPracticeActivity,
+  getPracticeLogs,
+  getLatestPracticeActivity,
+  formatPracticeActivity
 } from './api/user.js';
 
 import * as Admin from './ui/admin.js';
@@ -51,6 +57,7 @@ import { createBtn } from './utils/dom.js';
 import { getRewardText } from './utils/rewards.js';
 import { hasLegacyAdminPass, verifyLegacyAdminPass } from './utils/security.js';
 import { getStageName } from './utils/stages.js';
+import { createConfetti as createConfettiForEffect } from './ui/effects.js';
 
 import {
     showScreen,
@@ -84,7 +91,6 @@ changeEffect
 import {
     startVisionGame,
     showVisionCompare,
-    renderVisionDashboardTable,
     renderVisionMenu
 } from './games/vision.js';
 
@@ -101,7 +107,7 @@ import {
 
 window.addEventListener('DOMContentLoaded', () => {
 
-    loadUsers();
+    void loadUsers().then(() => updateGlobalHeader());
 
     document.addEventListener("click", () => {
         initAudio();
@@ -177,146 +183,6 @@ export function convertNameToRomaji(name) {
         }
     }
     return romaji || 'NAME';
-}
-
-// ----------------------------------------------------
-// 【修正版】ダッシュボード描画関数群（エラー回避対応済）
-// ----------------------------------------------------
-function switchDashTab(tab) {
-    if(tab === 'basic') {
-        document.getElementById('dash-basic').style.display = 'block';
-        document.getElementById('dash-vision').style.display = 'none';
-        document.getElementById('tab-btn-basic').style.background = '#2196F3';
-        document.getElementById('tab-btn-vision').style.background = '#9e9e9e';
-        renderDashboardTable();
-    } else {
-        document.getElementById('dash-basic').style.display = 'none';
-        document.getElementById('dash-vision').style.display = 'block';
-        document.getElementById('tab-btn-basic').style.background = '#9e9e9e';
-        document.getElementById('tab-btn-vision').style.background = '#9C27B0';
-        renderVisionDashboardTable();
-    }
-}
-
-function updateAdminUserTable() {
-    const tbody = document.getElementById('admin-user-tbody'); tbody.innerHTML = '';
-    let list = Object.keys(users).filter(n => !users[n].isMaster && n !== '__GLOBAL_SETTINGS__').map(n => ({ name: n, user: users[n] }));
-    list.sort((a,b) => a.name.localeCompare(b.name, 'ja'));
-    list.forEach(item => {
-        let uBirth = item.user.birthdate || item.user.birth;
-        let dispGrade = (item.user.grade && String(item.user.grade) !== 'undefined') ? item.user.grade : calculateGrade(uBirth);
-        
-        let tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td style="padding:5px; border:1px solid #ddd;"><input type="radio" name="asel" class="admin-user-check" value="${item.name}"></td>
-            <td style="padding:5px; border:1px solid #ddd; font-weight:bold;">${item.name}</td>
-            <td style="padding:5px; border:1px solid #ddd;">${dispGrade}</td>
-            <td style="padding:5px; border:1px solid #ddd;"><input type="text" value="${item.user.group || ''}" onchange="updateUserGroup('${item.name}', this.value)" style="width:80px; padding:2px; font-size:12px; border:1px solid #ccc;"></td>
-            <td style="padding:5px; border:1px solid #ddd;">Lv.${item.user.mouseLevel || 1}</td>
-            <td style="padding:5px; border:1px solid #ddd;">${item.user.keyboardSequence || 0}/${STAGE_ORDER.length}</td>
-        `;
-        tbody.appendChild(tr);
-    });
-}
-
-function updateUserGroup(name, newGroup) {
-    if(users[name]) { 
-        users[name].group = newGroup.trim(); 
-        saveUsers(false); 
-        renderDashboardTable(); 
-    }
-}
-
-function renderDashboardTable() {
-    try {
-        const tbody = document.getElementById('dash-tbody');
-        const gradeSelect = document.getElementById('dash-filter-grade');
-        const grpSelect = document.getElementById('dash-filter-group'); 
-        const sortSelect = document.getElementById('dash-sort');
-        if(!tbody || !gradeSelect || !grpSelect || !sortSelect) return;
-
-        const fGrade = gradeSelect.value || 'all';
-        const fGroup = grpSelect.value || 'all';
-        const sortVal = sortSelect.value || 'name';
-
-        let existingGrades = new Set();
-        let groups = new Set();
-        let list =[];
-        let isDataFixed = false;
-
-        Object.keys(users).forEach(n => { 
-            if(!users[n] || users[n].isMaster || n === '__GLOBAL_SETTINGS__') return;
-            
-            let uBirth = users[n].birthdate || users[n].birth;
-            let uGrade = users[n].grade;
-            if (!uGrade || String(uGrade) === 'undefined') {
-                uGrade = calculateGrade(uBirth);
-                users[n].grade = uGrade; 
-                users[n].birthdate = uBirth; 
-                isDataFixed = true;
-            }
-
-            existingGrades.add(uGrade);
-            if(users[n].group) groups.add(users[n].group);
-
-            if (fGrade !== 'all' && uGrade !== fGrade) return;
-            if (fGroup !== 'all' && (users[n].group || '') !== fGroup) return; 
-            
-            list.push({ name: n, user: users[n] });
-        });
-
-        if (isDataFixed) saveUsers(false); 
-
-        gradeSelect.innerHTML = '<option value="all">すべての学年</option>';
-        sortGrades(Array.from(existingGrades)).forEach(g => {
-            let opt = document.createElement('option'); opt.value = g; opt.innerText = g;
-            if(g === fGrade) opt.selected = true;
-            gradeSelect.appendChild(opt);
-        });
-
-        grpSelect.innerHTML = '<option value="all">すべてのグループ</option>';
-        Array.from(groups).sort().forEach(g => {
-            let opt = document.createElement('option'); opt.value = g; opt.innerText = g;
-            if(g === fGroup) opt.selected = true;
-            grpSelect.appendChild(opt);
-        });
-
-        if (sortVal === 'name') list.sort((a,b) => a.name.localeCompare(b.name, 'ja'));
-        else if (sortVal === 'mouse_desc') list.sort((a,b) => (b.user.mouseLevel || 0) - (a.user.mouseLevel || 0));
-        else if (sortVal === 'kb_desc') list.sort((a,b) => (b.user.keyboardSequence || 0) - (a.user.keyboardSequence || 0));
-
-        tbody.innerHTML = '';
-        list.forEach(item => {
-            let tr = document.createElement('tr');
-            
-            let tdName = document.createElement('td'); 
-            tdName.style.cssText = 'border:1px solid #ccc; padding:8px; font-weight:bold;'; 
-            let grpBadge = item.user.group ? `<span style="font-size:12px; color:#666; background:#e0e0e0; padding:2px 6px; border-radius:10px; margin-left:8px;">${item.user.group}</span>` : '';
-            tdName.innerHTML = item.name + grpBadge; 
-            tr.appendChild(tdName);
-
-            let tdGrade = document.createElement('td'); 
-            tdGrade.style.cssText = 'border:1px solid #ccc; padding:8px;'; 
-            tdGrade.innerText = item.user.grade; 
-            tr.appendChild(tdGrade);
-
-            let tdMouse = document.createElement('td'); 
-            tdMouse.style.cssText = 'border:1px solid #ccc; padding:8px;';
-            let mouseLevel = item.user.mouseLevel || 0;
-            let mousePct = Math.floor((mouseLevel / 7) * 100);
-            tdMouse.innerHTML = `<div style="width:100%; background:#eee; border-radius:5px;"><div style="width:${mousePct}%; background:#2196F3; color:#fff; text-align:center; font-size:12px; border-radius:5px;">${mousePct}%</div></div>`; 
-            tr.appendChild(tdMouse);
-
-            let tdKb = document.createElement('td'); 
-            tdKb.style.cssText = 'border:1px solid #ccc; padding:8px;';
-            let kbSeq = item.user.keyboardSequence || 0;
-            let kbPct = Math.floor((kbSeq / STAGE_ORDER.length) * 100);
-            tdKb.innerHTML = `<div style="width:100%; background:#eee; border-radius:5px;"><div style="width:${kbPct}%; background:#FF9800; color:#fff; text-align:center; font-size:12px; border-radius:5px;">${kbPct}%</div></div>`; 
-            tr.appendChild(tdKb);
-
-            tbody.appendChild(tr);
-        });
-    } catch(e) { console.error(e); }
 }
 
 /* =========================================================
@@ -455,22 +321,34 @@ function endMinigame() {
     document.getElementById('mg-final-score').innerText = scoreText;
     
     let isNewRecord = false; let u = users[currentUser];
+    const canSaveResult = canWriteCurrentUserRow();
     if (!u.examRecords) u.examRecords = {}; 
 
     if (currentMinigameType === 'd_challenge') {
         let prev = u.examRecords['mg_d_challenge'] || u.dChallengeHighscore || 0;
-        if (mgScore > prev) { u.examRecords['mg_d_challenge'] = mgScore; u.dChallengeHighscore = mgScore; isNewRecord = true; saveUsers(false); }
+        if (canSaveResult && mgScore > prev) { u.examRecords['mg_d_challenge'] = mgScore; u.dChallengeHighscore = mgScore; isNewRecord = true; }
     } else {
         let prev = u.examRecords['mg_meteor'] || u.minigameHighscore || 0;
-        if (mgScore > prev) { u.examRecords['mg_meteor'] = mgScore; u.minigameHighscore = mgScore; isNewRecord = true; saveUsers(false); }
+        if (canSaveResult && mgScore > prev) { u.examRecords['mg_meteor'] = mgScore; u.minigameHighscore = mgScore; isNewRecord = true; }
+    }
+
+    if (canSaveResult) {
+        recordPracticeActivity({
+            category: 'minigame',
+            title: currentMinigameType === 'd_challenge' ? 'Dチャレンジ' : 'タイピングゲーム',
+            detail: isNewRecord ? '新記録' : '練習完了',
+            amount: `スコア ${mgScore}点`,
+            coins: 0
+        });
+        saveUsers(false);
     }
     
     let rankHtml = `<h3 style="margin-top:0; color:#E91E63; border-bottom:2px solid #E91E63;">👑 トップ5 👑</h3><ul style="list-style:none; padding:0; font-size:20px; text-align:left; color:#333;">`;
     let ranking =[]; 
     Object.keys(users).forEach(n => { 
-        if (!users[n].isMaster && n !== '__GLOBAL_SETTINGS__') {
+        if (!users[n].isMaster && !isSystemUserId(n)) {
             let s = currentMinigameType === 'd_challenge' ? (users[n].examRecords?.['mg_d_challenge'] || users[n].dChallengeHighscore || 0) : (users[n].examRecords?.['mg_meteor'] || users[n].minigameHighscore || 0);
-            if (s > 0) ranking.push({ name: n, score: s }); 
+            if (s > 0) ranking.push({ id: n, name: getUserDisplayName(n), score: s });
         }
     }); 
     ranking.sort((a, b) => b.score - a.score);
@@ -478,12 +356,12 @@ function endMinigame() {
     let displayRank = ranking.slice(0, 5); 
     displayRank.forEach((r, i) => { 
         let medal =['🥇', '🥈', '🥉', '４.', '５.'][i]; 
-        let isMe = (r.name === currentUser) ? 'background:#fff9c4; font-weight:bold; border-radius:5px;' : ''; 
+        let isMe = (r.id === currentUser) ? 'background:#fff9c4; font-weight:bold; border-radius:5px;' : '';
         rankHtml += `<li style="padding:5px; margin-bottom:5px; ${isMe}">${medal} ${r.name} : ${r.score} 点</li>`; 
     });
     rankHtml += `</ul>`; 
     
-    let myRankIdx = ranking.findIndex(r => r.name === currentUser);
+    let myRankIdx = ranking.findIndex(r => r.id === currentUser);
     let myRankText = myRankIdx !== -1 ? `あなたの順位： ${myRankIdx + 1} 位` : `あなたの順位： ランク外`;
     rankHtml += `<div style="margin-top: 15px; font-weight: bold; font-size: 22px; color: #1565C0; border-top: 2px dashed #90CAF9; padding-top: 10px;">${myRankText}</div>`;
 
@@ -667,11 +545,11 @@ function goToRecords() { renderRecords(); showScreen('screen-records'); }
 function goToVisionMenu() { renderVisionMenu(); showScreen('screen-vision-menu'); }
 
 function enterMasterMode() {
-    if (!users['Master_Debug']) {
-        users['Master_Debug'] = { mouseLevel:7, keyboardSequence:999, examRecords:{}, textRecords:{}, globalMistakes:{}, theme:'default', birthdate:'', isMaster:true };
+    if (!users[MASTER_DEBUG_ID]) {
+        users[MASTER_DEBUG_ID] = { mouseLevel:7, keyboardSequence:999, examRecords:{}, textRecords:{}, globalMistakes:{}, theme:'default', birthdate:'', isMaster:true };
     }
     document.getElementById('screen-title').classList.remove('active');
-    login('Master_Debug');
+    login(MASTER_DEBUG_ID);
 }
 
 function loginAsMaster() {
@@ -680,7 +558,7 @@ function loginAsMaster() {
         return;
     }
 
-    if (REQUIRE_SUPABASE_AUTH && !hasLegacyAdminPass()) {
+    if (!hasLegacyAdminPass()) {
         showCustomAlert('先生または管理者アカウントでログインしてください。');
         return;
     }
@@ -692,6 +570,17 @@ function loginAsMaster() {
             alert('パスワードが違います');
         }
     });
+}
+
+function updateTitleRoleActions() {
+    const teacherPreviewBtn = document.getElementById('title-teacher-preview-btn');
+    const adminBtn = document.getElementById('title-admin-btn');
+    const canUseLegacyPass = hasLegacyAdminPass();
+    const canUseTeacherPreview = hasLessonRole('teacher', 'admin') || canUseLegacyPass;
+    const canUseAdmin = hasLessonRole('admin') || canUseLegacyPass;
+
+    if (teacherPreviewBtn) teacherPreviewBtn.style.display = canUseTeacherPreview ? 'inline-flex' : 'none';
+    if (adminBtn) adminBtn.style.display = canUseAdmin ? 'inline-flex' : 'none';
 }
 
 function goToWeakTraining() {
@@ -932,25 +821,128 @@ function backToRecordMenu() {
     if(users[currentUser]) document.getElementById('global-coin-display').innerText = `💰 ${users[currentUser].coins || 0}`;
 }
 
+function appendPracticeMetric(container, label, value, color) {
+    const box = document.createElement('div');
+    box.style.cssText = `flex:1; min-width:160px; background:#fff; border:2px solid ${color}; border-radius:8px; padding:12px; text-align:center; box-sizing:border-box;`;
+
+    const labelEl = document.createElement('div');
+    labelEl.textContent = label;
+    labelEl.style.cssText = 'font-size:13px; color:#546e7a; font-weight:bold; margin-bottom:6px;';
+    box.appendChild(labelEl);
+
+    const valueEl = document.createElement('div');
+    valueEl.textContent = value;
+    valueEl.style.cssText = `font-size:26px; color:${color}; font-weight:bold;`;
+    box.appendChild(valueEl);
+
+    container.appendChild(box);
+}
+
+function renderPracticeHistorySection(container) {
+    container.innerHTML = '';
+    const logs = getPracticeLogs(currentUser);
+    const todayKey = new Date().toLocaleDateString('ja-JP');
+    const todayCount = logs.filter(log => {
+        const at = Date.parse(log.at);
+        return at && new Date(at).toLocaleDateString('ja-JP') === todayKey;
+    }).length;
+    const totalCoins = logs.reduce((sum, log) => sum + (Number(log.coins) || 0), 0);
+
+    const summary = document.createElement('div');
+    summary.style.cssText = 'display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px;';
+    appendPracticeMetric(summary, '今日の取り組み', `${todayCount}回`, '#2196F3');
+    appendPracticeMetric(summary, '記録された回数', `${logs.length}回`, '#4CAF50');
+    appendPracticeMetric(summary, '記録内の獲得コイン', `${totalCoins}コイン`, '#FF9800');
+    container.appendChild(summary);
+
+    const latestInfo = formatPracticeActivity(logs[0]);
+    const latestBox = document.createElement('div');
+    latestBox.style.cssText = 'background:#e3f2fd; border:2px solid #90caf9; border-radius:8px; padding:14px; margin-bottom:16px; text-align:left;';
+    latestBox.innerHTML = '<div style="font-weight:bold; color:#0d47a1; margin-bottom:6px;">前回の練習</div>';
+    const latestTitle = document.createElement('div');
+    latestTitle.textContent = logs[0] ? `${latestInfo.title}${latestInfo.when ? ` (${latestInfo.when})` : ''}` : latestInfo.title;
+    latestTitle.style.cssText = 'font-size:20px; font-weight:bold; color:#263238;';
+    latestBox.appendChild(latestTitle);
+    const latestDetail = document.createElement('div');
+    latestDetail.textContent = latestInfo.detail;
+    latestDetail.style.cssText = 'font-size:14px; color:#455a64; margin-top:4px;';
+    latestBox.appendChild(latestDetail);
+    container.appendChild(latestBox);
+
+    const listTitle = document.createElement('h3');
+    listTitle.textContent = '取り組み履歴';
+    listTitle.style.cssText = 'margin:0 0 10px; color:#37474f;';
+    container.appendChild(listTitle);
+
+    const list = document.createElement('div');
+    list.style.cssText = 'display:flex; flex-direction:column; gap:8px; max-height:430px; overflow:auto; padding-right:6px;';
+    if (logs.length === 0) {
+        const empty = document.createElement('div');
+        empty.textContent = 'まだ練習履歴がありません。練習を終えるとここに記録されます。';
+        empty.style.cssText = 'background:#fff; border:1px dashed #b0bec5; border-radius:8px; padding:18px; color:#607d8b; text-align:center;';
+        list.appendChild(empty);
+    } else {
+        logs.slice(0, 30).forEach(log => {
+            const info = formatPracticeActivity(log);
+            const row = document.createElement('div');
+            row.style.cssText = 'display:grid; grid-template-columns:140px 1fr auto; gap:12px; align-items:center; background:#fff; border:1px solid #d7dee8; border-radius:8px; padding:10px 12px; text-align:left;';
+
+            const when = document.createElement('div');
+            when.textContent = info.when || '-';
+            when.style.cssText = 'font-size:13px; color:#607d8b; font-weight:bold;';
+            row.appendChild(when);
+
+            const body = document.createElement('div');
+            const title = document.createElement('div');
+            title.textContent = info.title;
+            title.style.cssText = 'font-size:16px; color:#263238; font-weight:bold;';
+            const detail = document.createElement('div');
+            detail.textContent = info.detail;
+            detail.style.cssText = 'font-size:13px; color:#546e7a; margin-top:3px;';
+            body.appendChild(title);
+            body.appendChild(detail);
+            row.appendChild(body);
+
+            const coins = document.createElement('div');
+            coins.textContent = info.coinsText || '';
+            coins.style.cssText = 'font-size:14px; color:#f57c00; font-weight:bold; white-space:nowrap;';
+            row.appendChild(coins);
+            list.appendChild(row);
+        });
+    }
+    container.appendChild(list);
+}
+
 export function renderRecords() {
     backToRecordMenu();
     const u = users[currentUser];
     if(!u) return;
+    const canSaveResult = canWriteCurrentUserRow();
+
+    const pCont = document.getElementById('rec-practice');
+    if (pCont) renderPracticeHistorySection(pCont);
 
     const gCont = document.getElementById('rec-gacha'); gCont.innerHTML = '';
     gCont.innerHTML = `<div class="gacha-section">
         <div class="coin-display">💰 コイン: ${u.coins || 0} 枚</div>
-        <p style="margin: 5px 0 15px 0;">ガチャをひいて アイテムをゲットしよう！</p>
-        <div style="display:flex; justify-content:center; gap:15px; flex-wrap:wrap;">
-            <button class="btn-gacha" style="padding: 10px 20px; font-size: 20px;" onclick="drawGacha(1)">1回 (100)</button>
-            <button class="btn-gacha" style="padding: 10px 20px; font-size: 20px; background:linear-gradient(135deg, #4CAF50, #8BC34A);" onclick="drawGacha(10)">10回 (1000)</button>
-            <button class="btn-gacha" style="padding: 10px 20px; font-size: 20px; background:linear-gradient(135deg, #E91E63, #9C27B0);" onclick="drawGacha(1, true)">🔮 レア確定 (500)</button>
-        </div>
+        ${canSaveResult ? '<p style="margin: 5px 0 15px 0;">ガチャをひいて アイテムをゲットしよう！</p>' : '<p style="margin: 5px 0 15px 0; color:#00695c; font-weight:bold;">先生確認モード：ガチャ・チケット・着せ替えは保存されません</p>'}
+        ${canSaveResult ? `
+            <div style="display:flex; justify-content:center; gap:15px; flex-wrap:wrap;">
+                <button class="btn-gacha" style="padding: 10px 20px; font-size: 20px;" onclick="drawGacha(1)">1回 (100)</button>
+                <button class="btn-gacha" style="padding: 10px 20px; font-size: 20px; background:linear-gradient(135deg, #4CAF50, #8BC34A);" onclick="drawGacha(10)">10回 (1000)</button>
+                <button class="btn-gacha" style="padding: 10px 20px; font-size: 20px; background:linear-gradient(135deg, #E91E63, #9C27B0);" onclick="drawGacha(1, true)">🔮 レア確定 (500)</button>
+            </div>
+        ` : `
+            <div style="padding:12px; border:2px solid #80cbc4; border-radius:8px; background:#e0f2f1; color:#004d40; font-weight:bold;">確認専用のため、保存を伴う操作は無効です。</div>
+        `}
     </div>`;
     if (u.tickets && u.tickets.length > 0) {
         gCont.innerHTML += `<h3 style="color:#FF5722;">🎟️ もっている ひきかえけん</h3>`;
         u.tickets.forEach((t, idx) => {
-            gCont.innerHTML += `<div class="ticket-card"><div><div class="ticket-name">${t.name}</div><div style="font-size:12px; color:#555;">ゲットした日: ${t.date}</div></div><button class="ticket-btn" onclick="useTicket(${idx})">先生につかってもらう</button></div>`;
+            const ticketButton = canSaveResult
+                ? `<button class="ticket-btn" onclick="useTicket(${idx})">先生につかってもらう</button>`
+                : '<button class="ticket-btn" disabled style="opacity:0.5; cursor:not-allowed;">確認専用</button>';
+            gCont.innerHTML += `<div class="ticket-card"><div><div class="ticket-name">${t.name}</div><div style="font-size:12px; color:#555;">ゲットした日: ${t.date}</div></div>${ticketButton}</div>`;
         });
     }
 
@@ -1061,6 +1053,8 @@ export function renderRecords() {
 // 修正後
 
 export function updateGlobalHeader() {
+    updateTitleRoleActions();
+
     if (currentUser && users[currentUser]) {
         const coinDisplay = document.getElementById('global-coin-display');
         if (coinDisplay) coinDisplay.innerText = `💰 ${users[currentUser].coins || 0}`;
@@ -1070,6 +1064,24 @@ export function updateGlobalHeader() {
 export function updateHomeDashboard() {
     if (!currentUser || !users[currentUser]) return;
     const u = users[currentUser];
+
+    const lastPracticeCard = document.getElementById('last-practice-card');
+    if (lastPracticeCard) {
+        const latest = formatPracticeActivity(getLatestPracticeActivity(currentUser));
+        lastPracticeCard.innerHTML = '';
+        const label = document.createElement('div');
+        label.textContent = '前回の練習';
+        label.style.cssText = 'font-size:13px; color:#00695c; font-weight:bold; margin-bottom:4px;';
+        const title = document.createElement('div');
+        title.textContent = latest.when ? `${latest.title} (${latest.when})` : latest.title;
+        title.style.cssText = 'font-size:18px; color:#263238; font-weight:bold;';
+        const detail = document.createElement('div');
+        detail.textContent = latest.detail;
+        detail.style.cssText = 'font-size:13px; color:#546e7a; margin-top:3px;';
+        lastPracticeCard.appendChild(label);
+        lastPracticeCard.appendChild(title);
+        lastPracticeCard.appendChild(detail);
+    }
     
     const maxMouse = 7; const mLv = u.mouseLevel || 0;
     const mPct = Math.floor((mLv / maxMouse) * 100);
@@ -1105,28 +1117,7 @@ export function updateHomeDashboard() {
 
 export function createConfetti() {
     const u = users[currentUser]; const effId = u ? (u.activeEffect || 'default') : 'default';
-    const effectData = EFFECTS.find(e => e.id === effId) || EFFECTS[0];
-    const isEmoji = effectData.emojis && effectData.emojis.length > 0;
-    const particleCount = isEmoji ? 60 : 100;
-    
-    const colors =['#f44336', '#e91e63', '#9c27b0', '#673ab7', '#3f51b5', '#2196f3', '#03a9f4', '#00bcd4', '#009688', '#4caf50', '#8bc34a', '#cddc39', '#ffeb3b', '#ffc107', '#ff9800', '#ff5722'];
-
-    for (let i = 0; i < particleCount; i++) {
-        const c = document.createElement('div'); c.className = 'confetti'; c.style.left = Math.random() * 100 + 'vw';
-        
-        if (isEmoji) {
-            c.innerText = effectData.emojis[Math.floor(Math.random() * effectData.emojis.length)]; 
-            c.style.fontSize = (Math.random() * 25 + 20) + 'px'; 
-            c.style.background = 'transparent'; c.style.boxShadow = 'none'; c.style.clipPath = 'none';
-        } else { 
-            c.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)]; 
-            c.style.width = '15px'; c.style.height = '15px';
-        }
-        
-        c.style.animationDuration = (Math.random() * 3 + 2) + 's'; 
-        c.style.animationDelay = (Math.random() * 2) + 's';
-        document.body.appendChild(c); setTimeout(() => c.remove(), 5000); 
-    }
+    createConfettiForEffect(effId);
 }
 
 let rewardCloseCallback = null;
@@ -1187,7 +1178,7 @@ export function exportDashboardCSV() {
 // ② 【修正】カスタムテーマがマイページ等に反映されない問題の修正
 // ロード時に確実に THEMES と GACHA_ITEMS へ反映させる
 export function loadCustomGlobalSettings() {
-    const glob = users['__GLOBAL_SETTINGS__'];
+    const glob = users[GLOBAL_SETTINGS_ID];
     if (!glob || !glob.globalMistakes) return;
     if (Array.isArray(glob.globalMistakes.customThemes)) {
         glob.globalMistakes.customThemes.forEach(ct => {
@@ -1306,7 +1297,18 @@ function openWordText() {
     else showCustomAlert('テキストのURLが設定されていません。\n（先生へ：script.js 内の WORD_STAGES にPDFのURLを入れてください）'); // ★修正
 }
 
+function getCurrentWordStageLabel() {
+    const st = WORD_STAGES.find(s => s.id === currentWordStageId);
+    if (!st) return 'Word練習';
+    return `Word ${st.title}${st.sub ? ` / ${st.sub}` : ''}`;
+}
+
 function suspendWordTask() {
+    if (!canWriteCurrentUserRow()) {
+        showCustomAlert('先生確認モードでは、Wordの途中保存は保存されません。生徒本人または管理者で操作してください。');
+        return;
+    }
+
     const u = users[currentUser];
     if (!u.wordProgress) u.wordProgress = {};
     
@@ -1320,6 +1322,13 @@ function suspendWordTask() {
         status: isCleared ? 'cleared' : 'working',
         page: pageVal
     };
+    recordPracticeActivity({
+        category: 'word',
+        title: getCurrentWordStageLabel(),
+        detail: isCleared ? 'クリア済みページ更新' : '途中保存',
+        amount: pageVal ? `${pageVal}ページまで` : 'ページ未入力',
+        coins: 0
+    });
     saveUsers(false);
     SoundManager.playClick();
     showCustomAlert('「挑戦中 ⏸️」として記録しました！\nデータを保存してWordをとじたら、また次回続きから頑張ろう！'); // ★修正
@@ -1332,7 +1341,7 @@ function confirmWordClear() {
         return;
     }
 
-    if (REQUIRE_SUPABASE_AUTH && !hasLegacyAdminPass()) {
+    if (!hasLegacyAdminPass()) {
         showCustomAlert('先生または管理者アカウントでログインして確認してください。');
         return;
     }
@@ -1344,6 +1353,11 @@ function confirmWordClear() {
 }
 
 function processWordClear() {
+    if (!canWriteCurrentUserRow()) {
+        showCustomAlert('先生確認モードでは、Wordのクリア結果は保存されません。管理者アカウントで操作してください。');
+        return;
+    }
+
     const u = users[currentUser];
     if (!u.wordProgress) u.wordProgress = {};
     
@@ -1355,6 +1369,13 @@ function processWordClear() {
     
     let coinGain = isFirstClear ? 500 : 50; 
     u.coins = (u.coins || 0) + coinGain;
+    recordPracticeActivity({
+        category: 'word',
+        title: getCurrentWordStageLabel(),
+        detail: isFirstClear ? 'クリア' : 'クリア再確認',
+        amount: pageVal ? `${pageVal}ページまで` : 'ページ未入力',
+        coins: coinGain
+    });
     
     saveUsers(false);
     SoundManager.playClear(); createConfetti();

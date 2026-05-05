@@ -1,4 +1,4 @@
-import { users, currentUser, saveUsers } from '../api/user.js';
+import { users, currentUser, saveUsers, GLOBAL_SETTINGS_ID, getUserDisplayName, canWriteCurrentUserRow, recordPracticeActivity } from '../api/user.js';
 
 import {
   KEYBOARD_STAGES,
@@ -21,6 +21,7 @@ import {
 import { SoundManager } from '../utils/sound.js';
 import { showScreen, showImeWarning } from '../ui/screen.js';
 import { showCustomAlert } from '../ui/modal.js';
+import { getStageName } from '../utils/stages.js';
 import {
     convertNameToRomaji,
     createConfetti,
@@ -88,6 +89,31 @@ export const els = {
     ctxMenu: document.getElementById('fake-context-menu'),
     startOverlay: document.getElementById('start-overlay')
 };
+
+function getPracticeTitle() {
+    if (gameMode === 'mouse') return `マウス練習 M-${currentStage}`;
+    if (gameMode === 'vision') {
+        const stageId = String(currentStage).replace('_hard', '').replace('_easy', '');
+        const stage = VISION_STAGES.find(st => st.id === stageId);
+        const level = isVisionHardMode ? 'ハード' : (isVisionEasyMode ? 'やさしい' : '通常');
+        return `ビジョントレーニング ${stage ? stage.title : stageId} (${level})`;
+    }
+    if (gameMode === 'romaji') {
+        const baseId = String(currentStage).replace('_exam', '').replace('_prac', '');
+        const modeText = romajiMode === 'exam' ? 'テスト' : '練習';
+        return `ローマ字表 ${baseId} (${modeText})`;
+    }
+    return `キーボード ${getStageName(currentStage).replace(/\[ID:[^\]]+\]\s*/, '')}`;
+}
+
+function getPracticeAmount(elapsed) {
+    if (gameMode === 'mouse') return 'ステージをクリア';
+    if (gameMode === 'vision') return `タイム ${elapsed.toFixed(1)}秒`;
+    if (gameMode === 'romaji') return `正解 ${romajiCorrectCells}/${romajiTotalCells} / タイム ${elapsed.toFixed(1)}秒`;
+    const total = totalKeysTyped + missKeysTyped;
+    const acc = total > 0 ? Math.floor((totalKeysTyped / total) * 100) : 0;
+    return `打鍵 ${totalKeysTyped}回 / ミス ${missKeysTyped}回 / 正確率 ${acc}%`;
+}
 
 export function startGame(sid, mode) {
     SoundManager.init(); currentStage = sid; gameMode = mode; isProcessing = false;
@@ -459,7 +485,7 @@ function setupKeyboard(s) {
         else if (s === 4102) { WORD_DATA.slice(4, 8).forEach(d => { d.chars.forEach(c => raw.push({...c, blind: false})); }); raw = shuffle(raw).slice(0, 15); } 
         else if (s === 4103) { WORD_DATA.slice(8, 13).forEach(d => { d.chars.forEach(c => raw.push({...c, blind: false})); }); raw = shuffle(raw).slice(0, 15); } 
         else { const d = WORD_DATA.find(x => x.id === s); if(d) { d.chars.forEach(c => { for (let i = 0; i < 2; i++) raw.push({...c, blind: false}) }); raw = shuffle(raw); } }
-        if (s !== 4999) { const nameRomaji = convertNameToRomaji(currentUser); raw.unshift({ h: currentUser, r:[nameRomaji], blind: false }); } pool = raw; 
+        if (s !== 4999) { const displayName = getUserDisplayName(currentUser); const nameRomaji = convertNameToRomaji(displayName); raw.unshift({ h: displayName, r:[nameRomaji], blind: false }); } pool = raw;
     } else if (s === 1999) { 
         const keys = new Set(); KEYBOARD_STAGES.forEach(st => st.keys.forEach(k => keys.add(k))); let raw =[]; Array.from(keys).forEach(k => { raw.push(k); raw.push(k); }); pool = shuffle(raw); 
     } else if ([1051, 1052, 1053, 1054, 1101, 1102, 1103, 1104].includes(s)) { 
@@ -516,6 +542,8 @@ export function markClear() {
         let clearMsg = 'クリア！', timeMsg = '', statsMsg = ''; 
         const elapsed = (Date.now() - startTime) / 1000;
         let isNewRecord = false; 
+        const canSaveResult = canWriteCurrentUserRow();
+        const originalUserData = users[currentUser] ? JSON.parse(JSON.stringify(users[currentUser])) : null;
 
         let coinGain = 0;
         if (gameMode === 'mouse') {
@@ -611,10 +639,10 @@ export function markClear() {
         }
         
         let earnedTicket = null;
-        if ([1999, 2999, 4999, 3999].includes(currentStage)) {
+        if (canSaveResult && [1999, 2999, 4999, 3999].includes(currentStage)) {
             if (!users[currentUser].tickets) users[currentUser].tickets =[];
             
-            const glob = users['__GLOBAL_SETTINGS__'] || {};
+            const glob = users[GLOBAL_SETTINGS_ID] || {};
             const config = glob.ticketConfig || { normal: { name: '👍 いいねポイント 5こ', icon: '🎟️' }, newRecord: { name: '👍 いいねポイント 1こ', icon: '🎟️' } };
 
             if (!isTimeAttackMode) earnedTicket = { id: 'ticket_normal', name: config.normal.name, icon: config.normal.icon };
@@ -626,11 +654,21 @@ export function markClear() {
             }
         }
 
-        if (users[currentUser]) {
+        if (canSaveResult && users[currentUser]) {
             users[currentUser].coins = (users[currentUser].coins || 0) + coinGain;
+            recordPracticeActivity({
+                category: gameMode || 'practice',
+                title: getPracticeTitle(),
+                detail: isNewRecord ? 'クリア / 新記録' : 'クリア',
+                amount: getPracticeAmount(elapsed),
+                coins: coinGain
+            });
             clearMsg += `<br><span style="font-size:24px; color:#FFD700;">💰 +${coinGain} コインゲット！</span>`;
+            saveUsers(false);
+        } else {
+            if (originalUserData) users[currentUser] = originalUserData;
+            clearMsg += `<br><span style="font-size:20px; color:#607D8B;">先生確認モード：結果は保存されません</span>`;
         }
-        saveUsers(false);
         
         SoundManager.playClear();
         els.fbText.innerHTML = clearMsg; els.fbTime.innerHTML = timeMsg; els.fbTime.style.display = timeMsg ? 'block' : 'none';
@@ -691,7 +729,7 @@ function finishItemSuccess() {
 function renderKeyboard() {
     const w = document.createElement('div'); w.id = 'keyboard-wrapper'; w.innerHTML = `<div id="question-display"><div id="romaji-hint"></div><div id="main-q"></div></div>`;
     const kb = document.createElement('div'); kb.id = 'virtual-keyboard';
-    KB_LAYOUT.forEach((row, i) => { const r = document.createElement('div'); r.className = `kb-row row-${i}`; row.forEach(c => { const k = document.createElement('div'); k.className = 'key' + (c === 'SPACE' ? ' space' : ''); k.dataset.key = c === 'SPACE' ? ' ' : c; k.innerText = c === 'SPACE' ? '' : c; r.appendChild(k) }); kb.appendChild(r); }); w.appendChild(kb);
+    KB_LAYOUT.forEach((row, i) => { const r = document.createElement('div'); r.className = `kb-row row-${i}`; r.style.setProperty('--key-count', row.length); row.forEach(c => { const k = document.createElement('div'); k.className = 'key' + (c === 'SPACE' ? ' space' : ''); k.dataset.key = c === 'SPACE' ? ' ' : c; k.innerText = c === 'SPACE' ? 'スペース' : c; r.appendChild(k) }); kb.appendChild(r); }); w.appendChild(kb);
     w.innerHTML += `<div id="hands-display"><div class="hand left"><div class="finger f-pinky" data-finger="l-pinky"></div><div class="finger f-ring" data-finger="l-ring"></div><div class="finger f-middle" data-finger="l-middle"></div><div class="finger f-index" data-finger="l-index"></div><div class="finger f-thumb" data-finger="thumb"></div></div><div class="hand right"><div class="finger f-thumb" data-finger="thumb"></div><div class="finger f-index" data-finger="r-index"></div><div class="finger f-middle" data-finger="r-middle"></div><div class="finger f-ring" data-finger="r-ring"></div><div class="finger f-pinky" data-finger="r-pinky"></div></div></div>`; els.playArea.appendChild(w);
 }
 
