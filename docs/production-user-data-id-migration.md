@@ -10,8 +10,9 @@
 
 1. 管理者画面からJSONバックアップを保存する
 2. `test_user_data` の内部ID移行が完了している
-3. `supabase/sql/verify_internal_user_ids.sql` を実行し、`user_data` 側に残っている `legacy_name_id` を確認する
-4. `lesson_user_access.user_data_id` に名前IDが残っている場合、その行も移行対象になることを確認する
+3. `supabase/sql/preflight_public_release.sql` を実行し、`user_data_legacy_name_ids` と `lesson_user_access_legacy_refs` を確認する
+4. 必要に応じて `supabase/sql/verify_internal_user_ids.sql` を実行し、`user_data` 側に残っている `legacy_name_id` の詳細を確認する
+5. `lesson_user_access.user_data_id` に名前IDが残っている場合、その行も移行対象になることを確認する
 
 ## 本番移行
 
@@ -35,7 +36,8 @@ supabase/sql/migrate_user_data_named_ids.sql
 2. `user_data` の `legacy_name_id` が0件になっていることを確認する
 3. `lesson_user_access` の名前ID行が0件になっていることを確認する
 4. `supabase/sql/verify_user_data_id_migration_audit.sql` を実行し、`old_id -> new_id` の履歴を確認する
-5. Dレッスンを再読み込みし、次を確認する
+5. `supabase/sql/preflight_public_release.sql` を再実行し、`NG` がないことを確認する
+6. Dレッスンを再読み込みし、次を確認する
 
 - 児童名がこれまで通り表示される
 - 生徒アカウントでログインできる

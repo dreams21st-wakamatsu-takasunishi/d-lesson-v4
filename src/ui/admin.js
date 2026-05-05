@@ -476,7 +476,86 @@ function renderOpsStatusCard(label, value, tone = 'neutral') {
     `;
 }
 
-export function renderOpsGuideAdmin() {
+function getStudentUserIds() {
+    return Object.keys(users).filter(userId => (
+        users[userId]
+        && !users[userId].isMaster
+        && !isSystemUserId(userId)
+    ));
+}
+
+function getLegacyStudentIdRows() {
+    return getStudentUserIds()
+        .filter(userId => !String(userId).startsWith('student_'))
+        .map(userId => ({
+            userId,
+            displayName: getUserDisplayName(userId),
+            userDataId: users[userId]?.userDataId || ''
+        }));
+}
+
+function getUserDataIdMismatchRows() {
+    return getStudentUserIds()
+        .filter(userId => users[userId]?.userDataId && users[userId].userDataId !== userId)
+        .map(userId => ({
+            userId,
+            displayName: getUserDisplayName(userId),
+            userDataId: users[userId]?.userDataId || ''
+        }));
+}
+
+function renderOpsUserIdDetails(anchor, legacyRows, mismatchRows) {
+    let detail = document.getElementById('ops-user-id-detail');
+    if (!detail) {
+        detail = document.createElement('div');
+        detail.id = 'ops-user-id-detail';
+        detail.style.cssText = 'width:min(1000px, 96%); background:#fff; border:1px solid #ddd; border-radius:8px; padding:14px; box-sizing:border-box;';
+        anchor.insertAdjacentElement('afterend', detail);
+    }
+
+    const rowHtml = legacyRows.slice(0, 12).map(row => `
+        <tr>
+            <td style="border:1px solid #ddd; padding:6px;">${escapeHtml(row.displayName)}</td>
+            <td style="border:1px solid #ddd; padding:6px; font-family:monospace;">${escapeHtml(row.userId)}</td>
+            <td style="border:1px solid #ddd; padding:6px; font-family:monospace;">${escapeHtml(row.userDataId || '-')}</td>
+        </tr>
+    `).join('');
+    const moreText = legacyRows.length > 12 ? `<p style="margin:8px 0 0; color:#ef6c00; font-size:13px;">ほか ${legacyRows.length - 12} 件あります。SQL確認で全件を確認してください。</p>` : '';
+    const mismatchText = mismatchRows.length
+        ? `<p style="margin:8px 0 0; color:#c62828; font-size:13px;">data.userDataId と行IDが一致しない児童が ${mismatchRows.length} 件あります。内部ID移行前後の確認が必要です。</p>`
+        : '';
+
+    detail.innerHTML = legacyRows.length
+        ? `
+            <h4 style="margin:0 0 8px; color:#bf360c;">児童IDの確認が必要です</h4>
+            <p style="margin:0 0 10px; color:#555; font-size:14px;">DB行のIDに児童名が残っている可能性があります。公開運用で実名データを入れる前に、内部ID移行手順を確認してください。</p>
+            <table style="width:100%; border-collapse:collapse; font-size:13px;">
+                <thead>
+                    <tr>
+                        <th style="border:1px solid #ddd; padding:6px; background:#fff3e0;">表示名</th>
+                        <th style="border:1px solid #ddd; padding:6px; background:#fff3e0;">現在の行ID</th>
+                        <th style="border:1px solid #ddd; padding:6px; background:#fff3e0;">data.userDataId</th>
+                    </tr>
+                </thead>
+                <tbody>${rowHtml}</tbody>
+            </table>
+            ${moreText}
+            ${mismatchText}
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;">
+                <button class="btn-secondary" onclick="copyInternalIdCheckGuide()" style="font-size:13px; padding:8px 12px;">SQL確認手順をコピー</button>
+            </div>
+        `
+        : `
+            <h4 style="margin:0 0 8px; color:#2e7d32;">児童IDは内部ID形式です</h4>
+            <p style="margin:0; color:#555; font-size:14px;">画面に読み込まれている児童は student_... の行IDで保存されています。本番公開前はSQLでも user_data 側を確認してください。</p>
+            ${mismatchText}
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;">
+                <button class="btn-secondary" onclick="copyInternalIdCheckGuide()" style="font-size:13px; padding:8px 12px;">SQL確認手順をコピー</button>
+            </div>
+        `;
+}
+
+function renderOpsGuideAdminLegacy() {
     const grid = document.getElementById('ops-status-grid');
     if (!grid) return;
 
@@ -501,6 +580,56 @@ export function renderOpsGuideAdmin() {
         renderOpsStatusCard('保存状態', syncText, syncTone),
         renderOpsStatusCard('児童数', `${studentCount}人`, studentCount > 0 ? 'good' : 'warn')
     ].join('');
+}
+
+export function renderOpsGuideAdmin() {
+    const grid = document.getElementById('ops-status-grid');
+    if (!grid) return;
+
+    const syncText = document.getElementById('sync-status')?.innerText || '未確認';
+    const role = getCurrentLessonRole() || (REQUIRE_SUPABASE_AUTH ? '未登録/未ログイン' : '旧方式');
+    const teacherScope = getTeacherScopeSummary();
+    const teacherScopeTone = teacherScope === '全児童' ? 'warn' : (teacherScope === 'なし' ? 'neutral' : 'good');
+    const legacyPassStatus = getLegacyAdminPassStatus();
+    const legacyPassTone = legacyPassStatus === 'ローカルのみ有効' ? 'warn' : 'good';
+    const studentCount = getStudentUserIds().length;
+    const legacyStudentIdRows = getLegacyStudentIdRows();
+    const userDataIdMismatchRows = getUserDataIdMismatchRows();
+    const userIdTone = legacyStudentIdRows.length > 0 || userDataIdMismatchRows.length > 0 ? 'warn' : 'good';
+    const userIdStatus = legacyStudentIdRows.length > 0
+        ? `${legacyStudentIdRows.length}件 要確認`
+        : (userDataIdMismatchRows.length > 0 ? `${userDataIdMismatchRows.length}件 不一致` : '内部ID OK');
+    const syncTone = /synced|rls synced/.test(syncText) ? 'good' : (/error|offline|locked/.test(syncText) ? 'bad' : 'warn');
+
+    grid.innerHTML = [
+        renderOpsStatusCard('先生範囲', teacherScope, teacherScopeTone),
+        renderOpsStatusCard('Supabase設定', HAS_SUPABASE_CONFIG ? 'あり' : 'なし', HAS_SUPABASE_CONFIG ? 'good' : 'warn'),
+        renderOpsStatusCard('Auth必須', REQUIRE_SUPABASE_AUTH ? '有効' : '無効', REQUIRE_SUPABASE_AUTH ? 'good' : 'bad'),
+        renderOpsStatusCard('旧パスワード', legacyPassStatus, legacyPassTone),
+        renderOpsStatusCard('RLS同期', ENABLE_RLS_CLOUD_SYNC ? '有効' : '無効', ENABLE_RLS_CLOUD_SYNC ? 'good' : 'warn'),
+        renderOpsStatusCard('設定テーブル', ENABLE_SETTINGS_TABLE ? SETTINGS_TABLE_KEY : '旧方式', ENABLE_SETTINGS_TABLE ? 'good' : 'warn'),
+        renderOpsStatusCard('旧同期', ENABLE_LEGACY_SUPABASE_SYNC ? '有効' : '無効', ENABLE_LEGACY_SUPABASE_SYNC ? 'bad' : 'good'),
+        renderOpsStatusCard('現在ロール', role, role === 'admin' ? 'good' : 'warn'),
+        renderOpsStatusCard('保存状態', syncText, syncTone),
+        renderOpsStatusCard('児童数', `${studentCount}人`, studentCount > 0 ? 'good' : 'warn'),
+        renderOpsStatusCard('児童ID形式', userIdStatus, userIdTone)
+    ].join('');
+
+    renderOpsUserIdDetails(grid, legacyStudentIdRows, userDataIdMismatchRows);
+}
+
+export function copyInternalIdCheckGuide() {
+    const text = [
+        'Dレッスン 児童IDの本番前確認',
+        '',
+        '1. 管理者画面 > バックアップ でJSONバックアップを保存する。',
+        '2. Supabase SQL Editorで supabase/sql/preflight_public_release.sql の中身を実行する。',
+        '3. result が NG の行がないか確認する。',
+        '4. user_data_legacy_name_ids が 0 ではない場合は、docs/production-user-data-id-migration.md に沿って移行する。',
+        '5. lesson_user_access_legacy_refs が 0 ではない場合は、Auth連携の user_data_id が内部IDへ更新されているか確認する。',
+        '6. 実名運用前に npm.cmd run check:public-env と npm.cmd run build を実行する。'
+    ].join('\n');
+    copyText(text);
 }
 
 export function copyDeviceHandoffChecklist() {

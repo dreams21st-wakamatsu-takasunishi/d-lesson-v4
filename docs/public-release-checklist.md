@@ -104,7 +104,31 @@ Consoleに次が出た場合は公開しない。
 
 `content.js: The message port closed before a response was received` は、ブラウザ拡張由来の可能性が高いため、単独発生ならアプリ本体の公開停止理由にはしない。
 
-### 5. ビルド
+### 5. 公開前envチェック
+
+テストテーブルで公開検証する場合は、次を実行する。
+
+```powershell
+npm.cmd run check:public-test-env
+```
+
+実名データを入れる本番 `user_data` へ移る場合は、次を実行する。
+
+```powershell
+npm.cmd run check:public-env
+```
+
+`check:public-test-env` は `test_user_data` を許可する。`check:public-env` は `test_user_data` のままだと失敗するため、実名運用前の切り替え漏れを検出できる。
+
+本番 `user_data` へ移る前に、Supabase SQL Editor で次のSQLも実行する。
+
+```sql
+supabase/sql/preflight_public_release.sql
+```
+
+`result` が `NG` の行がある場合は公開しない。特に `user_data_legacy_name_ids` と `lesson_user_access_legacy_refs` は、実名がDB行IDやAuth連携IDに残っていないかを確認する。
+
+### 6. ビルド
 
 公開前に必ず実行する。
 
@@ -123,6 +147,8 @@ npm.cmd run preview
 ### 公開してよい状態
 
 - `npm.cmd run build` が成功する。
+- `npm.cmd run check:public-test-env` または `npm.cmd run check:public-env` が成功する。
+- 本番 `user_data` へ移る場合は `supabase/sql/preflight_public_release.sql` に `NG` がない。
 - 実操作チェックでアプリ本体の赤いConsoleエラーがない。
 - 公開URLで `VITE_REQUIRE_SUPABASE_AUTH=true` になっている。
 - 公開URLで `VITE_ENABLE_LEGACY_SUPABASE_SYNC=false` になっている。
