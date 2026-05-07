@@ -55,6 +55,7 @@ let authGatePromise = null;
 let authGateResolve = null;
 let authGateAfterLogin = null;
 let studentLoginState = { number: '', passcode: '' };
+let pendingStudentLoginNumber = '';
 
 const LESSON_ACCESS_BASE_COLUMNS = 'auth_user_id,user_data_id,role';
 const LESSON_ACCESS_SCOPED_COLUMNS = `${LESSON_ACCESS_BASE_COLUMNS},scope_type,scope_value`;
@@ -500,34 +501,12 @@ function resetStudentLoginState() {
     studentLoginState = { number: '', passcode: '' };
 }
 
-function getStudentLoginNumbers() {
-    const count = STUDENT_LOGIN_MAX - STUDENT_LOGIN_MIN + 1;
-    return Array.from({ length: count }, (_value, index) => STUDENT_LOGIN_MIN + index);
-}
-
 function padStudentLoginNumber(number) {
     return String(number).padStart(STUDENT_LOGIN_NUMBER_PAD, '0');
 }
 
 function buildStudentLoginEmail(number) {
     return `${STUDENT_LOGIN_EMAIL_PREFIX}${padStudentLoginNumber(number)}@${STUDENT_LOGIN_EMAIL_DOMAIN}`;
-}
-
-function buildStudentNumberButtonsHtml() {
-    return getStudentLoginNumbers().map(number => `
-        <button type="button" class="student-login-number-btn" data-student-login-number="${number}">
-            ${number}
-        </button>
-    `).join('');
-}
-
-function buildStudentKeypadButtonsHtml() {
-    const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'clear', '0', 'back'];
-    return keys.map(key => {
-        const label = key === 'clear' ? 'クリア' : key === 'back' ? '←' : key;
-        const extraClass = key === 'clear' ? ' is-wide' : key === 'back' ? ' is-action' : '';
-        return `<button type="button" class="student-login-key-btn${extraClass}" data-student-login-key="${key}">${label}</button>`;
-    }).join('');
 }
 
 function buildStaffAuthFormHtml(isPrimary = false) {
@@ -549,84 +528,107 @@ function buildStaffAuthFormHtml(isPrimary = false) {
 
 function buildStudentAuthPanelHtml() {
     return `
-        <form id="student-auth-form" style="border:1px solid #dbe3ef; border-radius:8px; background:#f8fafc; padding:18px;">
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px; margin-bottom:14px;">
-                <div>
-                    <h3 style="margin:0 0 6px; color:#0f172a; font-size:20px; letter-spacing:0;">児童ログイン</h3>
-                    <p style="margin:0; color:#475569; font-size:14px; line-height:1.5;">番号を選び、画面のボタンだけであいことばを入れます。</p>
-                </div>
-                <div id="student-login-selected-number" style="min-width:96px; text-align:center; border:1px solid #cbd5e1; border-radius:6px; padding:8px; background:#fff; color:#0f172a; font-weight:800;">未選択</div>
+        <form id="student-auth-form" class="student-login-panel">
+            <h3 class="student-login-title">児童ログイン</h3>
+            <p class="student-login-copy">児童番号とあいことばを入力してください。</p>
+            <div class="student-login-fields">
+                <label class="student-login-label">
+                    児童番号
+                    <input id="student-login-number" class="student-login-input" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="例: 1" required>
+                </label>
+                <label class="student-login-label">
+                    あいことば
+                    <input id="student-login-passcode" class="student-login-input" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="current-password" placeholder="${STUDENT_LOGIN_PASSCODE_MIN_LENGTH}けた以上" required>
+                </label>
             </div>
-            <div id="student-login-number-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(54px, 1fr)); gap:8px; margin-bottom:16px;">
-                ${buildStudentNumberButtonsHtml()}
-            </div>
-            <div style="display:grid; grid-template-columns:minmax(180px, 1fr) minmax(210px, 260px); gap:16px; align-items:start;">
-                <div>
-                    <div style="color:#334155; font-weight:800; font-size:14px; margin-bottom:8px;">あいことば</div>
-                    <div id="student-login-passcode-display" style="min-height:46px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; display:flex; align-items:center; justify-content:center; color:#0f172a; font-size:24px; font-weight:800; letter-spacing:4px;">未入力</div>
-                    <button id="student-auth-submit" class="btn-primary" type="submit" style="width:100%; min-height:46px; margin-top:12px; font-size:17px;">ログイン</button>
-                </div>
-                <div id="student-login-keypad" style="display:grid; grid-template-columns:repeat(3, minmax(58px, 1fr)); gap:8px;">
-                    ${buildStudentKeypadButtonsHtml()}
-                </div>
-            </div>
+            <button id="student-auth-submit" class="btn-primary student-login-submit" type="submit">ログイン</button>
+            <p id="supabase-auth-message" class="student-login-message" style="color:#475569;"></p>
         </form>
     `;
 }
 
 function buildAuthGateHtml(isError = false) {
     const hasStudentLogin = isStudentClickLoginEnabled();
-    const cardWidth = hasStudentLogin ? '780px' : '420px';
+    const cardWidth = hasStudentLogin ? '520px' : '420px';
     const staffPanel = hasStudentLogin
-        ? `<details style="margin-top:16px; border-top:1px solid #e2e8f0; padding-top:12px;">
+        ? `<details style="margin-top:12px; border-top:1px solid #e2e8f0; padding-top:12px;">
                 <summary style="cursor:pointer; color:#0f172a; font-weight:800; font-size:15px;">先生・管理者ログイン</summary>
                 ${buildStaffAuthFormHtml(false)}
             </details>`
         : buildStaffAuthFormHtml(true);
 
     return `
-        <div id="supabase-auth-card" style="box-sizing:border-box; width:min(${cardWidth}, 100%); max-height:calc(100vh - 48px); overflow:auto; background:#fff; border:1px solid #dbe3ef; border-radius:8px; box-shadow:0 18px 45px rgba(15,23,42,0.18); padding:24px;">
-            <h2 style="margin:0 0 18px; color:#0f172a; font-size:24px; letter-spacing:0;">Dレッスン ログイン</h2>
+        <div id="supabase-auth-card" style="box-sizing:border-box; width:min(${cardWidth}, 100%); max-height:calc(100vh - 32px); overflow:auto; background:#fff; border:1px solid #dbe3ef; border-radius:8px; box-shadow:0 18px 45px rgba(15,23,42,0.18); padding:22px;">
+            <h2 style="margin:0 0 14px; color:#0f172a; font-size:24px; letter-spacing:0; text-align:center;">Dレッスン ログイン</h2>
             <style>
-                .student-login-number-btn,
-                .student-login-key-btn {
-                    min-height:46px;
+                .student-login-panel {
+                    border:1px solid #dbe3ef;
+                    border-radius:8px;
+                    background:#f8fafc;
+                    padding:22px;
+                }
+                .student-login-title {
+                    margin:0 0 6px;
+                    color:#0f172a;
+                    font-size:22px;
+                    letter-spacing:0;
+                }
+                .student-login-copy {
+                    margin:0;
+                    color:#475569;
+                    font-size:14px;
+                    line-height:1.5;
+                }
+                .student-login-fields {
+                    display:grid;
+                    gap:14px;
+                    margin-top:18px;
+                }
+                .student-login-label {
+                    display:block;
+                    color:#334155;
+                    font-weight:800;
+                    font-size:15px;
+                }
+                .student-login-input {
+                    box-sizing:border-box;
+                    width:100%;
+                    margin-top:7px;
                     border:1px solid #cbd5e1;
                     border-radius:6px;
+                    padding:14px;
                     background:#fff;
                     color:#0f172a;
-                    font-weight:800;
-                    font-size:18px;
-                    cursor:pointer;
+                    font-size:20px;
+                    font-weight:700;
+                    letter-spacing:0;
                 }
-                .student-login-key-btn {
+                .student-login-submit {
+                    width:100%;
                     min-height:54px;
-                    background:#eef6ff;
+                    margin-top:18px;
+                    font-size:18px;
                 }
-                .student-login-key-btn.is-wide,
-                .student-login-key-btn.is-action {
-                    font-size:15px;
-                    background:#f1f5f9;
+                .student-login-message {
+                    min-height:24px;
+                    margin:12px 0 0;
+                    font-size:14px;
+                    line-height:1.5;
+                    font-weight:700;
                 }
-                .student-login-number-btn:focus,
-                .student-login-key-btn:focus {
+                .student-login-input:focus {
                     outline:3px solid #93c5fd;
                     outline-offset:2px;
                 }
-                .student-login-number-btn[aria-pressed="true"] {
-                    background:#0f766e;
-                    border-color:#0f766e;
-                    color:#fff;
-                }
-                @media (max-width: 620px) {
-                    #student-auth-form > div:last-child {
-                        grid-template-columns:1fr !important;
+                @media (max-width: 760px) {
+                    #supabase-auth-card {
+                        padding:16px !important;
                     }
                 }
             </style>
             ${hasStudentLogin ? buildStudentAuthPanelHtml() : ''}
             ${staffPanel}
-            <p id="supabase-auth-message" style="min-height:22px; margin:14px 0 0; color:${isError ? '#b91c1c' : '#475569'}; font-size:14px; line-height:1.5;"></p>
+            ${hasStudentLogin ? '' : `<p id="supabase-auth-message" style="min-height:22px; margin:14px 0 0; color:${isError ? '#b91c1c' : '#475569'}; font-size:14px; line-height:1.5;"></p>`}
         </div>
     `;
 }
@@ -634,26 +636,19 @@ function buildAuthGateHtml(isError = false) {
 function updateStudentLoginUi() {
     if (!isStudentClickLoginEnabled()) return;
 
-    document.querySelectorAll('[data-student-login-number]').forEach(button => {
-        const isSelected = button.dataset.studentLoginNumber === studentLoginState.number;
-        button.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
-    });
-
-    const numberDisplay = document.getElementById('student-login-selected-number');
-    if (numberDisplay) {
-        numberDisplay.innerText = studentLoginState.number ? `${studentLoginState.number}番` : '未選択';
+    const numberInput = document.getElementById('student-login-number');
+    if (numberInput && numberInput.value !== studentLoginState.number) {
+        numberInput.value = studentLoginState.number;
     }
 
-    const passcodeDisplay = document.getElementById('student-login-passcode-display');
-    if (passcodeDisplay) {
-        passcodeDisplay.innerText = studentLoginState.passcode
-            ? '●'.repeat(studentLoginState.passcode.length)
-            : '未入力';
+    const passcodeInput = document.getElementById('student-login-passcode');
+    if (passcodeInput && passcodeInput.value !== studentLoginState.passcode) {
+        passcodeInput.value = studentLoginState.passcode;
     }
 
     const submit = document.getElementById('student-auth-submit');
     if (submit) {
-        submit.disabled = !studentLoginState.number || studentLoginState.passcode.length < STUDENT_LOGIN_PASSCODE_MIN_LENGTH;
+        submit.disabled = !studentLoginState.number || !studentLoginState.passcode;
     }
 }
 
@@ -664,29 +659,23 @@ function bindAuthGateEvents() {
     const studentForm = document.getElementById('student-auth-form');
     if (studentForm) studentForm.onsubmit = handleStudentAuthFormSubmit;
 
-    document.querySelectorAll('[data-student-login-number]').forEach(button => {
-        button.onclick = () => {
-            studentLoginState.number = button.dataset.studentLoginNumber || '';
-            studentLoginState.passcode = '';
+    const numberInput = document.getElementById('student-login-number');
+    if (numberInput) {
+        numberInput.oninput = () => {
+            studentLoginState.number = numberInput.value.replace(/\D/g, '').slice(0, 3);
             setAuthGateMessage('');
             updateStudentLoginUi();
         };
-    });
+    }
 
-    document.querySelectorAll('[data-student-login-key]').forEach(button => {
-        button.onclick = () => {
-            const key = button.dataset.studentLoginKey;
-            if (key === 'clear') {
-                studentLoginState.passcode = '';
-            } else if (key === 'back') {
-                studentLoginState.passcode = studentLoginState.passcode.slice(0, -1);
-            } else if (/^\d$/.test(key) && studentLoginState.passcode.length < STUDENT_LOGIN_PASSCODE_MAX_LENGTH) {
-                studentLoginState.passcode += key;
-            }
+    const passcodeInput = document.getElementById('student-login-passcode');
+    if (passcodeInput) {
+        passcodeInput.oninput = () => {
+            studentLoginState.passcode = passcodeInput.value.replace(/\D/g, '').slice(0, STUDENT_LOGIN_PASSCODE_MAX_LENGTH);
             setAuthGateMessage('');
             updateStudentLoginUi();
         };
-    });
+    }
 
     updateStudentLoginUi();
 }
@@ -705,16 +694,39 @@ function completeAuthGateLogin() {
     if (afterLogin) afterLogin();
 }
 
+function getStudentAuthErrorMessage(error) {
+    const message = `${error?.message || ''} ${error?.name || ''} ${error?.status || ''}`.toLowerCase();
+    if (message.includes('email not confirmed') || message.includes('not confirmed')) {
+        return 'この児童アカウントはまだ確認済みになっていません。Supabase AuthでConfirm emailを確認してください。';
+    }
+    if (message.includes('invalid login credentials')) {
+        return '児童番号またはあいことばが違います。番号とあいことばを確認してください。';
+    }
+    return 'ログインできませんでした。児童番号、あいことば、Supabase Authの登録を確認してください。';
+}
+
 async function handleStudentAuthFormSubmit(event) {
     event.preventDefault();
+
+    const numberInput = document.getElementById('student-login-number');
+    const passcodeInput = document.getElementById('student-login-passcode');
+    if (numberInput) studentLoginState.number = numberInput.value.replace(/\D/g, '');
+    if (passcodeInput) studentLoginState.passcode = passcodeInput.value.replace(/\D/g, '');
+    updateStudentLoginUi();
 
     if (!supabase) {
         setAuthGateMessage('Supabaseのログイン設定が見つかりません。.env.local を確認してください。', true);
         return;
     }
 
-    if (!studentLoginState.number) {
+    const studentNumber = Number.parseInt(studentLoginState.number, 10);
+    if (!Number.isFinite(studentNumber)) {
         setAuthGateMessage('児童番号を選んでください。', true);
+        return;
+    }
+
+    if (studentNumber < STUDENT_LOGIN_MIN || studentNumber > STUDENT_LOGIN_MAX) {
+        setAuthGateMessage(`児童番号は${STUDENT_LOGIN_MIN}〜${STUDENT_LOGIN_MAX}の範囲で入力してください。`, true);
         return;
     }
 
@@ -725,17 +737,19 @@ async function handleStudentAuthFormSubmit(event) {
 
     setAuthGateBusy(true, 'ログイン中...');
     try {
-        const email = buildStudentLoginEmail(studentLoginState.number);
+        const normalizedNumber = String(studentNumber);
+        const email = buildStudentLoginEmail(normalizedNumber);
         const { error } = await supabase.auth.signInWithPassword({
             email,
             password: studentLoginState.passcode
         });
         if (error) throw error;
+        pendingStudentLoginNumber = normalizedNumber;
         completeAuthGateLogin();
     } catch (err) {
         console.error('Student auth sign-in failed:', err);
         setAuthGateBusy(false);
-        setAuthGateMessage('児童番号またはあいことばを確認してください。', true);
+        setAuthGateMessage(getStudentAuthErrorMessage(err), true);
     }
 }
 
@@ -756,6 +770,8 @@ function showAuthGate(message = '', isError = false, afterLogin = null) {
     setAuthGateMessage(message, isError);
     bindAuthGateEvents();
 
+    const studentNumber = document.getElementById('student-login-number');
+    if (studentNumber) setTimeout(() => studentNumber.focus(), 0);
     const email = document.getElementById('supabase-auth-email');
     if (email && !isStudentClickLoginEnabled()) setTimeout(() => email.focus(), 0);
 }
@@ -1037,7 +1053,20 @@ export async function loadUsers() {
     const loadingMsg = titleScreen.querySelector('.loading-msg');
     if (loadingMsg) loadingMsg.remove();
     updateVisibleUserUi();
-    maybeEnterSingleStudentUser();
+    const enteredStudent = maybeEnterSingleStudentUser();
+    if (enteredStudent) {
+        pendingStudentLoginNumber = '';
+        return;
+    }
+
+    if (pendingStudentLoginNumber) {
+        const message = getCurrentLessonRole() === 'student'
+            ? `${pendingStudentLoginNumber}番でログインできましたが、児童データが見つかりません。user_dataへの移行とlesson_user_accessのuser_data_idを確認してください。`
+            : `${pendingStudentLoginNumber}番でログインできましたが、Dレッスンの利用権限が見つかりません。lesson_user_accessにこの児童のAuth User IDが登録されているか確認してください。`;
+        pendingStudentLoginNumber = '';
+        setSyncStatus('student access missing');
+        showAuthGate(message, true, () => { void loadUsers(); });
+    }
 }
 
 export async function saveUsers(forceOverwrite = false) {
