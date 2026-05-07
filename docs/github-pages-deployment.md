@@ -62,6 +62,12 @@ npm.cmd run check:public-url
 npm.cmd run check:public-production-url
 ```
 
+pushした最新コミットがGitHub Pagesに反映済みかまで確認する場合:
+
+```powershell
+npm.cmd run check:public-latest
+```
+
 ## 公開前チェック
 
 テストテーブルで公開検証する場合:
