@@ -7,6 +7,7 @@ const args = process.argv.slice(2);
 const argUrl = args.find(arg => arg.startsWith('--url='))?.slice('--url='.length)
     || args.find(arg => !arg.startsWith('--'));
 const expectedTable = args.find(arg => arg.startsWith('--expect-table='))?.slice('--expect-table='.length);
+const expectedSha = args.find(arg => arg.startsWith('--expect-sha='))?.slice('--expect-sha='.length);
 const requireProductionFlags = args.includes('--production');
 const retryCount = Number.parseInt(args.find(arg => arg.startsWith('--retries='))?.slice('--retries='.length) || '0', 10);
 const retryDelayMs = Number.parseInt(args.find(arg => arg.startsWith('--retry-delay-ms='))?.slice('--retry-delay-ms='.length) || '5000', 10);
@@ -127,6 +128,11 @@ async function runCheck() {
         failures.push(`Expected public bundle TARGET_TABLE to be "${expectedTable}", but found "${targetTable || 'unknown'}".`);
     }
 
+    const buildCommit = combinedJs.match(/\bBUILD_COMMIT\s*=\s*"([^"]+)"/)?.[1];
+    if (expectedSha && buildCommit !== expectedSha) {
+        failures.push(`Expected public bundle BUILD_COMMIT to be "${expectedSha}", but found "${buildCommit || 'unknown'}".`);
+    }
+
     if (requireProductionFlags) {
         checkProductionBundle(combinedJs, failures);
     }
@@ -137,6 +143,7 @@ async function runCheck() {
 
     return {
         assetCount: assetUrls.length,
+        buildCommit,
         resolvedUrl,
         targetTable
     };
@@ -153,6 +160,7 @@ async function main() {
             console.log(`Public URL check passed: ${result.resolvedUrl}`);
             console.log(`Verified assets: ${result.assetCount}`);
             if (result.targetTable) console.log(`Public bundle table: ${result.targetTable}`);
+            if (result.buildCommit) console.log(`Public bundle commit: ${result.buildCommit}`);
             return;
         } catch (err) {
             lastError = err;

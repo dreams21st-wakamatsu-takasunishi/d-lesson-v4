@@ -28,6 +28,7 @@ jobs:
       VITE_ENABLE_SETTINGS_TABLE: ${{ vars.VITE_ENABLE_SETTINGS_TABLE || 'false' }}
       VITE_REQUIRE_SUPABASE_AUTH: 'true'
       VITE_ALLOW_LEGACY_ADMIN_PASS: 'false'
+      VITE_BUILD_COMMIT: ${{ github.sha }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -90,4 +91,4 @@ jobs:
         run: npm ci
 
       - name: Check deployed public URL
-        run: npm run check:public-production-url -- --retries=6 --retry-delay-ms=10000
+        run: npm run check:public-production-url -- --expect-sha=${{ github.sha }} --retries=6 --retry-delay-ms=10000

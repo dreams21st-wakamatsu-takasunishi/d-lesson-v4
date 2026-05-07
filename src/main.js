@@ -101,6 +101,12 @@ import {
   handleSecretMenuClick,
   startRecommendedStage
 } from './games/core.js';
+
+const BUILD_COMMIT = import.meta.env.VITE_BUILD_COMMIT || 'local';
+if (typeof window !== 'undefined') {
+  window.__D_LESSON_BUILD__ = { commit: BUILD_COMMIT };
+}
+
 /* =========================================================
    [JS] 1. 効果音管理 (Sound) ＆ システム制御 ＆ 音声読み上げ
    ========================================================= */
