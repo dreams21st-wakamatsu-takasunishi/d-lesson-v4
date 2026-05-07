@@ -10,13 +10,23 @@ import { createConfetti } from '../ui/effects.js';
 // Values come from Vite env vars. Do not hard-code project keys here.
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const SUPABASE_PROJECT_REF = getSupabaseProjectRef(supabaseUrl);
+// Use an app-specific auth key so legacy/test sessions do not collide with production.
+const SUPABASE_AUTH_STORAGE_KEY = SUPABASE_PROJECT_REF ? `sb-${SUPABASE_PROJECT_REF}-d-lesson-auth-token` : '';
+const SUPABASE_LEGACY_AUTH_STORAGE_KEY = SUPABASE_PROJECT_REF ? `sb-${SUPABASE_PROJECT_REF}-auth-token` : '';
+const supabaseClientOptions = {
+    auth: {
+        ...(SUPABASE_AUTH_STORAGE_KEY ? { storageKey: SUPABASE_AUTH_STORAGE_KEY } : {}),
+        skipAutoInitialize: true
+    }
+};
 
 export const HAS_SUPABASE_CONFIG = Boolean(supabaseUrl && supabaseKey);
 export const ENABLE_LEGACY_SUPABASE_SYNC = import.meta.env.VITE_ENABLE_LEGACY_SUPABASE_SYNC === 'true';
 export const ENABLE_RLS_CLOUD_SYNC = import.meta.env.VITE_ENABLE_RLS_CLOUD_SYNC === 'true';
 export const REQUIRE_SUPABASE_AUTH = import.meta.env.VITE_REQUIRE_SUPABASE_AUTH === 'true';
 export const ENABLE_SETTINGS_TABLE = import.meta.env.VITE_ENABLE_SETTINGS_TABLE === 'true';
-export const supabase = HAS_SUPABASE_CONFIG ? createClient(supabaseUrl, supabaseKey) : null;
+export const supabase = HAS_SUPABASE_CONFIG ? createClient(supabaseUrl, supabaseKey, supabaseClientOptions) : null;
 
 // ==========================================
 // Environment settings
@@ -40,6 +50,57 @@ let authGateAfterLogin = null;
 
 const LESSON_ACCESS_BASE_COLUMNS = 'auth_user_id,user_data_id,role';
 const LESSON_ACCESS_SCOPED_COLUMNS = `${LESSON_ACCESS_BASE_COLUMNS},scope_type,scope_value`;
+
+function getSupabaseProjectRef(url) {
+    if (!url) return '';
+    try {
+        return new URL(url).hostname.split('.')[0] || '';
+    } catch (_err) {
+        return '';
+    }
+}
+
+function forEachBrowserStorage(callback) {
+    if (typeof window === 'undefined') return;
+    [window.localStorage, window.sessionStorage].forEach(storage => {
+        if (!storage) return;
+        try {
+            callback(storage);
+        } catch (err) {
+            console.warn('Failed to access browser storage:', err);
+        }
+    });
+}
+
+function removeSupabaseAuthStorage() {
+    const storageKeys = [SUPABASE_AUTH_STORAGE_KEY, SUPABASE_LEGACY_AUTH_STORAGE_KEY].filter(Boolean);
+    if (storageKeys.length === 0) return;
+    forEachBrowserStorage(storage => {
+        storageKeys.forEach(key => {
+            storage.removeItem(key);
+            storage.removeItem(`${key}-code-verifier`);
+            storage.removeItem(`${key}-user`);
+        });
+    });
+}
+
+function isInvalidRefreshTokenError(error) {
+    const message = `${error?.name || ''} ${error?.message || ''} ${error?.code || ''} ${error?.status || ''}`;
+    return /invalid refresh token|refresh token not found|invalid_grant/i.test(message);
+}
+
+async function discardStaleSupabaseSession() {
+    if (supabase) {
+        try {
+            await supabase.auth.signOut({ scope: 'local' });
+        } catch (err) {
+            if (!isInvalidRefreshTokenError(err)) {
+                console.warn('Failed to clear stale auth session:', err);
+            }
+        }
+    }
+    removeSupabaseAuthStorage();
+}
 
 function canUseRlsCloudSync() {
     return Boolean(supabase && REQUIRE_SUPABASE_AUTH && ENABLE_RLS_CLOUD_SYNC);
@@ -141,7 +202,12 @@ export async function refreshCurrentLessonAccess() {
         if (error) throw error;
         currentLessonAccess = normalizeLessonAccessRows(data);
     } catch (err) {
-        console.error('Failed to load lesson access:', err);
+        if (isInvalidRefreshTokenError(err)) {
+            await discardStaleSupabaseSession();
+            setSyncStatus('auth expired');
+        } else {
+            console.error('Failed to load lesson access:', err);
+        }
         currentLessonAccess = [];
     }
 
@@ -463,6 +529,8 @@ async function handleAuthFormSubmit(event) {
 
 async function ensureSupabaseSession() {
     if (!REQUIRE_SUPABASE_AUTH) return true;
+    let gateMessage = '先生または管理者のアカウントでログインしてください。';
+    let gateMessageIsError = false;
 
     if (!supabase) {
         setSyncStatus('auth missing');
@@ -479,13 +547,21 @@ async function ensureSupabaseSession() {
             return true;
         }
     } catch (err) {
-        console.error('Auth session check failed:', err);
+        if (isInvalidRefreshTokenError(err)) {
+            await discardStaleSupabaseSession();
+            setSyncStatus('auth expired');
+            gateMessage = 'ログインの有効期限が切れました。もう一度ログインしてください。';
+        } else {
+            console.error('Auth session check failed:', err);
+            gateMessage = 'ログイン状態を確認できませんでした。もう一度ログインしてください。';
+            gateMessageIsError = true;
+        }
     }
 
     if (authGatePromise) return authGatePromise;
     authGatePromise = new Promise(resolve => {
         authGateResolve = resolve;
-        showAuthGate('先生または管理者のアカウントでログインしてください。');
+        showAuthGate(gateMessage, gateMessageIsError);
     });
     return authGatePromise;
 }
@@ -587,11 +663,14 @@ export async function signOutSupabaseAuth() {
 
     if (supabase) {
         try {
-            await supabase.auth.signOut();
+            await supabase.auth.signOut({ scope: 'local' });
         } catch (err) {
-            console.error('Auth sign-out failed:', err);
+            if (!isInvalidRefreshTokenError(err)) {
+                console.error('Auth sign-out failed:', err);
+            }
         }
     }
+    removeSupabaseAuthStorage();
 
     setSyncStatus('signed out');
     showAuthGate('ログアウトしました。もう一度ログインしてください。', false, () => { void loadUsers(); });
