@@ -30,6 +30,25 @@ function parseEnvFile(path) {
     return values;
 }
 
+function loadEnvValues() {
+    if (existsSync(envPath)) {
+        return {
+            source: envPath,
+            values: parseEnvFile(envPath)
+        };
+    }
+
+    if (fileArg) {
+        console.error(`Public env check failed: ${envPath} was not found.`);
+        process.exit(1);
+    }
+
+    return {
+        source: 'process.env',
+        values: process.env
+    };
+}
+
 function isTrue(value) {
     return value === 'true';
 }
@@ -85,12 +104,7 @@ function main() {
     const failures = [];
     const warnings = [];
 
-    if (!existsSync(envPath)) {
-        console.error(`Public env check failed: ${envPath} was not found.`);
-        process.exit(1);
-    }
-
-    const env = parseEnvFile(envPath);
+    const { source, values: env } = loadEnvValues();
     const invalidLines = Object.keys(env).filter(key => key.startsWith('__invalid_line_'));
     invalidLines.forEach(key => failures.push(`Invalid env line: ${key.replace('__invalid_line_', '')}`));
 
@@ -108,7 +122,7 @@ function main() {
         process.exit(1);
     }
 
-    console.log(`Public env check passed: ${envPath}`);
+    console.log(`Public env check passed: ${source}`);
 }
 
 main();

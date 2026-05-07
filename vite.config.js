@@ -1,8 +1,9 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+  base: './',
   build: {
-    // 圧縮（ミニファイ）をオフにして、関数名が勝手に書き換えられるのを防ぐ
+    // Keep legacy global handlers stable while the app is being modularized.
     minify: false
   }
 });
