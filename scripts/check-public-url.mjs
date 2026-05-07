@@ -1,5 +1,6 @@
 import https from 'node:https';
 import http from 'node:http';
+import { execFileSync } from 'node:child_process';
 
 const DEFAULT_PUBLIC_URL = 'https://dreams21st-wakamatsu-takasunishi.github.io/d-lesson-v4/';
 
@@ -7,7 +8,9 @@ const args = process.argv.slice(2);
 const argUrl = args.find(arg => arg.startsWith('--url='))?.slice('--url='.length)
     || args.find(arg => !arg.startsWith('--'));
 const expectedTable = args.find(arg => arg.startsWith('--expect-table='))?.slice('--expect-table='.length);
-const expectedSha = args.find(arg => arg.startsWith('--expect-sha='))?.slice('--expect-sha='.length);
+const expectCurrentGitSha = args.includes('--expect-current-git-sha');
+const expectedSha = args.find(arg => arg.startsWith('--expect-sha='))?.slice('--expect-sha='.length)
+    || (expectCurrentGitSha ? getCurrentGitSha() : undefined);
 const requireProductionFlags = args.includes('--production');
 const retryCount = Number.parseInt(args.find(arg => arg.startsWith('--retries='))?.slice('--retries='.length) || '0', 10);
 const retryDelayMs = Number.parseInt(args.find(arg => arg.startsWith('--retry-delay-ms='))?.slice('--retry-delay-ms='.length) || '5000', 10);
@@ -15,6 +18,16 @@ const publicUrl = argUrl || process.env.D_LESSON_PUBLIC_URL || DEFAULT_PUBLIC_UR
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function getCurrentGitSha() {
+    try {
+        return execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+    } catch (err) {
+        console.error('Public URL check failed:');
+        console.error(`- Could not read current git SHA: ${err.message}`);
+        process.exit(1);
+    }
 }
 
 function requestText(url, redirectsLeft = 5) {

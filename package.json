@@ -11,6 +11,7 @@
     "check:public-test-env": "node scripts/check-public-env.mjs --allow-test-table",
     "check:public-url": "node scripts/check-public-url.mjs",
     "check:public-production-url": "node scripts/check-public-url.mjs --expect-table=user_data --production",
+    "check:public-latest": "node scripts/check-public-url.mjs --expect-table=user_data --production --expect-current-git-sha --retries=6 --retry-delay-ms=10000",
     "check:release-test": "npm run check:public-test-env && npm run check:inline-handlers && npm run build",
     "check:release": "npm run check:public-env && npm run check:inline-handlers && npm run build",
     "build": "vite build",
