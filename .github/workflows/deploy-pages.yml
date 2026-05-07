@@ -44,6 +44,9 @@ jobs:
       - name: Check public environment
         run: npm run check:public-test-env
 
+      - name: Check inline handlers
+        run: npm run check:inline-handlers
+
       - name: Build
         run: npm run build
 

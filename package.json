@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "dev:local": "vite --host 127.0.0.1 --port 5174 --strictPort",
+    "check:inline-handlers": "node scripts/check-inline-handlers.mjs",
     "check:public-env": "node scripts/check-public-env.mjs",
     "check:public-test-env": "node scripts/check-public-env.mjs --allow-test-table",
     "build": "vite build",
