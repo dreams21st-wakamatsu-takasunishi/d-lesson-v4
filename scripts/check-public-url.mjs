@@ -74,6 +74,25 @@ function checkRelativeAssetPaths(html, failures) {
     });
 }
 
+function checkProductionBundle(combinedJs, failures) {
+    if (!combinedJs.includes('-d-lesson-auth-token')) {
+        failures.push('Public bundle must use the D Lesson Supabase auth storage key.');
+    }
+
+    if (!/\bskipAutoInitialize\s*:\s*(?:true|!0)\b/.test(combinedJs)) {
+        failures.push('Public bundle must skip automatic Supabase auth recovery before the app auth gate runs.');
+    }
+
+    if (combinedJs.match(/\bALLOW_LEGACY_ADMIN_PASS\s*=\s*true\b/)) {
+        failures.push('Public bundle allows legacy admin password.');
+    }
+
+    const legacyPass = combinedJs.match(/\bLEGACY_ADMIN_PASS\s*=\s*"([^"]*)"/)?.[1];
+    if (legacyPass) {
+        failures.push('Public bundle contains VITE_LEGACY_ADMIN_PASS.');
+    }
+}
+
 async function main() {
     const failures = [];
     const { url: resolvedUrl, text: html } = await requestText(publicUrl);
@@ -103,13 +122,7 @@ async function main() {
     }
 
     if (requireProductionFlags) {
-        if (combinedJs.match(/\bALLOW_LEGACY_ADMIN_PASS\s*=\s*true\b/)) {
-            failures.push('Public bundle allows legacy admin password.');
-        }
-        const legacyPass = combinedJs.match(/\bLEGACY_ADMIN_PASS\s*=\s*"([^"]*)"/)?.[1];
-        if (legacyPass) {
-            failures.push('Public bundle contains VITE_LEGACY_ADMIN_PASS.');
-        }
+        checkProductionBundle(combinedJs, failures);
     }
 
     if (failures.length > 0) {
