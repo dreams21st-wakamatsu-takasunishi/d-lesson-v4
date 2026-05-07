@@ -10,6 +10,7 @@
     "check:public-env": "node scripts/check-public-env.mjs",
     "check:public-test-env": "node scripts/check-public-env.mjs --allow-test-table",
     "check:public-url": "node scripts/check-public-url.mjs",
+    "check:public-production-url": "node scripts/check-public-url.mjs --expect-table=user_data --production",
     "check:release-test": "npm run check:public-test-env && npm run check:inline-handlers && npm run build",
     "check:release": "npm run check:public-env && npm run check:inline-handlers && npm run build",
     "build": "vite build",

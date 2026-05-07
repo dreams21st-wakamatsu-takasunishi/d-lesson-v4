@@ -42,7 +42,7 @@ jobs:
         run: npm ci
 
       - name: Check public environment
-        run: npm run check:public-test-env
+        run: npm run check:public-env
 
       - name: Check inline handlers
         run: npm run check:inline-handlers

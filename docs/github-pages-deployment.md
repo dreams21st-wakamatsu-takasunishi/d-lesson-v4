@@ -41,6 +41,8 @@ VITE_SUPABASE_TABLE=user_data
 VITE_SUPABASE_USE_TEST_TABLE=false
 ```
 
+現在の GitHub Actions は本番公開用の厳格チェックを使う。上の2つが本番値になっていない場合、`Deploy GitHub Pages` は失敗する。
+
 ## 公開URLの確認場所
 
 公開後のURLは次のどちらかで確認できる。
@@ -52,6 +54,12 @@ VITE_SUPABASE_USE_TEST_TABLE=false
 
 ```powershell
 npm.cmd run check:public-url
+```
+
+本番切替後は、公開URLが `user_data` を向いていることも確認する。
+
+```powershell
+npm.cmd run check:public-production-url
 ```
 
 ## 公開前チェック

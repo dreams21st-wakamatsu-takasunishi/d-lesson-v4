@@ -6,6 +6,8 @@ const DEFAULT_PUBLIC_URL = 'https://dreams21st-wakamatsu-takasunishi.github.io/d
 const args = process.argv.slice(2);
 const argUrl = args.find(arg => arg.startsWith('--url='))?.slice('--url='.length)
     || args.find(arg => !arg.startsWith('--'));
+const expectedTable = args.find(arg => arg.startsWith('--expect-table='))?.slice('--expect-table='.length);
+const requireProductionFlags = args.includes('--production');
 const publicUrl = argUrl || process.env.D_LESSON_PUBLIC_URL || DEFAULT_PUBLIC_URL;
 
 function requestText(url, redirectsLeft = 5) {
@@ -83,12 +85,30 @@ async function main() {
         failures.push('No JS/CSS/SVG assets were found in the public HTML.');
     }
 
+    const jsAssetTexts = [];
     for (const assetUrl of assetUrls) {
         try {
             const { text } = await requestText(assetUrl);
             if (text.length === 0) failures.push(`${assetUrl} returned an empty response.`);
+            if (/\.js(?:\?|$)/.test(assetUrl)) jsAssetTexts.push({ assetUrl, text });
         } catch (err) {
             failures.push(err.message);
+        }
+    }
+
+    const combinedJs = jsAssetTexts.map(asset => asset.text).join('\n');
+    const targetTable = combinedJs.match(/\bTARGET_TABLE\s*=\s*"([^"]+)"/)?.[1];
+    if (expectedTable && targetTable !== expectedTable) {
+        failures.push(`Expected public bundle TARGET_TABLE to be "${expectedTable}", but found "${targetTable || 'unknown'}".`);
+    }
+
+    if (requireProductionFlags) {
+        if (combinedJs.match(/\bALLOW_LEGACY_ADMIN_PASS\s*=\s*true\b/)) {
+            failures.push('Public bundle allows legacy admin password.');
+        }
+        const legacyPass = combinedJs.match(/\bLEGACY_ADMIN_PASS\s*=\s*"([^"]*)"/)?.[1];
+        if (legacyPass) {
+            failures.push('Public bundle contains VITE_LEGACY_ADMIN_PASS.');
         }
     }
 
@@ -100,6 +120,7 @@ async function main() {
 
     console.log(`Public URL check passed: ${resolvedUrl}`);
     console.log(`Verified assets: ${assetUrls.length}`);
+    if (targetTable) console.log(`Public bundle table: ${targetTable}`);
 }
 
 main().catch(err => {

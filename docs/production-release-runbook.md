@@ -69,6 +69,8 @@ VITE_SUPABASE_USE_TEST_TABLE=false
 VITE_ENABLE_RLS_CLOUD_SYNC=true
 ```
 
+この変更後に次の commit を push する。GitHub Actions は `npm run check:public-env` を実行するため、`test_user_data` のままではデプロイが止まる。
+
 `VITE_ENABLE_SETTINGS_TABLE` は、`lesson_settings` の本番確認が終わってから `true` にする。
 
 設定してはいけないもの:
@@ -108,6 +110,7 @@ https://dreams21st-wakamatsu-takasunishi.github.io/d-lesson-v4/
 確認項目:
 
 - `npm.cmd run check:public-url` が成功する。
+- 本番切替後は `npm.cmd run check:public-production-url` が成功する。
 - 未ログインでは児童一覧や管理画面に入れない。
 - 生徒でログインして、練習後にコイン、進捗、おすすめ、練習履歴が保存される。
 - 先生でログインして、担当範囲だけ見える。
@@ -125,6 +128,7 @@ https://dreams21st-wakamatsu-takasunishi.github.io/d-lesson-v4/
 - `supabase/sql/preflight_public_release.sql` に NG がない。
 - GitHub Actions のデプロイが成功。
 - `npm.cmd run check:public-url` が成功。
+- `npm.cmd run check:public-production-url` が成功。
 - 公開URLで、未ログイン、生徒、先生、管理者の4パターン確認が完了。
 - 実名が `user_data.id` や公開設定値に残っていない。
 - バックアップと復元の運用手順が確認済み。
