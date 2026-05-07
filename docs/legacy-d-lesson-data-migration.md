@@ -74,6 +74,8 @@ npm.cmd run check:converted-users -- --input ".\migration\converted-users.json"
 
 ここで `Converted user backup check passed` と表示されれば、少なくとも旧式の児童名ID、表示名欠落、`userDataId` 不一致、重複表示名は検出されていません。
 
+新Dレッスンの管理者画面でも、同じ種類の問題があるJSONは復元前に止まるようにしています。旧バックアップを直接復元しようとして止まった場合は、上の変換コマンドを実行してから `converted-users.json` を復元してください。
+
 ## 3. まずテスト環境へ復元
 
 `.env.local` がテスト用になっていることを確認します。
