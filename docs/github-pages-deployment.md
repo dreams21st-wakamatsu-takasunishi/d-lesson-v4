@@ -48,6 +48,12 @@ VITE_SUPABASE_USE_TEST_TABLE=false
 - GitHub リポジトリの `Settings` > `Pages`
 - GitHub リポジトリの `Actions` > `Deploy GitHub Pages` の実行結果
 
+公開URLと配信ファイルが読めるかは、次でも確認できる。
+
+```powershell
+npm.cmd run check:public-url
+```
+
 ## 公開前チェック
 
 テストテーブルで公開検証する場合:

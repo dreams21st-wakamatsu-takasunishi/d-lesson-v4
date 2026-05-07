@@ -1,0 +1,109 @@
+import https from 'node:https';
+import http from 'node:http';
+
+const DEFAULT_PUBLIC_URL = 'https://dreams21st-wakamatsu-takasunishi.github.io/d-lesson-v4/';
+
+const args = process.argv.slice(2);
+const argUrl = args.find(arg => arg.startsWith('--url='))?.slice('--url='.length)
+    || args.find(arg => !arg.startsWith('--'));
+const publicUrl = argUrl || process.env.D_LESSON_PUBLIC_URL || DEFAULT_PUBLIC_URL;
+
+function requestText(url, redirectsLeft = 5) {
+    return new Promise((resolve, reject) => {
+        const parsedUrl = new URL(url);
+        const client = parsedUrl.protocol === 'http:' ? http : https;
+
+        const req = client.get(parsedUrl, response => {
+            const statusCode = response.statusCode || 0;
+            const location = response.headers.location;
+
+            if (statusCode >= 300 && statusCode < 400 && location) {
+                response.resume();
+                if (redirectsLeft <= 0) {
+                    reject(new Error(`${url} exceeded redirect limit.`));
+                    return;
+                }
+                resolve(requestText(new URL(location, parsedUrl).toString(), redirectsLeft - 1));
+                return;
+            }
+
+            if (statusCode < 200 || statusCode >= 300) {
+                response.resume();
+                reject(new Error(`${url} returned HTTP ${statusCode}`));
+                return;
+            }
+
+            response.setEncoding('utf8');
+            let text = '';
+            response.on('data', chunk => { text += chunk; });
+            response.on('end', () => {
+                resolve({
+                    url: parsedUrl.toString(),
+                    text
+                });
+            });
+        });
+
+        req.setTimeout(20000, () => {
+            req.destroy(new Error(`${url} timed out.`));
+        });
+        req.on('error', reject);
+    });
+}
+
+function collectAssetUrls(html, baseUrl) {
+    const urls = new Set();
+    const attrPattern = /\b(?:src|href)="([^"]+)"/g;
+    let match;
+
+    while ((match = attrPattern.exec(html)) !== null) {
+        const value = match[1];
+        if (!/\.(?:js|css|svg)(?:\?|$)/.test(value)) continue;
+        urls.add(new URL(value, baseUrl).toString());
+    }
+
+    return Array.from(urls).sort();
+}
+
+function checkRelativeAssetPaths(html, failures) {
+    const absoluteAssetRefs = html.match(/\b(?:src|href)="\/(?:assets|favicon\.svg)[^"]*"/g) || [];
+    absoluteAssetRefs.forEach(ref => {
+        failures.push(`Asset path must be relative for GitHub Pages subpath deployment: ${ref}`);
+    });
+}
+
+async function main() {
+    const failures = [];
+    const { url: resolvedUrl, text: html } = await requestText(publicUrl);
+
+    checkRelativeAssetPaths(html, failures);
+
+    const assetUrls = collectAssetUrls(html, resolvedUrl);
+    if (assetUrls.length === 0) {
+        failures.push('No JS/CSS/SVG assets were found in the public HTML.');
+    }
+
+    for (const assetUrl of assetUrls) {
+        try {
+            const { text } = await requestText(assetUrl);
+            if (text.length === 0) failures.push(`${assetUrl} returned an empty response.`);
+        } catch (err) {
+            failures.push(err.message);
+        }
+    }
+
+    if (failures.length > 0) {
+        console.error('Public URL check failed:');
+        failures.forEach(failure => console.error(`- ${failure}`));
+        process.exit(1);
+    }
+
+    console.log(`Public URL check passed: ${resolvedUrl}`);
+    console.log(`Verified assets: ${assetUrls.length}`);
+}
+
+main().catch(err => {
+    console.error('Public URL check failed:');
+    console.error(`- ${err.message}`);
+    process.exit(1);
+});
