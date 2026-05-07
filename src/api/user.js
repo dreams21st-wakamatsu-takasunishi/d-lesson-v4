@@ -33,6 +33,13 @@ export const supabase = HAS_SUPABASE_CONFIG ? createClient(supabaseUrl, supabase
 // ==========================================
 export const IS_DEV_MODE = import.meta.env.VITE_SUPABASE_USE_TEST_TABLE === 'true';
 const TARGET_TABLE = import.meta.env.VITE_SUPABASE_TABLE || (IS_DEV_MODE ? 'test_user_data' : 'user_data');
+const STUDENT_LOGIN_EMAIL_DOMAIN = (import.meta.env.VITE_STUDENT_LOGIN_EMAIL_DOMAIN || '').trim().replace(/^@/, '');
+const STUDENT_LOGIN_EMAIL_PREFIX = import.meta.env.VITE_STUDENT_LOGIN_EMAIL_PREFIX || 'dlesson-student-';
+const STUDENT_LOGIN_NUMBER_PAD = parseEnvInteger(import.meta.env.VITE_STUDENT_LOGIN_NUMBER_PAD || import.meta.env.VITE_STUDENT_LOGIN_PAD, 3, 1, 8);
+const STUDENT_LOGIN_MIN = parseEnvInteger(import.meta.env.VITE_STUDENT_LOGIN_MIN, 1, 1, 999);
+const STUDENT_LOGIN_MAX = Math.max(STUDENT_LOGIN_MIN, parseEnvInteger(import.meta.env.VITE_STUDENT_LOGIN_MAX, 40, STUDENT_LOGIN_MIN, 999));
+const STUDENT_LOGIN_PASSCODE_MIN_LENGTH = parseEnvInteger(import.meta.env.VITE_STUDENT_LOGIN_PASSCODE_MIN_LENGTH, 6, 4, 24);
+const STUDENT_LOGIN_PASSCODE_MAX_LENGTH = parseEnvInteger(import.meta.env.VITE_STUDENT_LOGIN_PASSCODE_MAX_LENGTH, 12, STUDENT_LOGIN_PASSCODE_MIN_LENGTH, 32);
 
 export const STORAGE_KEY = 'pc_practice_v5_split';
 export const GLOBAL_SETTINGS_ID = '__GLOBAL_SETTINGS__';
@@ -47,6 +54,7 @@ export let currentLessonAccess = [];
 let authGatePromise = null;
 let authGateResolve = null;
 let authGateAfterLogin = null;
+let studentLoginState = { number: '', passcode: '' };
 
 const LESSON_ACCESS_BASE_COLUMNS = 'auth_user_id,user_data_id,role';
 const LESSON_ACCESS_SCOPED_COLUMNS = `${LESSON_ACCESS_BASE_COLUMNS},scope_type,scope_value`;
@@ -58,6 +66,12 @@ function getSupabaseProjectRef(url) {
     } catch (_err) {
         return '';
     }
+}
+
+function parseEnvInteger(value, fallback, min, max) {
+    const parsed = Number.parseInt(value, 10);
+    if (!Number.isFinite(parsed)) return fallback;
+    return Math.min(max, Math.max(min, parsed));
 }
 
 function forEachBrowserStorage(callback) {
@@ -130,6 +144,27 @@ export function getCurrentLessonRole() {
 
 export function hasLessonRole(...roles) {
     return roles.includes(getCurrentLessonRole());
+}
+
+function getSingleStudentAccessUserId() {
+    if (!canUseRlsCloudSync() || getCurrentLessonRole() !== 'student') return null;
+    const userIds = Array.from(new Set(
+        currentLessonAccess
+            .filter(access => (
+                access?.role === 'student'
+                && access.user_data_id
+                && !isSystemUserId(access.user_data_id)
+            ))
+            .map(access => access.user_data_id)
+    ));
+    return userIds.length === 1 ? userIds[0] : null;
+}
+
+function maybeEnterSingleStudentUser() {
+    const studentUserId = getSingleStudentAccessUserId();
+    if (!studentUserId || currentUser || !users[studentUserId]) return false;
+    login(studentUserId);
+    return true;
 }
 
 function canWriteUserRow(userId) {
@@ -437,16 +472,19 @@ function setAuthGateMessage(message, isError = false) {
 }
 
 function setAuthGateBusy(isBusy, message = '') {
-    const submit = document.getElementById('supabase-auth-submit');
-    const email = document.getElementById('supabase-auth-email');
-    const password = document.getElementById('supabase-auth-password');
-    if (submit) {
-        submit.disabled = isBusy;
-        submit.innerText = isBusy ? 'ログイン中...' : 'ログイン';
+    const gate = document.getElementById('supabase-auth-gate');
+    if (gate) {
+        gate.querySelectorAll('button, input').forEach(element => {
+            element.disabled = isBusy;
+        });
     }
-    if (email) email.disabled = isBusy;
-    if (password) password.disabled = isBusy;
+
+    const submit = document.getElementById('supabase-auth-submit');
+    const studentSubmit = document.getElementById('student-auth-submit');
+    if (submit) submit.innerText = isBusy ? 'ログイン中...' : 'ログイン';
+    if (studentSubmit) studentSubmit.innerText = isBusy ? 'ログイン中...' : 'ログイン';
     if (message) setAuthGateMessage(message);
+    if (!isBusy) updateStudentLoginUi();
 }
 
 function hideAuthGate() {
@@ -454,20 +492,48 @@ function hideAuthGate() {
     if (gate) gate.remove();
 }
 
-function showAuthGate(message = '', isError = false, afterLogin = null) {
-    authGateAfterLogin = afterLogin;
+function isStudentClickLoginEnabled() {
+    return Boolean(STUDENT_LOGIN_EMAIL_DOMAIN);
+}
 
-    let gate = document.getElementById('supabase-auth-gate');
-    if (!gate) {
-        gate = document.createElement('div');
-        gate.id = 'supabase-auth-gate';
-        document.body.appendChild(gate);
-    }
+function resetStudentLoginState() {
+    studentLoginState = { number: '', passcode: '' };
+}
 
-    gate.style.cssText = 'position:fixed; inset:0; z-index:20000; background:#f6f7fb; display:flex; align-items:center; justify-content:center; padding:24px;';
-    gate.innerHTML = `
-        <form id="supabase-auth-form" style="width:min(420px, 100%); background:#fff; border:1px solid #dbe3ef; border-radius:8px; box-shadow:0 18px 45px rgba(15,23,42,0.18); padding:28px;">
-            <h2 style="margin:0 0 18px; color:#0f172a; font-size:24px; letter-spacing:0;">Dレッスン ログイン</h2>
+function getStudentLoginNumbers() {
+    const count = STUDENT_LOGIN_MAX - STUDENT_LOGIN_MIN + 1;
+    return Array.from({ length: count }, (_value, index) => STUDENT_LOGIN_MIN + index);
+}
+
+function padStudentLoginNumber(number) {
+    return String(number).padStart(STUDENT_LOGIN_NUMBER_PAD, '0');
+}
+
+function buildStudentLoginEmail(number) {
+    return `${STUDENT_LOGIN_EMAIL_PREFIX}${padStudentLoginNumber(number)}@${STUDENT_LOGIN_EMAIL_DOMAIN}`;
+}
+
+function buildStudentNumberButtonsHtml() {
+    return getStudentLoginNumbers().map(number => `
+        <button type="button" class="student-login-number-btn" data-student-login-number="${number}">
+            ${number}
+        </button>
+    `).join('');
+}
+
+function buildStudentKeypadButtonsHtml() {
+    const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'clear', '0', 'back'];
+    return keys.map(key => {
+        const label = key === 'clear' ? 'クリア' : key === 'back' ? '←' : key;
+        const extraClass = key === 'clear' ? ' is-wide' : key === 'back' ? ' is-action' : '';
+        return `<button type="button" class="student-login-key-btn${extraClass}" data-student-login-key="${key}">${label}</button>`;
+    }).join('');
+}
+
+function buildStaffAuthFormHtml(isPrimary = false) {
+    const topMargin = isPrimary ? '0' : '14px';
+    return `
+        <form id="supabase-auth-form" style="margin-top:${topMargin};">
             <label style="display:block; color:#334155; font-weight:700; font-size:14px; margin-bottom:12px;">
                 メールアドレス
                 <input id="supabase-auth-email" type="email" autocomplete="username" required style="box-sizing:border-box; width:100%; margin-top:6px; border:1px solid #cbd5e1; border-radius:6px; padding:12px; font-size:16px;">
@@ -477,16 +543,221 @@ function showAuthGate(message = '', isError = false, afterLogin = null) {
                 <input id="supabase-auth-password" type="password" autocomplete="current-password" required style="box-sizing:border-box; width:100%; margin-top:6px; border:1px solid #cbd5e1; border-radius:6px; padding:12px; font-size:16px;">
             </label>
             <button id="supabase-auth-submit" class="btn-primary" type="submit" style="width:100%; min-height:46px; font-size:17px;">ログイン</button>
-            <p id="supabase-auth-message" style="min-height:22px; margin:14px 0 0; color:${isError ? '#b91c1c' : '#475569'}; font-size:14px; line-height:1.5;"></p>
         </form>
     `;
+}
 
+function buildStudentAuthPanelHtml() {
+    return `
+        <form id="student-auth-form" style="border:1px solid #dbe3ef; border-radius:8px; background:#f8fafc; padding:18px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px; margin-bottom:14px;">
+                <div>
+                    <h3 style="margin:0 0 6px; color:#0f172a; font-size:20px; letter-spacing:0;">児童ログイン</h3>
+                    <p style="margin:0; color:#475569; font-size:14px; line-height:1.5;">番号を選び、画面のボタンだけであいことばを入れます。</p>
+                </div>
+                <div id="student-login-selected-number" style="min-width:96px; text-align:center; border:1px solid #cbd5e1; border-radius:6px; padding:8px; background:#fff; color:#0f172a; font-weight:800;">未選択</div>
+            </div>
+            <div id="student-login-number-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(54px, 1fr)); gap:8px; margin-bottom:16px;">
+                ${buildStudentNumberButtonsHtml()}
+            </div>
+            <div style="display:grid; grid-template-columns:minmax(180px, 1fr) minmax(210px, 260px); gap:16px; align-items:start;">
+                <div>
+                    <div style="color:#334155; font-weight:800; font-size:14px; margin-bottom:8px;">あいことば</div>
+                    <div id="student-login-passcode-display" style="min-height:46px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; display:flex; align-items:center; justify-content:center; color:#0f172a; font-size:24px; font-weight:800; letter-spacing:4px;">未入力</div>
+                    <button id="student-auth-submit" class="btn-primary" type="submit" style="width:100%; min-height:46px; margin-top:12px; font-size:17px;">ログイン</button>
+                </div>
+                <div id="student-login-keypad" style="display:grid; grid-template-columns:repeat(3, minmax(58px, 1fr)); gap:8px;">
+                    ${buildStudentKeypadButtonsHtml()}
+                </div>
+            </div>
+        </form>
+    `;
+}
+
+function buildAuthGateHtml(isError = false) {
+    const hasStudentLogin = isStudentClickLoginEnabled();
+    const cardWidth = hasStudentLogin ? '780px' : '420px';
+    const staffPanel = hasStudentLogin
+        ? `<details style="margin-top:16px; border-top:1px solid #e2e8f0; padding-top:12px;">
+                <summary style="cursor:pointer; color:#0f172a; font-weight:800; font-size:15px;">先生・管理者ログイン</summary>
+                ${buildStaffAuthFormHtml(false)}
+            </details>`
+        : buildStaffAuthFormHtml(true);
+
+    return `
+        <div id="supabase-auth-card" style="box-sizing:border-box; width:min(${cardWidth}, 100%); max-height:calc(100vh - 48px); overflow:auto; background:#fff; border:1px solid #dbe3ef; border-radius:8px; box-shadow:0 18px 45px rgba(15,23,42,0.18); padding:24px;">
+            <h2 style="margin:0 0 18px; color:#0f172a; font-size:24px; letter-spacing:0;">Dレッスン ログイン</h2>
+            <style>
+                .student-login-number-btn,
+                .student-login-key-btn {
+                    min-height:46px;
+                    border:1px solid #cbd5e1;
+                    border-radius:6px;
+                    background:#fff;
+                    color:#0f172a;
+                    font-weight:800;
+                    font-size:18px;
+                    cursor:pointer;
+                }
+                .student-login-key-btn {
+                    min-height:54px;
+                    background:#eef6ff;
+                }
+                .student-login-key-btn.is-wide,
+                .student-login-key-btn.is-action {
+                    font-size:15px;
+                    background:#f1f5f9;
+                }
+                .student-login-number-btn:focus,
+                .student-login-key-btn:focus {
+                    outline:3px solid #93c5fd;
+                    outline-offset:2px;
+                }
+                .student-login-number-btn[aria-pressed="true"] {
+                    background:#0f766e;
+                    border-color:#0f766e;
+                    color:#fff;
+                }
+                @media (max-width: 620px) {
+                    #student-auth-form > div:last-child {
+                        grid-template-columns:1fr !important;
+                    }
+                }
+            </style>
+            ${hasStudentLogin ? buildStudentAuthPanelHtml() : ''}
+            ${staffPanel}
+            <p id="supabase-auth-message" style="min-height:22px; margin:14px 0 0; color:${isError ? '#b91c1c' : '#475569'}; font-size:14px; line-height:1.5;"></p>
+        </div>
+    `;
+}
+
+function updateStudentLoginUi() {
+    if (!isStudentClickLoginEnabled()) return;
+
+    document.querySelectorAll('[data-student-login-number]').forEach(button => {
+        const isSelected = button.dataset.studentLoginNumber === studentLoginState.number;
+        button.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+    });
+
+    const numberDisplay = document.getElementById('student-login-selected-number');
+    if (numberDisplay) {
+        numberDisplay.innerText = studentLoginState.number ? `${studentLoginState.number}番` : '未選択';
+    }
+
+    const passcodeDisplay = document.getElementById('student-login-passcode-display');
+    if (passcodeDisplay) {
+        passcodeDisplay.innerText = studentLoginState.passcode
+            ? '●'.repeat(studentLoginState.passcode.length)
+            : '未入力';
+    }
+
+    const submit = document.getElementById('student-auth-submit');
+    if (submit) {
+        submit.disabled = !studentLoginState.number || studentLoginState.passcode.length < STUDENT_LOGIN_PASSCODE_MIN_LENGTH;
+    }
+}
+
+function bindAuthGateEvents() {
+    const staffForm = document.getElementById('supabase-auth-form');
+    if (staffForm) staffForm.onsubmit = handleAuthFormSubmit;
+
+    const studentForm = document.getElementById('student-auth-form');
+    if (studentForm) studentForm.onsubmit = handleStudentAuthFormSubmit;
+
+    document.querySelectorAll('[data-student-login-number]').forEach(button => {
+        button.onclick = () => {
+            studentLoginState.number = button.dataset.studentLoginNumber || '';
+            studentLoginState.passcode = '';
+            setAuthGateMessage('');
+            updateStudentLoginUi();
+        };
+    });
+
+    document.querySelectorAll('[data-student-login-key]').forEach(button => {
+        button.onclick = () => {
+            const key = button.dataset.studentLoginKey;
+            if (key === 'clear') {
+                studentLoginState.passcode = '';
+            } else if (key === 'back') {
+                studentLoginState.passcode = studentLoginState.passcode.slice(0, -1);
+            } else if (/^\d$/.test(key) && studentLoginState.passcode.length < STUDENT_LOGIN_PASSCODE_MAX_LENGTH) {
+                studentLoginState.passcode += key;
+            }
+            setAuthGateMessage('');
+            updateStudentLoginUi();
+        };
+    });
+
+    updateStudentLoginUi();
+}
+
+function completeAuthGateLogin() {
+    hideAuthGate();
+    setSyncStatus('authenticated');
+
+    const resolve = authGateResolve;
+    const afterLogin = authGateAfterLogin;
+    authGatePromise = null;
+    authGateResolve = null;
+    authGateAfterLogin = null;
+
+    if (resolve) resolve(true);
+    if (afterLogin) afterLogin();
+}
+
+async function handleStudentAuthFormSubmit(event) {
+    event.preventDefault();
+
+    if (!supabase) {
+        setAuthGateMessage('Supabaseのログイン設定が見つかりません。.env.local を確認してください。', true);
+        return;
+    }
+
+    if (!studentLoginState.number) {
+        setAuthGateMessage('児童番号を選んでください。', true);
+        return;
+    }
+
+    if (studentLoginState.passcode.length < STUDENT_LOGIN_PASSCODE_MIN_LENGTH) {
+        setAuthGateMessage(`あいことばは${STUDENT_LOGIN_PASSCODE_MIN_LENGTH}けた以上で入力してください。`, true);
+        return;
+    }
+
+    setAuthGateBusy(true, 'ログイン中...');
+    try {
+        const email = buildStudentLoginEmail(studentLoginState.number);
+        const { error } = await supabase.auth.signInWithPassword({
+            email,
+            password: studentLoginState.passcode
+        });
+        if (error) throw error;
+        completeAuthGateLogin();
+    } catch (err) {
+        console.error('Student auth sign-in failed:', err);
+        setAuthGateBusy(false);
+        setAuthGateMessage('児童番号またはあいことばを確認してください。', true);
+    }
+}
+
+function showAuthGate(message = '', isError = false, afterLogin = null) {
+    authGateAfterLogin = afterLogin;
+
+    resetStudentLoginState();
+
+    let gate = document.getElementById('supabase-auth-gate');
+    if (!gate) {
+        gate = document.createElement('div');
+        gate.id = 'supabase-auth-gate';
+        document.body.appendChild(gate);
+    }
+
+    gate.style.cssText = 'position:fixed; inset:0; z-index:20000; background:#f6f7fb; display:flex; align-items:center; justify-content:center; padding:24px;';
+    gate.innerHTML = buildAuthGateHtml(isError);
     setAuthGateMessage(message, isError);
-    const form = document.getElementById('supabase-auth-form');
-    if (form) form.onsubmit = handleAuthFormSubmit;
+    bindAuthGateEvents();
 
     const email = document.getElementById('supabase-auth-email');
-    if (email) setTimeout(() => email.focus(), 0);
+    if (email && !isStudentClickLoginEnabled()) setTimeout(() => email.focus(), 0);
 }
 
 async function handleAuthFormSubmit(event) {
@@ -508,18 +779,7 @@ async function handleAuthFormSubmit(event) {
     try {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-
-        hideAuthGate();
-        setSyncStatus('authenticated');
-
-        const resolve = authGateResolve;
-        const afterLogin = authGateAfterLogin;
-        authGatePromise = null;
-        authGateResolve = null;
-        authGateAfterLogin = null;
-
-        if (resolve) resolve(true);
-        if (afterLogin) afterLogin();
+        completeAuthGateLogin();
     } catch (err) {
         console.error('Auth sign-in failed:', err);
         setAuthGateBusy(false);
@@ -777,6 +1037,7 @@ export async function loadUsers() {
     const loadingMsg = titleScreen.querySelector('.loading-msg');
     if (loadingMsg) loadingMsg.remove();
     updateVisibleUserUi();
+    maybeEnterSingleStudentUser();
 }
 
 export async function saveUsers(forceOverwrite = false) {
