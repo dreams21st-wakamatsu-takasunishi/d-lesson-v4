@@ -22,6 +22,7 @@
 Supabase SQL Editor で順に確認する。
 
 ```sql
+supabase/sql/production_release_gate.sql
 supabase/sql/prepare_user_display_names.sql
 supabase/sql/verify_internal_user_ids.sql
 supabase/sql/migrate_user_data_named_ids.sql
@@ -41,6 +42,7 @@ supabase/sql/preflight_public_release.sql
 必要なSQLを本番テーブルに適用済みであることを確認する。
 
 ```sql
+supabase/sql/production_release_gate.sql
 supabase/sql/drop_legacy_public_policies.sql
 supabase/sql/admin_lesson_user_access_policies.sql
 supabase/sql/admin_user_data_delete_policies.sql
@@ -119,6 +121,7 @@ https://dreams21st-wakamatsu-takasunishi.github.io/d-lesson-v4/
 次のすべてが OK なら、本番公開可能。
 
 - `npm.cmd run check:release` が成功。
+- `supabase/sql/production_release_gate.sql` に NG がない。
 - `supabase/sql/preflight_public_release.sql` に NG がない。
 - GitHub Actions のデプロイが成功。
 - `npm.cmd run check:public-url` が成功。
