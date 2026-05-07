@@ -125,6 +125,27 @@ VITE_REQUIRE_SUPABASE_AUTH=true
 
 Supabase SQL Editorで、児童アカウントのAuth User IDと新しい `student_...` IDを紐づけます。
 
+40名分を手入力するとミスが出やすいため、まずAuth User ID記入用テンプレートを作ります。
+
+```powershell
+npm.cmd run build:student-access-sql -- --mapping ".\migration\legacy-user-map.csv" --template-output ".\migration\student-auth-users-template.csv"
+```
+
+作成された `migration\student-auth-users-template.csv` を開き、各児童の `auth_user_id` を入力します。入力後は同じファイル名のまま保存してかまいません。
+
+```text
+display_name,new_user_data_id,auth_user_id,email
+テスト児童A,student_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx,AUTH_USER_ID_HERE,student-a@example.com
+```
+
+保存後、Supabase SQL Editorへ貼るためのSQLを生成します。
+
+```powershell
+npm.cmd run build:student-access-sql -- --mapping ".\migration\legacy-user-map.csv" --auth ".\migration\student-auth-users-template.csv" --output ".\migration\student-access.sql"
+```
+
+`migration\student-access.sql` の中身を確認し、Supabase SQL Editorへ貼り付けて実行します。
+
 ```sql
 insert into public.lesson_user_access (auth_user_id, user_data_id, role)
 values
