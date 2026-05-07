@@ -14,6 +14,8 @@
     "check:public-latest": "node scripts/check-public-url.mjs --expect-table=user_data --production --expect-current-git-sha --retries=6 --retry-delay-ms=10000",
     "check:release-test": "npm run check:public-test-env && npm run check:inline-handlers && npm run build",
     "check:release": "npm run check:public-env && npm run check:inline-handlers && npm run build",
+    "check:converted-users": "node scripts/check-converted-users.mjs",
+    "convert:legacy-users": "node scripts/convert-legacy-users.mjs",
     "build": "vite build",
     "preview": "vite preview"
   },
