@@ -2,6 +2,7 @@ import { users, currentUser, saveUsers, GLOBAL_SETTINGS_ID, getUserDisplayName, 
 
 import {
   KEYBOARD_STAGES,
+  VISION_STAGES,
   BLIND_STAGES,
   BRIDGE_STAGES,
   HIRAGANA_DATA,
