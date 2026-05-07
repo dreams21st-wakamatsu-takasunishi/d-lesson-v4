@@ -8,7 +8,13 @@ const argUrl = args.find(arg => arg.startsWith('--url='))?.slice('--url='.length
     || args.find(arg => !arg.startsWith('--'));
 const expectedTable = args.find(arg => arg.startsWith('--expect-table='))?.slice('--expect-table='.length);
 const requireProductionFlags = args.includes('--production');
+const retryCount = Number.parseInt(args.find(arg => arg.startsWith('--retries='))?.slice('--retries='.length) || '0', 10);
+const retryDelayMs = Number.parseInt(args.find(arg => arg.startsWith('--retry-delay-ms='))?.slice('--retry-delay-ms='.length) || '5000', 10);
 const publicUrl = argUrl || process.env.D_LESSON_PUBLIC_URL || DEFAULT_PUBLIC_URL;
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 function requestText(url, redirectsLeft = 5) {
     return new Promise((resolve, reject) => {
@@ -93,7 +99,7 @@ function checkProductionBundle(combinedJs, failures) {
     }
 }
 
-async function main() {
+async function runCheck() {
     const failures = [];
     const { url: resolvedUrl, text: html } = await requestText(publicUrl);
 
@@ -126,18 +132,43 @@ async function main() {
     }
 
     if (failures.length > 0) {
-        console.error('Public URL check failed:');
-        failures.forEach(failure => console.error(`- ${failure}`));
-        process.exit(1);
+        throw new Error(failures.join('\n'));
     }
 
-    console.log(`Public URL check passed: ${resolvedUrl}`);
-    console.log(`Verified assets: ${assetUrls.length}`);
-    if (targetTable) console.log(`Public bundle table: ${targetTable}`);
+    return {
+        assetCount: assetUrls.length,
+        resolvedUrl,
+        targetTable
+    };
 }
 
-main().catch(err => {
+async function main() {
+    let lastError = null;
+    const attempts = Number.isFinite(retryCount) && retryCount > 0 ? retryCount + 1 : 1;
+    const delayMs = Number.isFinite(retryDelayMs) && retryDelayMs > 0 ? retryDelayMs : 5000;
+
+    for (let attempt = 1; attempt <= attempts; attempt++) {
+        try {
+            const result = await runCheck();
+            console.log(`Public URL check passed: ${result.resolvedUrl}`);
+            console.log(`Verified assets: ${result.assetCount}`);
+            if (result.targetTable) console.log(`Public bundle table: ${result.targetTable}`);
+            return;
+        } catch (err) {
+            lastError = err;
+            if (attempt < attempts) {
+                console.warn(`Public URL check attempt ${attempt}/${attempts} failed. Retrying in ${delayMs}ms.`);
+                await sleep(delayMs);
+            }
+        }
+    }
+
     console.error('Public URL check failed:');
-    console.error(`- ${err.message}`);
+    String(lastError?.message || lastError)
+        .split('\n')
+        .filter(Boolean)
+        .forEach(message => console.error(`- ${message}`));
     process.exit(1);
-});
+}
+
+main();
