@@ -87,6 +87,12 @@ function addRequiredSettingChecks(env, failures) {
     if (env.VITE_LEGACY_ADMIN_PASS) {
         failures.push('VITE_LEGACY_ADMIN_PASS must not be set on public URLs.');
     }
+
+    if (!env.VITE_STUDENT_LOGIN_EMAIL_DOMAIN) {
+        failures.push('VITE_STUDENT_LOGIN_EMAIL_DOMAIN must be set so public URLs show the student number login form.');
+    } else if (/@|\s/.test(env.VITE_STUDENT_LOGIN_EMAIL_DOMAIN)) {
+        failures.push('VITE_STUDENT_LOGIN_EMAIL_DOMAIN must be a domain only, without @ or spaces.');
+    }
 }
 
 function addTestTableChecks(env, failures, warnings) {
