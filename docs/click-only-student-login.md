@@ -59,6 +59,12 @@ VITE_STUDENT_LOGIN_PASSCODE_MAX_LENGTH=12
 npm.cmd run build:student-login-csv -- --mapping ".\migration\legacy-user-map.csv" --domain "example.com" --output ".\migration\student-login-accounts.csv"
 ```
 
+作成直後に、番号・メール・あいことば・移行IDのズレがないか確認します。
+
+```powershell
+npm.cmd run check:student-login-csv -- --mapping ".\migration\legacy-user-map.csv" --input ".\migration\student-login-accounts.csv" --domain "example.com"
+```
+
 `example.com` は、実際に使う内部メール用ドメインに置き換えます。このメールアドレスは児童に配布しません。画面では番号だけを使います。
 
 出力されるCSVには `password` が含まれるため、Gitに入れないでください。`migration/` は `.gitignore` 済みです。
@@ -68,7 +74,12 @@ CSVの使い方:
 1. `student_number` と `password` を見ながら、Supabase Auth に児童アカウントを作成する。
 2. Supabase Dashboard の Authentication で各児童の Auth User ID を確認する。
 3. CSVの `auth_user_id` 列にAuth User IDを入れる。
-4. 次のコマンドで `lesson_user_access` 用SQLを作る。
+4. Auth User IDの入れ間違いがないか確認する。
+5. 次のコマンドで `lesson_user_access` 用SQLを作る。
+
+```powershell
+npm.cmd run check:student-login-csv -- --mapping ".\migration\legacy-user-map.csv" --input ".\migration\student-login-accounts.csv" --domain "example.com" --require-auth-user-id
+```
 
 ```powershell
 npm.cmd run build:student-access-sql -- --mapping ".\migration\legacy-user-map.csv" --auth ".\migration\student-login-accounts.csv" --output ".\migration\student-access.sql"

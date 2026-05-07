@@ -15,6 +15,7 @@
     "check:release-test": "npm run check:public-test-env && npm run check:inline-handlers && npm run build",
     "check:release": "npm run check:public-env && npm run check:inline-handlers && npm run build",
     "check:converted-users": "node scripts/check-converted-users.mjs",
+    "check:student-login-csv": "node scripts/check-student-login-csv.mjs",
     "convert:legacy-users": "node scripts/convert-legacy-users.mjs",
     "build:student-login-csv": "node scripts/build-student-login-csv.mjs",
     "build:student-access-sql": "node scripts/build-student-access-sql.mjs",
