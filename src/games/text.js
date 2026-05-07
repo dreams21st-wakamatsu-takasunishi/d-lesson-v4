@@ -10,6 +10,10 @@ let currentTextTask = null, textTimerInterval = null, textTimeLeft = 0;
 let isRubyOn = true, isNaviOn = true;
 let cancelStartHandler = null;
 
+export function getCurrentTextTask() {
+    return currentTextTask;
+}
+
 export function toggleRuby() {
     isRubyOn = !isRubyOn;
     const btn = document.getElementById('btn-toggle-ruby');

@@ -55,6 +55,9 @@ jobs:
       - name: Check inline handlers
         run: npm run check:inline-handlers
 
+      - name: Check undefined names
+        run: npm run check:undefined
+
       - name: Build
         run: npm run build
 

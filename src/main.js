@@ -71,6 +71,7 @@ import {
 import {
     toggleRuby,
     toggleNavi,
+    getCurrentTextTask,
     goToTextMenu,
     toggleRubyInPrep,
     toggleNaviInPrep,
@@ -136,6 +137,7 @@ function speakInstruction() {
     speakText(txt);
 }
 function speakTextTask() {
+    const currentTextTask = getCurrentTextTask();
     if(currentTextTask && currentTextTask.content) {
         let plain = currentTextTask.content.replace(/\{([^|]+)\|([^}]+)\}/g, '$1');
         speakText(plain);
