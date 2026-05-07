@@ -68,7 +68,7 @@ function loadAdminAuditLog() {
     try {
         const raw = localStorage.getItem(ADMIN_AUDIT_STORAGE_KEY);
         const parsed = raw ? JSON.parse(raw) : [];
-        return Array.isArray(parsed) ? parsed : [];
+        return normalizeAdminAuditLog(parsed);
     } catch (err) {
         console.warn('Failed to load admin audit log:', err);
         return [];
@@ -76,7 +76,21 @@ function loadAdminAuditLog() {
 }
 
 function saveAdminAuditLog(log) {
-    localStorage.setItem(ADMIN_AUDIT_STORAGE_KEY, JSON.stringify(log.slice(0, ADMIN_AUDIT_LIMIT)));
+    localStorage.setItem(ADMIN_AUDIT_STORAGE_KEY, JSON.stringify(normalizeAdminAuditLog(log)));
+}
+
+function normalizeAdminAuditLog(log) {
+    if (!Array.isArray(log)) return [];
+    return log
+        .filter(entry => entry && typeof entry === 'object')
+        .map(entry => ({
+            id: String(entry.id || `audit_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`),
+            at: entry.at || new Date().toISOString(),
+            actor: String(entry.actor || ''),
+            action: String(entry.action || ''),
+            details: entry.details && typeof entry.details === 'object' ? entry.details : {}
+        }))
+        .slice(0, ADMIN_AUDIT_LIMIT);
 }
 
 function getAdminActorLabel() {
@@ -103,6 +117,11 @@ function recordAdminAudit(action, details = {}) {
     });
     saveAdminAuditLog(log);
     renderAdminAuditLog();
+}
+
+function restoreAdminAuditLog(importedLog, restoreDetails = {}) {
+    saveAdminAuditLog(normalizeAdminAuditLog(importedLog));
+    recordAdminAudit('データ復元', restoreDetails);
 }
 
 export function renderAdminAuditLog() {
@@ -141,6 +160,32 @@ export function renderAdminAuditLog() {
 
         tbody.appendChild(tr);
     });
+}
+
+export function exportAdminAuditCsv() {
+    const log = loadAdminAuditLog();
+    const rows = [['datetime', 'action', 'actor', 'details']];
+    log.forEach(entry => {
+        rows.push([
+            entry.at ? new Date(entry.at).toLocaleString('ja-JP') : '',
+            entry.action || '',
+            entry.actor || '',
+            summarizeAuditDetails(entry.details || {})
+        ]);
+    });
+
+    const csv = rows.map(row => row.map(escapeCsvCell).join(',')).join('\r\n');
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `d-lesson_admin_audit_${getBackupDateStamp()}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    recordAdminAudit('操作ログCSV出力', { rows: log.length });
 }
 
 export function adminAddUser() {
@@ -2107,7 +2152,7 @@ export function importData(event) {
                     const autoBackup = buildBackupPayload();
                     const autoBackupFile = downloadJsonFile(autoBackup, 'd-lesson_before_restore');
                     await replaceUsers(importedUsers, true);
-                    recordAdminAudit('データ復元', {
+                    restoreAdminAuditLog(importedData?.adminAuditLog, {
                         file: file.name,
                         students: countStudentRows(importedUsers),
                         autoBackup: autoBackupFile
