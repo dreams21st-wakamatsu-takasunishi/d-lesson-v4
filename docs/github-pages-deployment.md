@@ -53,15 +53,13 @@ VITE_SUPABASE_USE_TEST_TABLE=false
 テストテーブルで公開検証する場合:
 
 ```powershell
-npm.cmd run check:public-test-env
-npm.cmd run build
+npm.cmd run check:release-test
 ```
 
 本番テーブルで公開する場合:
 
 ```powershell
-npm.cmd run check:public-env
-npm.cmd run build
+npm.cmd run check:release
 ```
 
 ## 注意

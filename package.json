@@ -9,6 +9,8 @@
     "check:inline-handlers": "node scripts/check-inline-handlers.mjs",
     "check:public-env": "node scripts/check-public-env.mjs",
     "check:public-test-env": "node scripts/check-public-env.mjs --allow-test-table",
+    "check:release-test": "npm run check:public-test-env && npm run check:inline-handlers && npm run build",
+    "check:release": "npm run check:public-env && npm run check:inline-handlers && npm run build",
     "build": "vite build",
     "preview": "vite preview"
   },
