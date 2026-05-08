@@ -23,13 +23,11 @@ import { SoundManager } from '../utils/sound.js';
 import { showScreen, showImeWarning } from '../ui/screen.js';
 import { showCustomAlert } from '../ui/modal.js';
 import { getStageName } from '../utils/stages.js';
+import { convertNameToRomaji, shuffle } from '../utils/helpers.js';
+import { createConfetti, showRewardOverlay } from '../ui/reward.js';
 import {
-    convertNameToRomaji,
-    createConfetti,
     currentKeyboardChapter,
     renderKeyboardStages,
-    showRewardOverlay,
-    shuffle,
     updateKeyboardButtons,
     updateMouseButtons
 } from '../main.js';

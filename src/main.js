@@ -3,7 +3,6 @@ import './style.css';
 import {
   GRADE_ORDER,
   VISION_STAGES,
-  KANA_MAP,
   FINGER_MAP,
   FINGER_HOME_MAP,
   COLOR_CLASS_MAP,
@@ -53,7 +52,10 @@ import { showCustomAlert, showCustomConfirm } from './ui/modal.js';
 import { createBtn } from './utils/dom.js';
 import { getRewardText } from './utils/rewards.js';
 import { getStageName } from './utils/stages.js';
-import { createConfetti as createConfettiForEffect } from './ui/effects.js';
+import {
+    closeRewardOverlay,
+    createConfetti
+} from './ui/reward.js';
 import {
     renderLastPracticeCard,
     renderPracticeHistorySection
@@ -157,41 +159,6 @@ const ACHIEVEMENTS =[
     { id: 'mouse_master', title: 'マウスの達人', desc: 'マウスれんしゅう を Lv.7まで クリア', icon: '🖱️', check: u => (u.mouseLevel || 0) >= 7 },
     { id: 'gacha_10', title: 'ガチャマニア', desc: 'アイテム を 10こ以上 あつめる', icon: '🎁', check: u => u.items && u.items.length >= 10 }
 ];
-
-export function convertNameToRomaji(name) {
-    if (!name) return 'NAME';
-    let hira = name.replace(/[\u30a1-\u30f6]/g, match => String.fromCharCode(match.charCodeAt(0) - 0x60));
-    let romaji = '';
-    for (let i = 0; i < hira.length; i++) {
-        let char2 = hira.substring(i, i+2);
-        let char1 = hira.substring(i, i+1);
-        let nextChar = i + 1 < hira.length ? hira.substring(i+1, i+2) : '';
-
-        if (char1 === ' ' || char1 === '　') {
-            romaji += ' ';
-        } else if (char1 === 'ん') {
-            const requireNN =['あ','い','う','え','お','な','に','ぬ','ね','の','や','ゆ','よ'].includes(nextChar) || nextChar === '';
-            romaji += requireNN ? 'NN' : 'N';
-        } else if (KANA_MAP[char2]) {
-            romaji += KANA_MAP[char2];
-            i++;
-        } else if (char1 === 'っ' && nextChar) {
-            let next2 = hira.substring(i+1, i+3);
-            let next1 = hira.substring(i+1, i+2);
-            let nextRomaji = KANA_MAP[next2] || KANA_MAP[next1];
-            if (nextRomaji && /[A-Z]/.test(nextRomaji[0]) && !/^[AEIOU]/.test(nextRomaji[0])) {
-                romaji += nextRomaji[0]; 
-            } else {
-                romaji += 'LTU';
-            }
-        } else if (KANA_MAP[char1]) {
-            romaji += KANA_MAP[char1];
-        } else {
-            romaji += char1.toUpperCase();
-        }
-    }
-    return romaji || 'NAME';
-}
 
 /* =========================================================
    [JS] 7. ミニゲーム（メテオ ＆ Dチャレンジ）
@@ -492,8 +459,6 @@ function updateMgWordDisplayDChallenge(w) {
 /* =========================================================
    [JS] 8. 共通ゲーム進行 ＆ キーボード・マウスのコアロジック
    ========================================================= */
-export function shuffle(arr) { for (let i=arr.length-1; i>0; i--) { const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]]; } for (let i=1; i<arr.length; i++) { let a=arr[i], b=arr[i-1], va=(a.key||a.h||a), vb=(b.key||b.h||b); if (va===vb) { for (let j=i+1; j<arr.length; j++) { let vc=(arr[j].key||arr[j].h||arr[j]); if (vc!==va) {[arr[i],arr[j]]=[arr[j],arr[i]]; break; } } } } return arr; }
-
 /* =========================================================
    [JS] 9. UI・画面遷移 ＆ ガチャ・きせかえ管理
    ========================================================= */
@@ -505,22 +470,6 @@ function getActiveUserOrTitle() {
     showCustomAlert('ユーザーを選択してください');
     showScreen('screen-title');
     return null;
-}
-
-export function showCapsuleAnimation(isRare, callback) {
-    const overlay = document.getElementById('capsule-overlay');
-    const cap = document.getElementById('gacha-capsule');
-    cap.innerText = isRare ? '🔮' : '💊';
-    overlay.style.display = 'flex';
-    cap.style.animation = 'none'; void cap.offsetWidth; // リセット
-    cap.style.animation = 'capsuleDrop 1s cubic-bezier(0.25, 1, 0.5, 1) forwards';
-    SoundManager.playGachaDrop();
-    
-    setTimeout(() => {
-        cap.style.animation = 'capsuleBurst 0.5s ease-out forwards';
-        SoundManager.playGachaBurst();
-        setTimeout(() => { overlay.style.display = 'none'; callback(); }, 500);
-    }, 1200);
 }
 
 function goToMouseMenu() { updateMouseButtons(); showScreen('screen-mouse-menu'); }
@@ -1005,20 +954,6 @@ export function updateHomeDashboard() {
         btn.style.backgroundColor = '#FFD700'; btn.style.color = '#333';
     }
 }
-
-export function createConfetti() {
-    const u = users[currentUser]; const effId = u ? (u.activeEffect || 'default') : 'default';
-    createConfettiForEffect(effId);
-}
-
-let rewardCloseCallback = null;
-export function showRewardOverlay(title, name, icon, callback) {
-    SoundManager.playClear(); createConfetti();
-    document.getElementById('reward-title').innerText = title; document.getElementById('reward-name').innerText = name; document.getElementById('reward-icon').innerText = icon;
-    document.getElementById('reward-overlay').style.display = 'flex'; rewardCloseCallback = callback;
-    setTimeout(() => { const btn = document.querySelector('#reward-overlay button'); if (btn) btn.focus(); }, 100);
-}
-function closeRewardOverlay() { SoundManager.playClick(); document.getElementById('reward-overlay').style.display = 'none'; if (rewardCloseCallback) { rewardCloseCallback(); rewardCloseCallback = null; } }
 
 /* =========================================================
    [JS] 11. ビジョントレーニング

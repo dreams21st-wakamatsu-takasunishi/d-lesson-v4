@@ -1,7 +1,7 @@
 import { users, currentUser, saveUsers, canWriteCurrentUserRow, recordPracticeActivity } from '../api/user.js';
 import { SoundManager } from '../utils/sound.js';
 import { showScreen } from '../ui/screen.js';
-import { createConfetti } from '../ui/effects.js';
+import { createConfetti } from '../ui/reward.js';
 
 /* =========================================================
    [JS] 6. 文章入力練習 ＆ 自動採点

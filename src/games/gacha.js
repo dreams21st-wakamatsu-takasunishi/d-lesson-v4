@@ -3,7 +3,8 @@ import { GACHA_ITEMS } from '../data/gacha-items.js'
 import { THEMES, EFFECTS } from '../data/constants.js'
 import { SoundManager } from '../utils/sound.js'
 import { showCustomAlert, showCustomConfirm } from '../ui/modal.js'
-import { createConfetti, renderRecords, showCapsuleAnimation, showRewardOverlay } from '../main.js'
+import { createConfetti, showCapsuleAnimation, showRewardOverlay } from '../ui/reward.js'
+import { renderRecords } from '../main.js'
 
 export function drawGacha(times = 1, isRareGuaranteed = false) {
     const u = users[currentUser]; const COST = isRareGuaranteed ? 500 : 100 * times;

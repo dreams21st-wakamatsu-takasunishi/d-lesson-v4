@@ -4,6 +4,7 @@ import { SoundManager } from '../utils/sound.js'
 import { showScreen } from '../ui/screen.js'
 import { createBtn } from '../utils/dom.js'
 import { getRewardText } from '../utils/rewards.js'
+import { shuffle } from '../utils/helpers.js'
 import {
     startGame,
     els,
@@ -33,15 +34,6 @@ import {
 let memoryLevel = 0;
 let memorySeq = [];
 let memoryInputIdx = 0;
-
-function shuffle(arr) {
-    for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
-    return arr;
-}
-
 
 export function showVisionCompare() {
     let sumNormal = {}, countNormal = {}, sumHard = {}, countHard = {}, sumEasy = {}, countEasy = {};
