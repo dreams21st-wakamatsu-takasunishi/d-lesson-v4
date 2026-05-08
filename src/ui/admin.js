@@ -704,6 +704,36 @@ export function copyDeviceHandoffChecklist() {
     copyText(text);
 }
 
+export function copyLessonSettingsCheckGuide() {
+    const text = [
+        'Dレッスン 設定テーブル確認',
+        '',
+        '目的:',
+        '__GLOBAL_SETTINGS__ を児童データ行から分離し、チケット設定・文章課題・自動ログアウト設定などを lesson_settings で管理できるか確認する。',
+        '',
+        '1. Supabase SQL Editor を開く。',
+        '2. supabase/sql/lesson_settings_table.sql の中身を貼り付けて実行する。',
+        '3. supabase/sql/verify_lesson_settings.sql の中身を貼り付けて実行する。',
+        '',
+        '確認する結果:',
+        '- public.lesson_settings の rls_enabled が true。',
+        '- lesson_settings の policy が SELECT / INSERT / UPDATE / DELETE の4種類ある。',
+        '- user_data:global または test_user_data:global の行がある。',
+        '- same_as_legacy_row が true、または管理者画面で設定保存後に lesson_settings 側へ反映される。',
+        '',
+        'ブラウザ確認:',
+        '1. GitHub Actions Variables または .env.local で VITE_ENABLE_SETTINGS_TABLE=true にする。',
+        '2. Dレッスンを再起動または再デプロイする。',
+        '3. 管理者ログイン > 管理者用 > 運用確認 を開く。',
+        '4. 「設定テーブル」が user_data:global または test_user_data:global になっていることを確認する。',
+        '5. 自動ログアウト分数やチケット設定を保存し、再読み込み後も残ることを確認する。',
+        '',
+        '注意:',
+        '設定テーブルを有効にする前は、管理者画面の「設定テーブル」が「旧方式」と表示される。これは VITE_ENABLE_SETTINGS_TABLE=false の状態なら正常。'
+    ].join('\n');
+    copyText(text);
+}
+
 export function getSelUser() { const r = document.querySelector('input[name="asel"]:checked'); return r ? r.value : null; }
 export function adminResetUser() {
     const n = getSelUser();
