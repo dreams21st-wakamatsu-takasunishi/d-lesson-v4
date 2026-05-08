@@ -40,8 +40,7 @@ const STUDENT_LOGIN_MIN = parseEnvInteger(import.meta.env.VITE_STUDENT_LOGIN_MIN
 const STUDENT_LOGIN_MAX = Math.max(STUDENT_LOGIN_MIN, parseEnvInteger(import.meta.env.VITE_STUDENT_LOGIN_MAX, 40, STUDENT_LOGIN_MIN, 999));
 const STUDENT_LOGIN_PASSCODE_MIN_LENGTH = parseEnvInteger(import.meta.env.VITE_STUDENT_LOGIN_PASSCODE_MIN_LENGTH, 6, 4, 24);
 const STUDENT_LOGIN_PASSCODE_MAX_LENGTH = parseEnvInteger(import.meta.env.VITE_STUDENT_LOGIN_PASSCODE_MAX_LENGTH, 12, STUDENT_LOGIN_PASSCODE_MIN_LENGTH, 32);
-const STUDENT_IDLE_LOGOUT_MINUTES = parseEnvInteger(import.meta.env.VITE_STUDENT_IDLE_LOGOUT_MINUTES, 20, 0, 240);
-const STUDENT_IDLE_LOGOUT_MS = STUDENT_IDLE_LOGOUT_MINUTES * 60 * 1000;
+const STUDENT_IDLE_LOGOUT_DEFAULT_MINUTES = parseEnvInteger(import.meta.env.VITE_STUDENT_IDLE_LOGOUT_MINUTES, 20, 0, 240);
 
 export const STORAGE_KEY = 'pc_practice_v5_split';
 export const GLOBAL_SETTINGS_ID = '__GLOBAL_SETTINGS__';
@@ -133,10 +132,28 @@ function canUseSettingsTable() {
     return Boolean(supabase && REQUIRE_SUPABASE_AUTH && ENABLE_RLS_CLOUD_SYNC && ENABLE_SETTINGS_TABLE);
 }
 
+function normalizeStudentIdleLogoutMinutes(value, fallback = STUDENT_IDLE_LOGOUT_DEFAULT_MINUTES) {
+    const parsed = Number.parseInt(value, 10);
+    if (!Number.isFinite(parsed)) return fallback;
+    return Math.min(240, Math.max(0, parsed));
+}
+
+export function getStudentIdleLogoutMinutes() {
+    return normalizeStudentIdleLogoutMinutes(users?.[GLOBAL_SETTINGS_ID]?.studentIdleLogoutMinutes);
+}
+
+function getStudentIdleLogoutMs() {
+    return getStudentIdleLogoutMinutes() * 60 * 1000;
+}
+
+export function refreshStudentIdleLogoutTimer() {
+    resetStudentIdleLogoutTimer();
+}
+
 function shouldUseStudentIdleLogout() {
     return Boolean(
         REQUIRE_SUPABASE_AUTH
-        && STUDENT_IDLE_LOGOUT_MS > 0
+        && getStudentIdleLogoutMs() > 0
         && currentUser
         && getCurrentLessonRole() === 'student'
     );
@@ -151,9 +168,10 @@ function resetStudentIdleLogoutTimer() {
     clearStudentIdleLogoutTimer();
     if (!shouldUseStudentIdleLogout()) return;
 
+    const timeoutMs = getStudentIdleLogoutMs();
     studentIdleLogoutTimer = setTimeout(() => {
         void handleStudentIdleLogout();
-    }, STUDENT_IDLE_LOGOUT_MS);
+    }, timeoutMs);
 }
 
 async function handleStudentIdleLogout() {

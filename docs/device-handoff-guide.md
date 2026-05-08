@@ -29,7 +29,7 @@
 - 別児童のログイン状態のまま使わない。
 - `VITE_REQUIRE_SUPABASE_AUTH=true` の公開環境では、旧管理者パスワードに頼らない。
 - 児童アカウントは、操作がないまま一定時間が経つと自動ログアウトする。初期値は20分。
-- 自動ログアウトまでの時間を変える場合は、GitHub Actions Variables の `VITE_STUDENT_IDLE_LOGOUT_MINUTES` を変更する。
+- 自動ログアウトまでの時間を変える場合は、管理者画面 > 運用確認 > 共有端末の自動ログアウト で変更する。`VITE_STUDENT_IDLE_LOGOUT_MINUTES` は未設定時の初期値として使う。
 
 ## トラブル時
 

@@ -21,7 +21,9 @@ import {
     deleteCloudUserRows,
     userDisplayNameExists,
     getPracticeLogs,
-    formatPracticeActivity
+    formatPracticeActivity,
+    getStudentIdleLogoutMinutes,
+    refreshStudentIdleLogoutTimer
 } from '../api/user.js';
 import { STAGE_ORDER, THEMES, EFFECTS, VISION_STAGES, WORD_DATA } from '../data/constants.js';
 import { SoundManager } from '../utils/sound.js';
@@ -518,10 +520,57 @@ function renderOpsStatusCard(label, value, tone = 'neutral') {
             <div style="font-size:12px; color:#546e7a; margin-bottom:4px;">${escapeHtml(label)}</div>
             <div style="font-size:18px; font-weight:bold; color:${color};">${escapeHtml(value)}</div>
         </div>
-    `;
+      `;
+  }
+
+function ensureGlobalSettings() {
+    if (!users[GLOBAL_SETTINGS_ID]) users[GLOBAL_SETTINGS_ID] = { isMaster: true };
+    users[GLOBAL_SETTINGS_ID].isMaster = true;
+    return users[GLOBAL_SETTINGS_ID];
 }
 
-function getStudentUserIds() {
+function renderStudentIdleLogoutSetting() {
+    const input = document.getElementById('student-idle-logout-minutes');
+    if (!input) return;
+    input.value = String(getStudentIdleLogoutMinutes());
+}
+
+export async function saveStudentIdleLogoutSetting() {
+    const input = document.getElementById('student-idle-logout-minutes');
+    const rawValue = input?.value ?? '';
+    const minutes = Number.parseInt(rawValue, 10);
+
+    if (!Number.isFinite(minutes) || minutes < 0 || minutes > 240) {
+        showCustomAlert('0〜240分の範囲で入力してください。0分にすると児童の自動ログアウトは無効になります。');
+        renderStudentIdleLogoutSetting();
+        return;
+    }
+
+    const before = getStudentIdleLogoutMinutes();
+    const settings = ensureGlobalSettings();
+    settings.studentIdleLogoutMinutes = minutes;
+
+    recordAdminAudit('児童自動ログアウト設定変更', {
+        before: before > 0 ? `${before}分` : '無効',
+        after: minutes > 0 ? `${minutes}分` : '無効'
+    });
+
+    const saved = await saveUsers(true);
+    refreshStudentIdleLogoutTimer();
+    renderOpsGuideAdmin();
+
+    if (!saved) {
+        showCustomAlert('設定を保存しましたが、クラウド同期が完了していません。通信状態を確認してください。');
+        return;
+    }
+
+    showCustomAlert(minutes > 0
+        ? `児童の自動ログアウトを ${minutes}分 に設定しました。`
+        : '児童の自動ログアウトを無効にしました。'
+    );
+}
+  
+  function getStudentUserIds() {
     return Object.keys(users).filter(userId => (
         users[userId]
         && !users[userId].isMaster
@@ -611,6 +660,7 @@ function renderOpsGuideAdminLegacy() {
     const legacyPassStatus = getLegacyAdminPassStatus();
     const legacyPassTone = legacyPassStatus === 'ローカルのみ有効' ? 'warn' : 'good';
     const studentCount = Object.keys(users).filter(userId => users[userId] && !users[userId].isMaster && !isSystemUserId(userId)).length;
+    const idleLogoutMinutes = getStudentIdleLogoutMinutes();
     const syncTone = /synced|rls synced/.test(syncText) ? 'good' : (/error|offline|locked/.test(syncText) ? 'bad' : 'warn');
 
     grid.innerHTML = [
@@ -623,8 +673,11 @@ function renderOpsGuideAdminLegacy() {
         renderOpsStatusCard('旧同期', ENABLE_LEGACY_SUPABASE_SYNC ? '有効' : '無効', ENABLE_LEGACY_SUPABASE_SYNC ? 'bad' : 'good'),
         renderOpsStatusCard('現在ロール', role, role === 'admin' ? 'good' : 'warn'),
         renderOpsStatusCard('保存状態', syncText, syncTone),
-        renderOpsStatusCard('児童数', `${studentCount}人`, studentCount > 0 ? 'good' : 'warn')
+        renderOpsStatusCard('児童数', `${studentCount}人`, studentCount > 0 ? 'good' : 'warn'),
+        renderOpsStatusCard('児童自動ログアウト', idleLogoutMinutes > 0 ? `${idleLogoutMinutes}分` : '無効', idleLogoutMinutes > 0 ? 'good' : 'warn')
     ].join('');
+
+    renderStudentIdleLogoutSetting();
 }
 
 export function renderOpsGuideAdmin() {
@@ -638,6 +691,7 @@ export function renderOpsGuideAdmin() {
     const legacyPassStatus = getLegacyAdminPassStatus();
     const legacyPassTone = legacyPassStatus === 'ローカルのみ有効' ? 'warn' : 'good';
     const studentCount = getStudentUserIds().length;
+    const idleLogoutMinutes = getStudentIdleLogoutMinutes();
     const legacyStudentIdRows = getLegacyStudentIdRows();
     const userDataIdMismatchRows = getUserDataIdMismatchRows();
     const userIdTone = legacyStudentIdRows.length > 0 || userDataIdMismatchRows.length > 0 ? 'warn' : 'good';
@@ -657,10 +711,12 @@ export function renderOpsGuideAdmin() {
         renderOpsStatusCard('現在ロール', role, role === 'admin' ? 'good' : 'warn'),
         renderOpsStatusCard('保存状態', syncText, syncTone),
         renderOpsStatusCard('児童数', `${studentCount}人`, studentCount > 0 ? 'good' : 'warn'),
-        renderOpsStatusCard('児童ID形式', userIdStatus, userIdTone)
+        renderOpsStatusCard('児童ID形式', userIdStatus, userIdTone),
+        renderOpsStatusCard('児童自動ログアウト', idleLogoutMinutes > 0 ? `${idleLogoutMinutes}分` : '無効', idleLogoutMinutes > 0 ? 'good' : 'warn')
     ].join('');
 
     renderOpsUserIdDetails(grid, legacyStudentIdRows, userDataIdMismatchRows);
+    renderStudentIdleLogoutSetting();
 }
 
 export function copyInternalIdCheckGuide() {

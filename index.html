@@ -432,6 +432,20 @@
                 <div id="admin-sec-ops-guide" class="admin-section" style="display:none; width:100%; flex-direction:column; align-items:center; gap:16px;">
                     <h3 style="margin-top:0;">🧭 現場運用の確認</h3>
                     <div id="ops-status-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; width:min(1000px, 96%);"></div>
+                    <div style="width:min(1000px, 96%); background:#fff; border:1px solid #ddd; border-radius:8px; padding:15px; box-sizing:border-box;">
+                        <h4 style="margin:0 0 10px; color:#37474f;">共有端末の自動ログアウト</h4>
+                        <div style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
+                            <label style="display:flex; flex-direction:column; gap:6px; font-weight:bold; color:#263238;">
+                                児童の無操作ログアウト
+                                <span style="display:flex; gap:8px; align-items:center;">
+                                    <input id="student-idle-logout-minutes" type="number" min="0" max="240" step="1" inputmode="numeric" style="width:110px; padding:9px; border:1px solid #b0bec5; border-radius:6px; font-size:18px; text-align:right;">
+                                    <span>分</span>
+                                </span>
+                            </label>
+                            <button class="btn-primary" onclick="saveStudentIdleLogoutSetting()" style="font-size:15px; padding:10px 18px;">保存</button>
+                        </div>
+                        <p style="margin:10px 0 0; color:#546e7a; font-size:13px; line-height:1.6;">0分で無効。未設定時は公開環境の初期値を使います。共有端末では20分前後を目安にしてください。</p>
+                    </div>
                     <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:14px; width:min(1000px, 96%);">
                         <div style="background:#fff; border:1px solid #ddd; border-radius:8px; padding:15px;">
                             <h4 style="margin:0 0 10px; color:#37474f;">端末を変えるとき</h4>
