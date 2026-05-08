@@ -22,9 +22,11 @@ import {
 import * as Admin from './ui/admin.js';
 
 import { showCustomAlert, showCustomConfirm } from './ui/modal.js';
-import { createBtn } from './utils/dom.js';
-import { getRewardText } from './utils/rewards.js';
 import { closeRewardOverlay } from './ui/reward.js';
+import {
+    goToMouseMenu,
+    updateMouseButtons
+} from './ui/mouse-menu.js';
 import {
     goToKeyboardCategory,
     goToKeyboardMenu,
@@ -158,8 +160,6 @@ function getActiveUserOrTitle() {
     return null;
 }
 
-function goToMouseMenu() { updateMouseButtons(); showScreen('screen-mouse-menu'); }
-
 function goToMinigameMenu() {
     showScreen('screen-minigame-menu');
 }
@@ -198,29 +198,6 @@ function goToWeakTraining() {
         startGame(9888, 'keyboard');
     } else {
         showCustomAlert('ミスのデータがないか、すべて克服しました！\nいろいろな練習をしてからまた挑戦してみてね！'); // ★修正
-    }
-}
-
-export function updateMouseButtons() {
-    const u = getActiveUserOrTitle();
-    if (!u) return;
-    const l = u.mouseLevel || 0; document.getElementById('master-badge').style.display = (l >= 7) ? 'block' : 'none';
-    for(let i=1; i<=7; i++) {
-        const b = document.getElementById(`btn-m${i}`); if(!b) continue;
-        b.classList.remove('unlocked','cleared','next-target'); b.style.opacity='1'; b.onclick=null; b.onkeydown=null; b.tabIndex=-1;
-        if(i===1 || l >= i-1) { 
-            b.classList.add('unlocked'); createBtn(b, () => startGame(i, 'mouse')); 
-            if (l === i-1) b.classList.add('next-target'); 
-            if (users[currentUser] && !users[currentUser].isMaster) {
-                let badge = b.querySelector('.reward-badge');
-                if(!badge){ badge = document.createElement('span'); badge.className = 'reward-badge'; b.appendChild(badge); }
-                badge.innerText = getRewardText('mouse', i);
-            }
-        } else { 
-            b.style.opacity='0.5'; 
-            let badge = b.querySelector('.reward-badge'); if(badge) badge.remove();
-        }
-        if(l >= i) b.classList.add('cleared');
     }
 }
 
