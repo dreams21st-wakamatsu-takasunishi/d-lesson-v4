@@ -1,49 +1,33 @@
 import './style.css';
 
 import {
-  GRADE_ORDER,
   VISION_STAGES,
-  FINGER_MAP,
-  FINGER_HOME_MAP,
-  COLOR_CLASS_MAP,
   KEYBOARD_STAGES,
   BLIND_STAGES,
   BRIDGE_STAGES,
   HIRAGANA_DATA,
-  ADVICE_HINT_MAP,
   WORD_DATA,
   EXAMS,
   STAGE_ORDER,
   KB_CHAPTERS,
   KB_LAYOUT,
-  WORD_STAGES,
   THEMES,
   EFFECTS
 } from './data/constants.js';
 import { GACHA_ITEMS } from './data/gacha-items.js';
 
-import { toggleSFX, toggleBGM, SoundManager, initAudio } from './utils/sound.js';
+import { toggleSFX, toggleBGM, initAudio } from './utils/sound.js';
 import {
   users,
   currentUser,
-  currentSelectedGrade,
   loadUsers,
-  saveUsers,
   goToGradeSelect,
-  renderGradeList,
-  renderUserList,
   login,
-  showStampOverlay,
   closeStampOverlay,
-  setCurrentUser,
-  setCurrentSelectedGrade,
   hasLessonRole,
   GLOBAL_SETTINGS_ID,
   MASTER_DEBUG_ID,
-  getUserDisplayName,
-  isSystemUserId,
-  canWriteCurrentUserRow,
-  recordPracticeActivity
+  canWriteCurrentUserRow
 } from './api/user.js';
 
 import * as Admin from './ui/admin.js';
@@ -52,10 +36,7 @@ import { showCustomAlert, showCustomConfirm } from './ui/modal.js';
 import { createBtn } from './utils/dom.js';
 import { getRewardText } from './utils/rewards.js';
 import { getStageName } from './utils/stages.js';
-import {
-    closeRewardOverlay,
-    createConfetti
-} from './ui/reward.js';
+import { closeRewardOverlay } from './ui/reward.js';
 import {
     renderLastPracticeCard,
     renderPracticeHistorySection
@@ -85,12 +66,20 @@ import {
 } from './games/text.js';
 
 import {
-drawGacha,
-useTicket,
-changeTheme,
-changeEffect,
-setGachaUiHandlers
-} from './games/gacha.js'
+    goToWordMenu,
+    openWordText,
+    suspendWordTask,
+    confirmWordClear,
+    processWordClear
+} from './games/word.js';
+
+import {
+    drawGacha,
+    useTicket,
+    changeTheme,
+    changeEffect,
+    setGachaUiHandlers
+} from './games/gacha.js';
 
 import {
     startVisionGame,
@@ -751,185 +740,6 @@ goToRecords = function() {
     renderRecords();
     showScreen('screen-records');
 };
-
-function goToWordMenu() { 
-    const u = getActiveUserOrTitle();
-    if (!u) return;
-    if (!u.isMaster) {
-        if (!u.examRecords || !u.examRecords['romaji_daku_exam']) {
-            // ★改行位置を最適化
-            showCustomAlert('Wordれんしゅう は、キーボードれんしゅうの\n「ローマ字いちらん表（だくてん テスト）」を\nクリアすると あそべるようになるよ！');
-            return;
-        }
-    }
-    renderWordMenu(); 
-    showScreen('screen-word-menu'); 
-}
-
-let currentWordStageId = null;
-
-function renderWordMenu() {
-    const cont = document.getElementById('word-menu-content'); cont.innerHTML = '';
-    const u = users[currentUser];
-    if (!u.wordProgress) u.wordProgress = {};
-
-    let previousCleared = true; // 最初の章は無条件で挑戦可能
-
-    WORD_STAGES.forEach((st) => {
-        let prog = u.wordProgress[st.id];
-        let isCleared = false;
-        let isWorking = false;
-        let workingPage = "";
-
-        // ★修正: 以前の文字列データとの互換性を保ちつつ、ページ数を読み込む
-        if (prog) {
-            if (typeof prog === 'string') {
-                isCleared = (prog === 'cleared');
-                isWorking = (prog === 'working');
-            } else {
-                isCleared = (prog.status === 'cleared');
-                isWorking = (prog.status === 'working');
-                workingPage = prog.page || "";
-            }
-        }
-
-        const isUnlocked = previousCleared || u.isMaster; 
-
-        const b = document.createElement('div');
-        b.className = 'stage-btn';
-        b.style.height = '100px';
-
-        if (isUnlocked) {
-            b.classList.add('unlocked');
-            if (isCleared) b.classList.add('cleared');
-            else if (isWorking) b.classList.add('working');
-            
-            createBtn(b, () => startWordStage(st.id));
-        } else {
-            b.style.opacity = '0.5';
-        }
-
-        b.innerHTML = `<span style="font-size:24px;">📘</span><span style="font-size:16px; font-weight:bold; color:#333; margin-top:5px;">${st.title}</span><span style="font-size:12px; color:#666;">${st.sub}</span>`;
-        
-        // バッジ表示（ページ数があれば表示する）
-        if (isCleared) b.innerHTML += `<span class="reward-badge" style="background:#e8f5e9; border-color:#4CAF50; color:#2e7d32;">クリア</span>`;
-        else if (isWorking) b.innerHTML += `<span class="reward-badge" style="background:#fffde7; border-color:#FFEB3B; color:#fbc02d;">挑戦中 ⏸️ ${workingPage ? 'P.'+workingPage : ''}</span>`;
-        else if (isUnlocked) b.innerHTML += `<span class="reward-badge">💰500</span>`; 
-
-        cont.appendChild(b);
-        previousCleared = isCleared; // 次の章の解放判定
-    });
-}
-
-function startWordStage(sid) {
-    currentWordStageId = sid;
-    const st = WORD_STAGES.find(s => s.id === sid);
-    document.getElementById('word-stage-title').innerText = `${st.title}：${st.sub}`;
-    
-    // ★追加: 以前入力したページ数があればセットする
-    let prog = users[currentUser].wordProgress[sid];
-    let pageVal = "";
-    if (prog && typeof prog === 'object') {
-        pageVal = prog.page || "";
-    }
-    document.getElementById('word-page-input').value = pageVal;
-
-    showScreen('screen-word-game');
-}
-
-function openWordText() {
-    const st = WORD_STAGES.find(s => s.id === currentWordStageId);
-    if (st && st.pdf && st.pdf !== '') window.open(st.pdf, '_blank');
-    else showCustomAlert('テキストのURLが設定されていません。\n（先生へ：script.js 内の WORD_STAGES にPDFのURLを入れてください）'); // ★修正
-}
-
-function getCurrentWordStageLabel() {
-    const st = WORD_STAGES.find(s => s.id === currentWordStageId);
-    if (!st) return 'Word練習';
-    return `Word ${st.title}${st.sub ? ` / ${st.sub}` : ''}`;
-}
-
-function suspendWordTask() {
-    if (!canWriteCurrentUserRow()) {
-        showCustomAlert('先生確認モードでは、Wordの途中保存は保存されません。生徒本人または管理者で操作してください。');
-        return;
-    }
-
-    const u = users[currentUser];
-    if (!u.wordProgress) u.wordProgress = {};
-    
-    let pageVal = document.getElementById('word-page-input').value;
-    let prog = u.wordProgress[currentWordStageId];
-    
-    // クリア済みの場合はページ数だけ更新する
-    let isCleared = (prog === 'cleared' || (prog && prog.status === 'cleared'));
-    
-    u.wordProgress[currentWordStageId] = {
-        status: isCleared ? 'cleared' : 'working',
-        page: pageVal
-    };
-    recordPracticeActivity({
-        category: 'word',
-        title: getCurrentWordStageLabel(),
-        detail: isCleared ? 'クリア済みページ更新' : '途中保存',
-        amount: pageVal ? `${pageVal}ページまで` : 'ページ未入力',
-        coins: 0
-    });
-    saveUsers(false);
-    SoundManager.playClick();
-    showCustomAlert('「挑戦中 ⏸️」として記録しました！\nデータを保存してWordをとじたら、また次回続きから頑張ろう！'); // ★修正
-    goToWordMenu();
-}
-
-function confirmWordClear() {
-    if (hasLessonRole('teacher', 'admin')) {
-        processWordClear();
-        return;
-    }
-
-    showCustomAlert('先生または管理者アカウントでログインして確認してください。');
-}
-
-function processWordClear() {
-    if (!canWriteCurrentUserRow()) {
-        showCustomAlert('先生確認モードでは、Wordのクリア結果は保存されません。管理者アカウントで操作してください。');
-        return;
-    }
-
-    const u = users[currentUser];
-    if (!u.wordProgress) u.wordProgress = {};
-    
-    let prog = u.wordProgress[currentWordStageId];
-    let isFirstClear = !(prog === 'cleared' || (typeof prog === 'object' && prog.status === 'cleared'));
-    let pageVal = document.getElementById('word-page-input').value;
-
-    u.wordProgress[currentWordStageId] = { status: 'cleared', page: pageVal };
-    
-    let coinGain = isFirstClear ? 500 : 50; 
-    u.coins = (u.coins || 0) + coinGain;
-    recordPracticeActivity({
-        category: 'word',
-        title: getCurrentWordStageLabel(),
-        detail: isFirstClear ? 'クリア' : 'クリア再確認',
-        amount: pageVal ? `${pageVal}ページまで` : 'ページ未入力',
-        coins: coinGain
-    });
-    
-    saveUsers(false);
-    SoundManager.playClear(); createConfetti();
-    
-    // リザルト画面を借用して表示
-    document.getElementById('feedback-text').innerText = "Word マスター！";
-    document.getElementById('feedback-time').innerHTML = `<span style="font-size:30px; color:#FFD700;">💰 +${coinGain} コインゲット！</span>`;
-    document.getElementById('feedback-time').style.display = 'block';
-    document.getElementById('feedback-stats').style.display = 'none';
-    document.getElementById('feedback-overlay').style.display = 'flex';
-    
-    setTimeout(() => {
-        document.getElementById('feedback-overlay').style.display = 'none';
-        goToWordMenu();
-    }, 4000);
-}
 
 // ★追加: ビジョントレーニング タイム比較用関数
 
