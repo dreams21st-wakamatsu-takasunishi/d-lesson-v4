@@ -40,6 +40,8 @@ const STUDENT_LOGIN_MIN = parseEnvInteger(import.meta.env.VITE_STUDENT_LOGIN_MIN
 const STUDENT_LOGIN_MAX = Math.max(STUDENT_LOGIN_MIN, parseEnvInteger(import.meta.env.VITE_STUDENT_LOGIN_MAX, 40, STUDENT_LOGIN_MIN, 999));
 const STUDENT_LOGIN_PASSCODE_MIN_LENGTH = parseEnvInteger(import.meta.env.VITE_STUDENT_LOGIN_PASSCODE_MIN_LENGTH, 6, 4, 24);
 const STUDENT_LOGIN_PASSCODE_MAX_LENGTH = parseEnvInteger(import.meta.env.VITE_STUDENT_LOGIN_PASSCODE_MAX_LENGTH, 12, STUDENT_LOGIN_PASSCODE_MIN_LENGTH, 32);
+const STUDENT_IDLE_LOGOUT_MINUTES = parseEnvInteger(import.meta.env.VITE_STUDENT_IDLE_LOGOUT_MINUTES, 20, 0, 240);
+const STUDENT_IDLE_LOGOUT_MS = STUDENT_IDLE_LOGOUT_MINUTES * 60 * 1000;
 
 export const STORAGE_KEY = 'pc_practice_v5_split';
 export const GLOBAL_SETTINGS_ID = '__GLOBAL_SETTINGS__';
@@ -56,6 +58,8 @@ let authGateResolve = null;
 let authGateAfterLogin = null;
 let studentLoginState = { number: '', passcode: '' };
 let pendingStudentLoginNumber = '';
+let studentIdleLogoutTimer = null;
+let studentIdleWatcherStarted = false;
 
 const LESSON_ACCESS_BASE_COLUMNS = 'auth_user_id,user_data_id,role';
 const LESSON_ACCESS_SCOPED_COLUMNS = `${LESSON_ACCESS_BASE_COLUMNS},scope_type,scope_value`;
@@ -127,6 +131,46 @@ function canUseLegacyCloudSync() {
 
 function canUseSettingsTable() {
     return Boolean(supabase && REQUIRE_SUPABASE_AUTH && ENABLE_RLS_CLOUD_SYNC && ENABLE_SETTINGS_TABLE);
+}
+
+function shouldUseStudentIdleLogout() {
+    return Boolean(
+        REQUIRE_SUPABASE_AUTH
+        && STUDENT_IDLE_LOGOUT_MS > 0
+        && currentUser
+        && getCurrentLessonRole() === 'student'
+    );
+}
+
+function clearStudentIdleLogoutTimer() {
+    if (studentIdleLogoutTimer) clearTimeout(studentIdleLogoutTimer);
+    studentIdleLogoutTimer = null;
+}
+
+function resetStudentIdleLogoutTimer() {
+    clearStudentIdleLogoutTimer();
+    if (!shouldUseStudentIdleLogout()) return;
+
+    studentIdleLogoutTimer = setTimeout(() => {
+        void handleStudentIdleLogout();
+    }, STUDENT_IDLE_LOGOUT_MS);
+}
+
+async function handleStudentIdleLogout() {
+    if (!shouldUseStudentIdleLogout()) return;
+    await signOutSupabaseAuth('一定時間操作がなかったため、自動でログアウトしました。もう一度ログインしてください。');
+}
+
+function handleStudentActivity() {
+    if (studentIdleLogoutTimer || shouldUseStudentIdleLogout()) resetStudentIdleLogoutTimer();
+}
+
+function startStudentIdleLogoutWatcher() {
+    if (studentIdleWatcherStarted || typeof window === 'undefined') return;
+    studentIdleWatcherStarted = true;
+    ['pointerdown', 'keydown', 'touchstart'].forEach(eventName => {
+        window.addEventListener(eventName, handleStudentActivity, { passive: true });
+    });
 }
 
 function getLocalOnlySyncStatus() {
@@ -923,9 +967,10 @@ async function pruneCloudStudentRowsMissingFrom(nextUsers) {
     return deleteCloudUserRows(missingIds);
 }
 
-export async function signOutSupabaseAuth() {
+export async function signOutSupabaseAuth(message = 'ログアウトしました。もう一度ログインしてください。') {
     if (!REQUIRE_SUPABASE_AUTH) return false;
 
+    clearStudentIdleLogoutTimer();
     authGatePromise = null;
     authGateResolve = null;
     authGateAfterLogin = null;
@@ -949,7 +994,7 @@ export async function signOutSupabaseAuth() {
     removeSupabaseAuthStorage();
 
     setSyncStatus('signed out');
-    showAuthGate('ログアウトしました。もう一度ログインしてください。', false, () => { void loadUsers(); });
+    showAuthGate(message, false, () => { void loadUsers(); });
     return true;
 }
 
@@ -1223,6 +1268,7 @@ export function login(userId) {
     document.getElementById('welcome-msg').innerText = `ようこそ、${getUserDisplayName(userId)} さん`;
 
     updateVisibleUserUi();
+    resetStudentIdleLogoutTimer();
 
     const today = new Date().toISOString().split('T')[0];
     if (canWriteUserRow(userId) && !users[userId].loginStamps.includes(today) && !users[userId].isMaster) {
@@ -1253,3 +1299,5 @@ window.addEventListener('beforeunload', (e) => {
         e.returnValue = 'Data is still syncing. Closing now may lose changes.';
     }
 });
+
+startStudentIdleLogoutWatcher();

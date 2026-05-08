@@ -57,6 +57,13 @@ function isFalseOrEmpty(value) {
     return value === undefined || value === '' || value === 'false';
 }
 
+function isIntegerInRange(value, min, max) {
+    if (value === undefined || value === '') return true;
+    if (!/^\d+$/.test(value)) return false;
+    const parsed = Number.parseInt(value, 10);
+    return parsed >= min && parsed <= max;
+}
+
 function addRequiredSettingChecks(env, failures) {
     if (!env.VITE_SUPABASE_URL) {
         failures.push('VITE_SUPABASE_URL must be set.');
@@ -92,6 +99,10 @@ function addRequiredSettingChecks(env, failures) {
         failures.push('VITE_STUDENT_LOGIN_EMAIL_DOMAIN must be set so public URLs show the student number login form.');
     } else if (/@|\s/.test(env.VITE_STUDENT_LOGIN_EMAIL_DOMAIN)) {
         failures.push('VITE_STUDENT_LOGIN_EMAIL_DOMAIN must be a domain only, without @ or spaces.');
+    }
+
+    if (!isIntegerInRange(env.VITE_STUDENT_IDLE_LOGOUT_MINUTES, 1, 240)) {
+        failures.push('VITE_STUDENT_IDLE_LOGOUT_MINUTES must be empty or a number from 1 to 240 on public URLs.');
     }
 }
 
