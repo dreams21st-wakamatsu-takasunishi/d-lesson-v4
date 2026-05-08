@@ -1,110 +1,37 @@
 import './style.css';
 
-import { toggleSFX, toggleBGM, initAudio } from './utils/sound.js';
-import {
-  loadUsers,
-  goToGradeSelect,
-  closeStampOverlay
-} from './api/user.js';
-
-import * as Admin from './ui/admin.js';
-
-import { showCustomAlert } from './ui/modal.js';
-import { closeRewardOverlay } from './ui/reward.js';
-import {
-    speakInstruction,
-    speakTextTask
-} from './ui/speech.js';
+import { registerAppGlobalHandlers } from './app/global-functions.js';
+import { loadUsers } from './api/user.js';
+import { initAudio } from './utils/sound.js';
 import {
     goToMouseMenu,
     updateMouseButtons
 } from './ui/mouse-menu.js';
 import {
-    goToKeyboardCategory,
-    goToKeyboardMenu,
     updateKeyboardButtons,
-    showRomajiMenu,
-    renderKeyboardStages,
-    backToKbChapter
+    renderKeyboardStages
 } from './ui/keyboard-menu.js';
-import {
-    showRecordSection,
-    backToRecordMenu,
-    renderRecords
-} from './ui/records.js';
-import { exportDashboardCSV } from './ui/dashboard-export.js';
+import { renderRecords } from './ui/records.js';
 import { initFocusNavigation } from './ui/focus-navigation.js';
 import {
-    registerGlobalFunctions,
-    registerModuleFunctions,
-    validateInlineEventHandlers
-} from './ui/global-handlers.js';
-import {
-    goToMinigameMenu,
     goToRecords,
-    goToVisionMenu,
-    loginAsMaster,
-    goToWeakTraining
 } from './ui/app-navigation.js';
-import { loadCustomGlobalSettings } from './ui/custom-settings.js';
 import {
     setHomeUiHandlers,
-    updateGlobalHeader,
-    updateHomeDashboard
+    updateGlobalHeader
 } from './ui/home-dashboard.js';
 
-import {
-    showScreen,
-    toggleFullScreen,
-    handleGlobalBack,
-    handleGlobalHome,
-    handleGlobalLogout
-} from './ui/screen.js';
+import { backToMenuFromText } from './games/text.js';
+
+import { setGachaUiHandlers } from './games/gacha.js';
 
 import {
-    toggleRuby,
-    toggleNavi,
-    goToTextMenu,
-    toggleRubyInPrep,
-    toggleNaviInPrep,
-    closeTextPrepModal,
-    confirmStartTextPractice,
-    submitTextPractice,
-    closeTextResult,
-    backToMenuFromText
-} from './games/text.js';
-
-import {
-    goToWordMenu,
-    openWordText,
-    suspendWordTask,
-    confirmWordClear,
-    processWordClear
-} from './games/word.js';
-
-import {
-    drawGacha,
-    useTicket,
-    changeTheme,
-    changeEffect,
-    setGachaUiHandlers
-} from './games/gacha.js';
-
-import {
-    showVisionCompare
-} from './games/vision.js';
-
-import {
-    startMinigame,
     stopMinigame
 } from './games/minigame.js';
 
 import {
   backToMenu,
-  retryExam,
-  handleSecretMenuClick,
-  setMenuRefreshHandlers,
-  startRecommendedStage
+  setMenuRefreshHandlers
 } from './games/core.js';
 
 const BUILD_COMMIT = import.meta.env.VITE_BUILD_COMMIT || 'local';
@@ -163,35 +90,4 @@ setGachaUiHandlers({
 
 // ★追加: ビジョントレーニング タイム比較用関数
 
-/* =========================================================
-   [Vite環境用] HTMLから呼び出す関数をグローバルに登録
-   ========================================================= */
-const globalFunctions = [
-    toggleSFX, toggleBGM, toggleFullScreen, goToGradeSelect, loginAsMaster, showScreen, showCustomAlert,
-
-    goToMouseMenu, goToKeyboardCategory, goToKeyboardMenu, goToWeakTraining, goToTextMenu, goToMinigameMenu, goToVisionMenu,
-    goToWordMenu, goToRecords,
-
-    handleGlobalBack, handleGlobalHome, handleGlobalLogout,
-    closeStampOverlay, closeRewardOverlay,
-
-    startMinigame, stopMinigame,
-    toggleRubyInPrep, toggleNaviInPrep, confirmStartTextPractice, closeTextPrepModal,
-    submitTextPractice, closeTextResult, backToMenuFromText,
-
-    retryExam, backToMenu, handleSecretMenuClick,
-    showRomajiMenu, renderKeyboardStages, backToKbChapter,
-    showRecordSection, backToRecordMenu, exportDashboardCSV, startRecommendedStage, loadCustomGlobalSettings,
-    updateGlobalHeader, updateHomeDashboard,
-
-    drawGacha, useTicket, changeTheme, changeEffect,
-    showVisionCompare,
-
-    openWordText, suspendWordTask, confirmWordClear, processWordClear,
-
-    speakInstruction, speakTextTask, toggleRuby, toggleNavi
-];
-
-registerGlobalFunctions(globalFunctions);
-registerModuleFunctions(Admin);
-validateInlineEventHandlers();
+registerAppGlobalHandlers();

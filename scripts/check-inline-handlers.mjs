@@ -55,12 +55,12 @@ function collectAdminExports(source) {
 
 function main() {
     const html = read('index.html');
-    const mainSource = read('src/main.js');
+    const globalFunctionsSource = read('src/app/global-functions.js');
     const adminSource = read('src/ui/admin.js');
 
     const calledNames = collectInlineHandlerCalls(html);
     const registeredNames = new Set([
-        ...collectMainGlobals(mainSource),
+        ...collectMainGlobals(globalFunctionsSource),
         ...collectAdminExports(adminSource)
     ]);
 
