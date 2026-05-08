@@ -5,8 +5,7 @@
 1. Auth / RLS の本番設定を固定する
    - 公開URLでは `VITE_REQUIRE_SUPABASE_AUTH=true`。
    - RLS検証完了後だけ `VITE_ENABLE_RLS_CLOUD_SYNC=true`。
-   - `VITE_LEGACY_ADMIN_PASS` は公開URLに設定しない。
-   - `VITE_ALLOW_LEGACY_ADMIN_PASS=false` を公開URLで固定する。
+   - 旧パスワード関連の環境変数は公開URLに設定しない。
 
 2. 児童データとAuthアカウントの紐づけ手順を固める
    - 新規児童は `student_...` の内部IDで作成される。
@@ -69,8 +68,9 @@
    - 詳細は [lesson_settings 移行手順](lesson-settings-table.md) にまとめた。
 
 2. 旧パスワード導線の完全撤去
-   - 現在は本番ビルドとAuth必須環境で旧パスワードが無効になるようにした。
-   - Authロール運用が安定したら、旧パスワード入力UI自体を削除する。
+   - 旧パスワード入力UIは削除済み。
+   - 先生用プレビュー、管理者画面、チケット交換確認、Word確認は Supabase Auth の `teacher` / `admin` ロールで行う。
+   - 公開URLでは `VITE_LEGACY_ADMIN_PASS` と `VITE_ALLOW_LEGACY_ADMIN_PASS` を設定しない。
 
 3. `main.js` の分割継続
    - 大きいファイルにゲーム・UI・報酬・CSV出力がまだ混ざっている。

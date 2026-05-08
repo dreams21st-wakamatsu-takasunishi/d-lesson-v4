@@ -30,38 +30,8 @@ import { SoundManager } from '../utils/sound.js';
 import { showCustomAlert, showCustomConfirm } from './modal.js';
 import { showScreen } from './screen.js';
 import { calculateGrade, sortGrades } from '../utils/helpers.js';
-import { getLegacyAdminPassStatus, hasLegacyAdminPass, verifyLegacyAdminPass } from '../utils/security.js';
+import { getLegacyAdminPassStatus } from '../utils/security.js';
 import { getStageName } from '../utils/stages.js';
-
-let passwordCallback = null;
-export function showPasswordModal(title, callback) {
-    const modal = document.getElementById('password-modal');
-    if (!modal) { showCustomAlert("パスワード機能の準備ができていません"); return; }
-    document.getElementById('password-modal-title').innerText = title;
-    document.getElementById('password-input').value = '';
-    modal.style.display = 'flex';
-    setTimeout(() => document.getElementById('password-input').focus(), 100);
-    passwordCallback = callback;
-}
-export function closePasswordModal() {
-    document.getElementById('password-modal').style.display = 'none';
-    passwordCallback = null;
-}
-export function submitPassword() {
-    const pass = document.getElementById('password-input').value;
-    const callback = passwordCallback; 
-    closePasswordModal();
-    if (callback) callback(pass); 
-}
-
-window.addEventListener('DOMContentLoaded', () => {
-    const pwdInput = document.getElementById('password-input');
-    if(pwdInput) {
-        pwdInput.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') submitPassword();
-        });
-    }
-});
 
 const ADMIN_AUDIT_STORAGE_KEY = 'd_lesson_admin_audit_log';
 const ADMIN_AUDIT_LIMIT = 200;
@@ -449,19 +419,7 @@ export async function openAdmin() {
         return;
     }
 
-    if (!hasLegacyAdminPass()) {
-        const message = REQUIRE_SUPABASE_AUTH
-            ? '管理者アカウントでログインしてください。'
-            : '旧管理者パスワードは無効です。ローカル検証では .env.local の VITE_ALLOW_LEGACY_ADMIN_PASS=true を確認してください。';
-        showCustomAlert(message);
-        return;
-    }
-
-    showPasswordModal('管理者パスワード', (pass) => {
-        if(verifyLegacyAdminPass(pass)) { 
-            openAdminScreen();
-        } else { showCustomAlert('パスワードが違います'); }
-    });
+    showCustomAlert('管理者アカウントでログインしてください。');
 }
 
 export function renderTicketAdmin() {

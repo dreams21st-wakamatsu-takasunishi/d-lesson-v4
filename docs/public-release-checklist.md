@@ -30,7 +30,6 @@ VITE_ENABLE_LEGACY_SUPABASE_SYNC=false
 VITE_ENABLE_RLS_CLOUD_SYNC=true
 VITE_ENABLE_SETTINGS_TABLE=false
 VITE_REQUIRE_SUPABASE_AUTH=true
-VITE_ALLOW_LEGACY_ADMIN_PASS=false
 ```
 
 本番 `user_data` で公開する場合:
@@ -44,17 +43,17 @@ VITE_ENABLE_LEGACY_SUPABASE_SYNC=false
 VITE_ENABLE_RLS_CLOUD_SYNC=true
 VITE_ENABLE_SETTINGS_TABLE=true または false
 VITE_REQUIRE_SUPABASE_AUTH=true
-VITE_ALLOW_LEGACY_ADMIN_PASS=false
 ```
 
-公開URLでは、次を設定しない。
+公開URLでは、旧パスワード関連の変数を設定しない。
 
 ```env
+VITE_ALLOW_LEGACY_ADMIN_PASS=
 VITE_LEGACY_ADMIN_PASS=
 ```
 
 理由: Vite の `VITE_` 変数はビルド後のJavaScriptに含まれるため、公開URLでは管理者パスワードを守る仕組みにならない。
-コード側でも、本番ビルドまたは `VITE_REQUIRE_SUPABASE_AUTH=true` の環境では旧パスワードを無効化している。
+現在の画面導線は Supabase Auth の `teacher` / `admin` ロールを前提にしており、旧パスワード入力UIは使わない。
 
 RLS設定とアクセス権限の検証が終わった後だけ、クラウド同期を有効にする。
 
@@ -179,7 +178,7 @@ npm.cmd run preview
 - 実操作チェックでアプリ本体の赤いConsoleエラーがない。
 - 公開URLで `VITE_REQUIRE_SUPABASE_AUTH=true` になっている。
 - 公開URLで `VITE_ENABLE_LEGACY_SUPABASE_SYNC=false` になっている。
-- 公開URLで `VITE_ALLOW_LEGACY_ADMIN_PASS=false` になっている。
+- 公開URLで旧パスワード関連の環境変数を設定していない。
 - `VITE_ENABLE_SETTINGS_TABLE=true` にする場合は、`lesson_settings` のRLS確認が終わっている。
 - 設定テーブル分離を使う場合は、`supabase/sql/verify_lesson_settings.sql` で診断済み。
 - Supabaseへ保存・読込する場合は、RLS検証後に `VITE_ENABLE_RLS_CLOUD_SYNC=true` になっている。

@@ -3,9 +3,7 @@ import { GACHA_ITEMS } from '../data/gacha-items.js'
 import { THEMES, EFFECTS } from '../data/constants.js'
 import { SoundManager } from '../utils/sound.js'
 import { showCustomAlert, showCustomConfirm } from '../ui/modal.js'
-import { showPasswordModal } from '../ui/admin.js'
 import { createConfetti, renderRecords, showCapsuleAnimation, showRewardOverlay } from '../main.js'
-import { hasLegacyAdminPass, verifyLegacyAdminPass } from '../utils/security.js'
 
 export function drawGacha(times = 1, isRareGuaranteed = false) {
     const u = users[currentUser]; const COST = isRareGuaranteed ? 500 : 100 * times;
@@ -88,18 +86,7 @@ export function useTicket(idx) {
         return;
     }
 
-    if (!hasLegacyAdminPass()) {
-        showCustomAlert('先生または管理者アカウントでログインして確認してください。');
-        return;
-    }
-
-    showPasswordModal(`【先生確認】\n「${t.name}」を使います。\nパスワードを入力:`, (pass) => {
-        if (verifyLegacyAdminPass(pass)) { 
-            consumeTicket();
-        } else { 
-            if (pass !== null && pass !== '') showCustomAlert('パスワードがちがいます'); // ★修正
-        }
-    });
+    showCustomAlert('先生または管理者アカウントでログインして確認してください。');
 }
 
 export function changeTheme(themeId) { applyTheme(themeId); if (users[currentUser] && canWriteCurrentUserRow()) { users[currentUser].theme = themeId; saveUsers(false); } if (typeof window.renderRecords === 'function') {

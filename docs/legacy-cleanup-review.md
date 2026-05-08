@@ -15,17 +15,17 @@
   - 現在は `src/ui/admin.js` 側が画面から呼ばれる本体。
   - `main.js` 側に残っていた重複の `switchDashTab` / `updateAdminUserTable` / `renderDashboardTable` を削除した。
 
+- 旧管理者パスワードの画面導線
+  - パスワード入力モーダルと、旧パスワードで先生用プレビュー・管理者画面・チケット交換確認・Word確認を通す分岐を削除した。
+  - これらの操作は Supabase Auth の `teacher` / `admin` ロールで行う。
+  - 公開URLにフロントエンド環境変数として管理用パスワードを置く必要をなくした。
+
 ## 残すが、役割を明確にしておくもの
 
 - タイトル画面の `先生用`
   - 先生・管理者が全ステージを確認するためのプレビュー導線として残す。
   - 公開URLでは Supabase Auth の `teacher` / `admin` ロールが必要。
   - 将来的には表示名を `先生用プレビュー` などに変えると、マスター作成との混同を避けやすい。
-
-- `VITE_LEGACY_ADMIN_PASS`
-  - ローカル・教室内テスト用の退避手段としてのみ残す。
-  - 公開URLでは未設定にし、`VITE_ALLOW_LEGACY_ADMIN_PASS=false` にする。
-  - 本番ビルドまたは `VITE_REQUIRE_SUPABASE_AUTH=true` では、値が残っていてもコード側で無効になる。
 
 - `VITE_ENABLE_LEGACY_SUPABASE_SYNC`
   - 旧 `user_data` / `test_user_data` の直接同期を再利用するための退避設定。
@@ -52,13 +52,9 @@
   - 画面遷移、ゲーム進行、演出、報酬表示、グローバル登録がまだ混ざっている。
   - 今回のような未定義エラーを減らすには、画面単位・機能単位で `src/ui` と `src/games` へさらに分ける。
 
-- 旧パスワード導線の完全撤去
-  - Supabase Auth の先生・管理者アカウント運用が固まったら、旧パスワード入力UIを削除する。
-  - それまでは本番ビルド/Auth必須/許可フラグなしの環境で無効化する。
-
 ## 優先順
 
 1. `verify_internal_user_ids.sql` で名前ID行を確認し、必要なら `migrate_test_user_data_named_ids.sql` でテストテーブルを内部IDへ移す。
-2. 先生・管理者の画面操作を実機で確認し、旧パスワードなしで足りるか判断する。
+2. 先生・管理者の画面操作を実機で確認し、Authロールだけで運用できることを確認する。
 3. `lesson_settings` をテスト環境で有効にし、旧 `__GLOBAL_SETTINGS__` 行を残したまま動作確認する。
 4. `src/main.js` の巨大化を少しずつ解消する。

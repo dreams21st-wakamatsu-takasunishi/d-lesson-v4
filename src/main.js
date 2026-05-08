@@ -55,7 +55,6 @@ import * as Admin from './ui/admin.js';
 import { showCustomAlert, showCustomConfirm } from './ui/modal.js';
 import { createBtn } from './utils/dom.js';
 import { getRewardText } from './utils/rewards.js';
-import { hasLegacyAdminPass, verifyLegacyAdminPass } from './utils/security.js';
 import { getStageName } from './utils/stages.js';
 import { createConfetti as createConfettiForEffect } from './ui/effects.js';
 
@@ -566,26 +565,14 @@ function loginAsMaster() {
         return;
     }
 
-    if (!hasLegacyAdminPass()) {
-        showCustomAlert('先生または管理者アカウントでログインしてください。');
-        return;
-    }
-
-    Admin.showPasswordModal('先生用パスワード', (pass) => {
-        if(verifyLegacyAdminPass(pass)) {
-            enterMasterMode();
-        } else {
-            alert('パスワードが違います');
-        }
-    });
+    showCustomAlert('先生または管理者アカウントでログインしてください。');
 }
 
 function updateTitleRoleActions() {
     const teacherPreviewBtn = document.getElementById('title-teacher-preview-btn');
     const adminBtn = document.getElementById('title-admin-btn');
-    const canUseLegacyPass = hasLegacyAdminPass();
-    const canUseTeacherPreview = hasLessonRole('teacher', 'admin') || canUseLegacyPass;
-    const canUseAdmin = hasLessonRole('admin') || canUseLegacyPass;
+    const canUseTeacherPreview = hasLessonRole('teacher', 'admin');
+    const canUseAdmin = hasLessonRole('admin');
 
     if (teacherPreviewBtn) teacherPreviewBtn.style.display = canUseTeacherPreview ? 'inline-flex' : 'none';
     if (adminBtn) adminBtn.style.display = canUseAdmin ? 'inline-flex' : 'none';
@@ -1349,15 +1336,7 @@ function confirmWordClear() {
         return;
     }
 
-    if (!hasLegacyAdminPass()) {
-        showCustomAlert('先生または管理者アカウントでログインして確認してください。');
-        return;
-    }
-
-    Admin.showPasswordModal('【先生確認】\n作品の出来を確認したら\nパスワードを入力:', (pass) => {
-        if (verifyLegacyAdminPass(pass)) processWordClear();
-        else if (pass !== null && pass !== '') alert('パスワードがちがいます');
-    });
+    showCustomAlert('先生または管理者アカウントでログインして確認してください。');
 }
 
 function processWordClear() {

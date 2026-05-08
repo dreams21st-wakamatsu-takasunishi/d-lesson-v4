@@ -100,7 +100,6 @@ VITE_ENABLE_LEGACY_SUPABASE_SYNC=false
 VITE_REQUIRE_SUPABASE_AUTH=true
 VITE_ENABLE_RLS_CLOUD_SYNC=true
 VITE_ENABLE_SETTINGS_TABLE=false
-VITE_ALLOW_LEGACY_ADMIN_PASS=false
 ```
 
 設定後、テストテーブルで公開検証する場合は次を実行する。
@@ -115,9 +114,10 @@ npm.cmd run check:public-test-env
 npm.cmd run check:public-env
 ```
 
-公開URLでは設定しない。
+公開URLでは、旧パスワード関連の変数を設定しない。
 
 ```env
+VITE_ALLOW_LEGACY_ADMIN_PASS=
 VITE_LEGACY_ADMIN_PASS=
 ```
 

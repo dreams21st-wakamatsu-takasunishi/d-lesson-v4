@@ -84,7 +84,7 @@ npm.cmd run check:release
 
 ## 注意
 
-- `VITE_LEGACY_ADMIN_PASS` は公開URLには設定しない。
 - `VITE_ENABLE_LEGACY_SUPABASE_SYNC` は公開URLでは `false` のままにする。
-- `VITE_REQUIRE_SUPABASE_AUTH` と `VITE_ALLOW_LEGACY_ADMIN_PASS` は workflow 側で安全な値に固定している。
+- 旧パスワード関連の環境変数は公開URLには設定しない。
+- `VITE_REQUIRE_SUPABASE_AUTH` は workflow 側で安全な値に固定している。
 - GitHub Pages は `/d-lesson-v4/` 配下で配信されるため、Vite の `base` は `./` にしている。
