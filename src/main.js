@@ -24,6 +24,10 @@ import * as Admin from './ui/admin.js';
 import { showCustomAlert, showCustomConfirm } from './ui/modal.js';
 import { closeRewardOverlay } from './ui/reward.js';
 import {
+    speakInstruction,
+    speakTextTask
+} from './ui/speech.js';
+import {
     goToMouseMenu,
     updateMouseButtons
 } from './ui/mouse-menu.js';
@@ -57,7 +61,6 @@ import {
 import {
     toggleRuby,
     toggleNavi,
-    getCurrentTextTask,
     goToTextMenu,
     toggleRubyInPrep,
     toggleNaviInPrep,
@@ -122,29 +125,6 @@ window.addEventListener('DOMContentLoaded', () => {
     }, { once:true });
 
 });
-
-function speakText(text) {
-    if ('speechSynthesis' in window) {
-        speechSynthesis.cancel();
-        const msg = new SpeechSynthesisUtterance(text);
-        msg.lang = 'ja-JP'; msg.rate = 1.0;
-        speechSynthesis.speak(msg);
-    }
-}
-function speakInstruction() {
-    let txt = document.getElementById('inst-text').innerText;
-    let mq = document.getElementById('main-q');
-    if(mq && mq.innerText && !mq.innerText.includes('👀')) txt += "。 " + mq.innerText;
-    speakText(txt);
-}
-function speakTextTask() {
-    const currentTextTask = getCurrentTextTask();
-    if(currentTextTask && currentTextTask.content) {
-        let plain = currentTextTask.content.replace(/\{([^|]+)\|([^}]+)\}/g, '$1');
-        speakText(plain);
-    }
-}
-
 
 /* =========================================================
    [JS] 8. 共通ゲーム進行 ＆ キーボード・マウスのコアロジック
