@@ -1,7 +1,29 @@
 import {
     getPracticeLogs,
+    getLatestPracticeActivity,
     formatPracticeActivity
 } from '../api/user.js';
+
+export function renderLastPracticeCard(card, userId) {
+    const latest = formatPracticeActivity(getLatestPracticeActivity(userId));
+    card.innerHTML = '';
+
+    const label = document.createElement('div');
+    label.textContent = '前回の練習';
+    label.style.cssText = 'font-size:13px; color:#00695c; font-weight:bold; margin-bottom:4px;';
+
+    const title = document.createElement('div');
+    title.textContent = latest.when ? `${latest.title} (${latest.when})` : latest.title;
+    title.style.cssText = 'font-size:18px; color:#263238; font-weight:bold;';
+
+    const detail = document.createElement('div');
+    detail.textContent = latest.detail;
+    detail.style.cssText = 'font-size:13px; color:#546e7a; margin-top:3px;';
+
+    card.appendChild(label);
+    card.appendChild(title);
+    card.appendChild(detail);
+}
 
 function appendPracticeMetric(container, label, value, color) {
     const box = document.createElement('div');

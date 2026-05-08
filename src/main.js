@@ -44,9 +44,7 @@ import {
   getUserDisplayName,
   isSystemUserId,
   canWriteCurrentUserRow,
-  recordPracticeActivity,
-  getLatestPracticeActivity,
-  formatPracticeActivity
+  recordPracticeActivity
 } from './api/user.js';
 
 import * as Admin from './ui/admin.js';
@@ -56,7 +54,10 @@ import { createBtn } from './utils/dom.js';
 import { getRewardText } from './utils/rewards.js';
 import { getStageName } from './utils/stages.js';
 import { createConfetti as createConfettiForEffect } from './ui/effects.js';
-import { renderPracticeHistorySection } from './ui/practice-history.js';
+import {
+    renderLastPracticeCard,
+    renderPracticeHistorySection
+} from './ui/practice-history.js';
 
 import {
     showScreen,
@@ -970,20 +971,7 @@ export function updateHomeDashboard() {
 
     const lastPracticeCard = document.getElementById('last-practice-card');
     if (lastPracticeCard) {
-        const latest = formatPracticeActivity(getLatestPracticeActivity(currentUser));
-        lastPracticeCard.innerHTML = '';
-        const label = document.createElement('div');
-        label.textContent = '前回の練習';
-        label.style.cssText = 'font-size:13px; color:#00695c; font-weight:bold; margin-bottom:4px;';
-        const title = document.createElement('div');
-        title.textContent = latest.when ? `${latest.title} (${latest.when})` : latest.title;
-        title.style.cssText = 'font-size:18px; color:#263238; font-weight:bold;';
-        const detail = document.createElement('div');
-        detail.textContent = latest.detail;
-        detail.style.cssText = 'font-size:13px; color:#546e7a; margin-top:3px;';
-        lastPracticeCard.appendChild(label);
-        lastPracticeCard.appendChild(title);
-        lastPracticeCard.appendChild(detail);
+        renderLastPracticeCard(lastPracticeCard, currentUser);
     }
     
     const maxMouse = 7; const mLv = u.mouseLevel || 0;
