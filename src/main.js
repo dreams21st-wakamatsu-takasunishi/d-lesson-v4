@@ -89,7 +89,8 @@ import {
 drawGacha,
 useTicket,
 changeTheme,
-changeEffect
+changeEffect,
+setGachaUiHandlers
 } from './games/gacha.js'
 
 import {
@@ -909,6 +910,10 @@ export function renderRecords() {
     });
     titleCont.appendChild(titleGrid);
 }
+
+setGachaUiHandlers({
+    renderRecords
+});
 
 // 修正後
 

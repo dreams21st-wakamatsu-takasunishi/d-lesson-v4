@@ -4,7 +4,20 @@ import { THEMES, EFFECTS } from '../data/constants.js'
 import { SoundManager } from '../utils/sound.js'
 import { showCustomAlert, showCustomConfirm } from '../ui/modal.js'
 import { createConfetti, showCapsuleAnimation, showRewardOverlay } from '../ui/reward.js'
-import { renderRecords } from '../main.js'
+
+let renderRecordsHandler = () => {
+    if (typeof window.renderRecords === 'function') window.renderRecords();
+};
+
+export function setGachaUiHandlers(handlers = {}) {
+    if (typeof handlers.renderRecords === 'function') {
+        renderRecordsHandler = handlers.renderRecords;
+    }
+}
+
+function refreshRecords() {
+    renderRecordsHandler();
+}
 
 export function drawGacha(times = 1, isRareGuaranteed = false) {
     const u = users[currentUser]; const COST = isRareGuaranteed ? 500 : 100 * times;
@@ -43,7 +56,7 @@ export function drawGacha(times = 1, isRareGuaranteed = false) {
                 }
             }
             
-            u.coins += totalCoinsWon + refundCoins; saveUsers(false); renderRecords(); 
+            u.coins += totalCoinsWon + refundCoins; saveUsers(false); refreshRecords(); 
             
             let rewardTitle = times > 1 ? `✨ ${times}連ガチャ けっか ✨` : "✨ ガチャけっか ✨"; 
             if (isRareGuaranteed) rewardTitle = "✨ レア確定ガチャ けっか ✨";
@@ -79,7 +92,7 @@ export function useTicket(idx) {
         saveUsers(false);
         SoundManager.playClear();
         showCustomAlert(`✅ 交換しました！\n\n${t.name} を渡してあげてください。`); // ★修正
-        renderRecords();
+        refreshRecords();
     };
 
     if (hasLessonRole('teacher', 'admin')) {
@@ -90,13 +103,9 @@ export function useTicket(idx) {
     showCustomAlert('先生または管理者アカウントでログインして確認してください。');
 }
 
-export function changeTheme(themeId) { applyTheme(themeId); if (users[currentUser] && canWriteCurrentUserRow()) { users[currentUser].theme = themeId; saveUsers(false); } if (typeof window.renderRecords === 'function') {
-    window.renderRecords();
-} }
+export function changeTheme(themeId) { applyTheme(themeId); if (users[currentUser] && canWriteCurrentUserRow()) { users[currentUser].theme = themeId; saveUsers(false); } refreshRecords(); }
 
-export function changeEffect(effId) { if (users[currentUser] && canWriteCurrentUserRow()) { users[currentUser].activeEffect = effId; saveUsers(false); } if (typeof window.renderRecords === 'function') {
-    window.renderRecords();
-} createConfetti(); }
+export function changeEffect(effId) { if (users[currentUser] && canWriteCurrentUserRow()) { users[currentUser].activeEffect = effId; saveUsers(false); } refreshRecords(); createConfetti(); }
 
 function applyTheme(themeId) {
     document.body.className = '';
