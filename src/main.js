@@ -1,11 +1,5 @@
 import './style.css';
 
-import {
-  THEMES,
-  EFFECTS
-} from './data/constants.js';
-import { GACHA_ITEMS } from './data/gacha-items.js';
-
 import { toggleSFX, toggleBGM, initAudio } from './utils/sound.js';
 import {
   users,
@@ -15,7 +9,6 @@ import {
   login,
   closeStampOverlay,
   hasLessonRole,
-  GLOBAL_SETTINGS_ID,
   MASTER_DEBUG_ID
 } from './api/user.js';
 
@@ -44,6 +37,7 @@ import {
     backToRecordMenu,
     renderRecords
 } from './ui/records.js';
+import { loadCustomGlobalSettings } from './ui/custom-settings.js';
 import {
     setHomeUiHandlers,
     updateGlobalHeader,
@@ -144,7 +138,11 @@ function goToMinigameMenu() {
     showScreen('screen-minigame-menu');
 }
 
-function goToRecords() { renderRecords(); showScreen('screen-records'); }
+function goToRecords() {
+    loadCustomGlobalSettings();
+    renderRecords();
+    showScreen('screen-records');
+}
 function goToVisionMenu() { renderVisionMenu(); showScreen('screen-vision-menu'); }
 
 setHomeUiHandlers({
@@ -261,41 +259,6 @@ export function exportDashboardCSV() {
     link.download = fileName;
     link.click();
 }
-
-/* =========================================================
-   不足機能補填 ＆ バグ修正パッチ（最終）
-   ========================================================= */
-
-// ② 【修正】カスタムテーマがマイページ等に反映されない問題の修正
-// ロード時に確実に THEMES と GACHA_ITEMS へ反映させる
-export function loadCustomGlobalSettings() {
-    const glob = users[GLOBAL_SETTINGS_ID];
-    if (!glob || !glob.globalMistakes) return;
-    if (Array.isArray(glob.globalMistakes.customThemes)) {
-        glob.globalMistakes.customThemes.forEach(ct => {
-            if (!THEMES.find(t => t.id === ct.id)) {
-                THEMES.push({ id: ct.id, name: ct.name, icon: '🎨', isCustom: true, data: ct, bg: ct.bg, text: ct.text, btnBg: ct.btnBg, btnText: ct.btnText });
-                GACHA_ITEMS.push({ id: ct.id, type: 'theme', name: `🎨 カスタムテーマ：${ct.name}`, rate: 0.05 });
-            }
-        });
-    }
-    if (Array.isArray(glob.globalMistakes.customEffects)) {
-        glob.globalMistakes.customEffects.forEach(ce => {
-            if (!EFFECTS.find(e => e.id === ce.id)) {
-                EFFECTS.push({ id: ce.id, name: ce.name, icon: ce.emojis[0], isCustom: true, data: ce, emojis: ce.emojis });
-                GACHA_ITEMS.push({ id: ce.id, type: 'effect', name: `🎉 カスタム演出：${ce.name}`, rate: 0.05 });
-            }
-        });
-    }
-}
-
-// マイページを開く直前に必ず強制リロードして、作ったテーマを確実に読み込ませる
-const originalGoToRecords = goToRecords;
-goToRecords = function() {
-    loadCustomGlobalSettings(); 
-    renderRecords();
-    showScreen('screen-records');
-};
 
 // ★追加: ビジョントレーニング タイム比較用関数
 
