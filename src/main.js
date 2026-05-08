@@ -103,6 +103,7 @@ import {
   backToMenu,
   retryExam,
   handleSecretMenuClick,
+  setMenuRefreshHandlers,
   startRecommendedStage
 } from './games/core.js';
 
@@ -721,6 +722,12 @@ function backToKbChapter() {
     document.getElementById('kb-stage-container').style.display = 'none';
     document.getElementById('kb-bottom-back-btn').style.display = 'block';
 }
+
+setMenuRefreshHandlers({
+    updateMouseButtons,
+    updateKeyboardButtons,
+    renderKeyboardStages
+});
 
 function getFocusableElements() {
     const activeScreen = document.querySelector('.screen.active'); if (!activeScreen) return[];

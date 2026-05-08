@@ -26,11 +26,6 @@ import { getStageName } from '../utils/stages.js';
 import { convertNameToRomaji, shuffle } from '../utils/helpers.js';
 import { createConfetti, showRewardOverlay } from '../ui/reward.js';
 import { getCurrentKeyboardChapter } from '../ui/keyboard-state.js';
-import {
-    renderKeyboardStages,
-    updateKeyboardButtons,
-    updateMouseButtons
-} from '../main.js';
 import { startVisionGame, renderVisionMenu } from './vision.js';
 export { getStageName } from '../utils/stages.js';
 
@@ -72,6 +67,24 @@ export function getVisionTimeout() { return visionTimeout; }
 export function setVisionTimeout(value) { visionTimeout = value; }
 export function getVisionHardMode() { return isVisionHardMode; }
 export function getVisionEasyMode() { return isVisionEasyMode; }
+
+const menuRefreshHandlers = {
+    updateMouseButtons: () => {},
+    updateKeyboardButtons: () => {},
+    renderKeyboardStages: () => {}
+};
+
+export function setMenuRefreshHandlers(handlers = {}) {
+    if (typeof handlers.updateMouseButtons === 'function') {
+        menuRefreshHandlers.updateMouseButtons = handlers.updateMouseButtons;
+    }
+    if (typeof handlers.updateKeyboardButtons === 'function') {
+        menuRefreshHandlers.updateKeyboardButtons = handlers.updateKeyboardButtons;
+    }
+    if (typeof handlers.renderKeyboardStages === 'function') {
+        menuRefreshHandlers.renderKeyboardStages = handlers.renderKeyboardStages;
+    }
+}
 
 export const els = {
     playArea: document.getElementById('play-area'), 
@@ -236,7 +249,7 @@ export function backToMenu() {
         isProcessing = false;
         
         if (gameMode === 'mouse') {
-            updateMouseButtons();
+            menuRefreshHandlers.updateMouseButtons();
             showScreen('screen-mouse-menu');
         }
         else if (gameMode === 'vision') {
@@ -244,11 +257,11 @@ export function backToMenu() {
             showScreen('screen-vision-menu');
         }
         else {
-            updateKeyboardButtons();
+            menuRefreshHandlers.updateKeyboardButtons();
             // ★追加: もしステージ一覧を開いていたなら、最新の進捗で再描画する
             const currentKeyboardChapter = getCurrentKeyboardChapter();
             if (currentKeyboardChapter && document.getElementById('kb-stage-container').style.display === 'flex') {
-                renderKeyboardStages(currentKeyboardChapter);
+                menuRefreshHandlers.renderKeyboardStages(currentKeyboardChapter);
             }
             showScreen('screen-keyboard-menu');
         }
