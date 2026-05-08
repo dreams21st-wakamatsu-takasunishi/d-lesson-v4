@@ -2,19 +2,14 @@ import './style.css';
 
 import { toggleSFX, toggleBGM, initAudio } from './utils/sound.js';
 import {
-  users,
-  currentUser,
   loadUsers,
   goToGradeSelect,
-  login,
-  closeStampOverlay,
-  hasLessonRole,
-  MASTER_DEBUG_ID
+  closeStampOverlay
 } from './api/user.js';
 
 import * as Admin from './ui/admin.js';
 
-import { showCustomAlert, showCustomConfirm } from './ui/modal.js';
+import { showCustomAlert } from './ui/modal.js';
 import { closeRewardOverlay } from './ui/reward.js';
 import {
     speakInstruction,
@@ -38,6 +33,13 @@ import {
     renderRecords
 } from './ui/records.js';
 import { exportDashboardCSV } from './ui/dashboard-export.js';
+import {
+    goToMinigameMenu,
+    goToRecords,
+    goToVisionMenu,
+    loginAsMaster,
+    goToWeakTraining
+} from './ui/app-navigation.js';
 import { loadCustomGlobalSettings } from './ui/custom-settings.js';
 import {
     setHomeUiHandlers,
@@ -83,9 +85,7 @@ import {
 } from './games/gacha.js';
 
 import {
-    startVisionGame,
-    showVisionCompare,
-    renderVisionMenu
+    showVisionCompare
 } from './games/vision.js';
 
 import {
@@ -94,7 +94,6 @@ import {
 } from './games/minigame.js';
 
 import {
-  startGame,
   backToMenu,
   retryExam,
   handleSecretMenuClick,
@@ -127,58 +126,10 @@ window.addEventListener('DOMContentLoaded', () => {
 /* =========================================================
    [JS] 9. UI・画面遷移 ＆ ガチャ・きせかえ管理
    ========================================================= */
-function getActiveUserOrTitle() {
-    const u = currentUser ? users[currentUser] : null;
-    if (u) return u;
-    showCustomAlert('ユーザーを選択してください');
-    showScreen('screen-title');
-    return null;
-}
-
-function goToMinigameMenu() {
-    showScreen('screen-minigame-menu');
-}
-
-function goToRecords() {
-    loadCustomGlobalSettings();
-    renderRecords();
-    showScreen('screen-records');
-}
-function goToVisionMenu() { renderVisionMenu(); showScreen('screen-vision-menu'); }
-
 setHomeUiHandlers({
     openMouseMenu: goToMouseMenu,
     openRecords: goToRecords
 });
-
-function enterMasterMode() {
-    if (!users[MASTER_DEBUG_ID]) {
-        users[MASTER_DEBUG_ID] = { mouseLevel:7, keyboardSequence:999, examRecords:{}, textRecords:{}, globalMistakes:{}, theme:'default', birthdate:'', isMaster:true };
-    }
-    document.getElementById('screen-title').classList.remove('active');
-    login(MASTER_DEBUG_ID);
-}
-
-function loginAsMaster() {
-    if (hasLessonRole('teacher', 'admin')) {
-        enterMasterMode();
-        return;
-    }
-
-    showCustomAlert('先生または管理者アカウントでログインしてください。');
-}
-
-function goToWeakTraining() {
-    const u = getActiveUserOrTitle();
-    if (!u) return;
-    const mistakes = u.globalMistakes || {};
-    const hasMistakes = Object.values(mistakes).some(count => count > 0);
-    if (hasMistakes) {
-        startGame(9888, 'keyboard');
-    } else {
-        showCustomAlert('ミスのデータがないか、すべて克服しました！\nいろいろな練習をしてからまた挑戦してみてね！'); // ★修正
-    }
-}
 
 setMenuRefreshHandlers({
     updateMouseButtons,

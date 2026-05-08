@@ -1,0 +1,70 @@
+import { users, currentUser, login, hasLessonRole, MASTER_DEBUG_ID } from '../api/user.js';
+import { startGame } from '../games/core.js';
+import { renderVisionMenu } from '../games/vision.js';
+import { showCustomAlert } from './modal.js';
+import { renderRecords } from './records.js';
+import { showScreen } from './screen.js';
+import { loadCustomGlobalSettings } from './custom-settings.js';
+
+function getActiveUserOrTitle() {
+    const u = currentUser ? users[currentUser] : null;
+    if (u) return u;
+    showCustomAlert('ユーザーを選択してください');
+    showScreen('screen-title');
+    return null;
+}
+
+export function goToMinigameMenu() {
+    showScreen('screen-minigame-menu');
+}
+
+export function goToRecords() {
+    loadCustomGlobalSettings();
+    renderRecords();
+    showScreen('screen-records');
+}
+
+export function goToVisionMenu() {
+    renderVisionMenu();
+    showScreen('screen-vision-menu');
+}
+
+function enterMasterMode() {
+    if (!users[MASTER_DEBUG_ID]) {
+        users[MASTER_DEBUG_ID] = {
+            mouseLevel: 7,
+            keyboardSequence: 999,
+            examRecords: {},
+            textRecords: {},
+            globalMistakes: {},
+            theme: 'default',
+            birthdate: '',
+            isMaster: true
+        };
+    }
+    document.getElementById('screen-title').classList.remove('active');
+    login(MASTER_DEBUG_ID);
+}
+
+export function loginAsMaster() {
+    if (hasLessonRole('teacher', 'admin')) {
+        enterMasterMode();
+        return;
+    }
+
+    showCustomAlert('先生または管理者アカウントでログインしてください。');
+}
+
+export function goToWeakTraining() {
+    const u = getActiveUserOrTitle();
+    if (!u) return;
+
+    const mistakes = u.globalMistakes || {};
+    const hasMistakes = Object.values(mistakes).some(count => count > 0);
+    if (hasMistakes) {
+        startGame(9888, 'keyboard');
+        return;
+    }
+
+    showCustomAlert('ミスのデータがないか、すべて克服しました！\nいろいろな練習をしてからまた挑戦してみてね！');
+}
