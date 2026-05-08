@@ -71,6 +71,7 @@
    - 旧パスワード入力UIは削除済み。
    - 先生用プレビュー、管理者画面、チケット交換確認、Word確認は Supabase Auth の `teacher` / `admin` ロールで行う。
    - 公開URLでは `VITE_LEGACY_ADMIN_PASS` と `VITE_ALLOW_LEGACY_ADMIN_PASS` を設定しない。
+   - `npm.cmd run check:legacy-password` で旧導線が戻っていないか確認する。
 
 3. `main.js` の分割継続
    - 大きいファイルにゲーム・UI・報酬・CSV出力がまだ混ざっている。

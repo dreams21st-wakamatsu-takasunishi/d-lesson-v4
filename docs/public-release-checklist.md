@@ -173,6 +173,7 @@ npm.cmd run preview
 
 - `npm.cmd run build` が成功する。
 - `npm.cmd run check:public-test-env` または `npm.cmd run check:public-env` が成功する。
+- `npm.cmd run check:legacy-password` が成功し、旧パスワードUIや退避分岐が残っていない。
 - `npm.cmd run check:public-latest` が成功する。
 - 本番 `user_data` へ移る場合は `supabase/sql/preflight_public_release.sql` に `NG` がない。
 - 実操作チェックでアプリ本体の赤いConsoleエラーがない。
