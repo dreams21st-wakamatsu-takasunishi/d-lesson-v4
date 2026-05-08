@@ -9,7 +9,7 @@ function parseArgs(argv) {
     title: 'Dレッスン ログインカード',
     loginUrl: '',
     hideName: false,
-    cardsPerPage: 8,
+    cardsPerPage: 6,
     help: false
   };
 
@@ -20,7 +20,7 @@ function parseArgs(argv) {
     else if (arg === '--title') args.title = argv[++i] || args.title;
     else if (arg === '--url') args.loginUrl = argv[++i] || '';
     else if (arg === '--hide-name') args.hideName = true;
-    else if (arg === '--cards-per-page') args.cardsPerPage = clampInteger(argv[++i], 8, 4, 10);
+    else if (arg === '--cards-per-page') args.cardsPerPage = clampInteger(argv[++i], 6, 4, 10);
     else if (arg === '--help' || arg === '-h') args.help = true;
     else throw new Error(`Unknown argument: ${arg}`);
   }
@@ -39,7 +39,7 @@ function usage() {
     '  --title                 Card title. Default: Dレッスン ログインカード',
     '  --url                   Optional public D Lesson URL to print on each card',
     '  --hide-name             Do not print display_name on cards',
-    '  --cards-per-page        Cards per A4 page. Default: 8',
+    '  --cards-per-page        Cards per A4 page. Default: 6',
     '  --help, -h              Show this help',
     '',
     'Input columns:',
@@ -170,8 +170,9 @@ function buildCard(row, args) {
 
 function buildHtml(rows, args) {
   const generatedAt = new Date().toLocaleString('ja-JP');
+  const rowsPerPage = Math.ceil(args.cardsPerPage / 2);
   const pages = chunkRows(rows, args.cardsPerPage).map(pageRows => `
-    <div class="page">
+    <div class="page" style="--rows-per-page:${rowsPerPage};">
       ${pageRows.map(row => buildCard(row, args)).join('\n')}
     </div>
   `).join('\n');
@@ -227,100 +228,113 @@ function buildHtml(rows, args) {
 
     .page {
       width: 210mm;
-      min-height: 297mm;
+      height: 297mm;
       margin: 0 auto 16px;
       padding: 10mm;
       background: #ffffff;
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      grid-auto-rows: 63mm;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-rows: repeat(var(--rows-per-page), minmax(0, 1fr));
       gap: 8mm;
       page-break-after: always;
+      overflow: hidden;
     }
 
     .card {
       border: 2px solid #164e63;
       border-radius: 8px;
-      padding: 7mm;
+      padding: 5.5mm;
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
+      justify-content: flex-start;
+      gap: 2.5mm;
       break-inside: avoid;
       background: #f8fafc;
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
     }
 
     .card-title {
       text-align: center;
-      font-size: 17px;
+      font-size: 15px;
+      line-height: 1.2;
       font-weight: 800;
       color: #0f172a;
     }
 
     .student-name {
       text-align: center;
-      font-size: 15px;
+      font-size: 13px;
+      line-height: 1.25;
       font-weight: 700;
       color: #334155;
-      min-height: 20px;
+      min-height: 17px;
+      overflow-wrap: anywhere;
     }
 
     .credential-row {
       display: grid;
-      grid-template-columns: 88px 1fr;
+      grid-template-columns: 78px minmax(0, 1fr);
       align-items: center;
-      gap: 8px;
-      margin-top: 6px;
+      gap: 6px;
+      margin-top: 0;
     }
 
     .credential-label {
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 800;
       color: #475569;
     }
 
     .credential-value {
       display: block;
-      min-height: 38px;
+      min-height: 34px;
       border: 1px solid #94a3b8;
       border-radius: 6px;
       background: #ffffff;
-      font-size: 24px;
+      font-size: 22px;
       font-weight: 900;
-      line-height: 36px;
+      line-height: 32px;
       text-align: center;
       color: #0f172a;
-    }
-
-    .credential-value.passcode {
-      letter-spacing: 2px;
-    }
-
-    .login-url {
-      margin-top: 7px;
-      padding: 5px 7px;
-      border-radius: 6px;
-      background: #e0f2fe;
-      color: #075985;
-      font-size: 11px;
-      font-weight: 700;
-      text-align: center;
+      min-width: 0;
       overflow-wrap: anywhere;
     }
 
+    .credential-value.passcode {
+      letter-spacing: 1px;
+    }
+
+    .login-url {
+      margin-top: 0;
+      padding: 4px 6px;
+      border-radius: 6px;
+      background: #e0f2fe;
+      color: #075985;
+      font-size: 9.5px;
+      line-height: 1.25;
+      font-weight: 700;
+      text-align: center;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
     .steps {
-      margin: 8px 0 0;
-      padding-left: 18px;
+      margin: 0;
+      padding-left: 16px;
       color: #334155;
-      font-size: 11px;
-      line-height: 1.45;
+      font-size: 10px;
+      line-height: 1.35;
     }
 
     .notice {
-      margin-top: 6px;
-      padding-top: 5px;
+      margin-top: auto;
+      padding-top: 4px;
       border-top: 1px dashed #94a3b8;
       color: #b91c1c;
-      font-size: 11px;
+      font-size: 10px;
+      line-height: 1.25;
       font-weight: 800;
       text-align: center;
     }

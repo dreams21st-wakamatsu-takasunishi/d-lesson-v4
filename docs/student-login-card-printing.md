@@ -30,6 +30,14 @@ npm.cmd run build:student-login-cards -- --input ".\migration\student-login-acco
 npm.cmd run build:student-login-cards -- --input ".\migration\student-login-accounts.csv" --output ".\migration\student-login-cards.html" --url "https://dreams21st-wakamatsu-takasunishi.github.io/d-lesson-v4/"
 ```
 
+既定ではA4に6枚配置します。文字が大きく見やすく、公開URLを入れても枠からはみ出しにくい設定です。
+
+枚数を変える場合:
+
+```powershell
+npm.cmd run build:student-login-cards -- --input ".\migration\student-login-accounts.csv" --output ".\migration\student-login-cards.html" --cards-per-page 6
+```
+
 名前をカードに印刷したくない場合:
 
 ```powershell
