@@ -29,6 +29,7 @@ import { SoundManager } from '../utils/sound.js';
 import { showCustomAlert, showCustomConfirm } from './modal.js';
 import { showScreen } from './screen.js';
 import { calculateGrade, sortGrades } from '../utils/helpers.js';
+import { escapeCsvCell, getBackupDateStamp } from '../utils/export-format.js';
 import { getLegacyAdminPassStatus } from '../utils/security.js';
 import { getStageName } from '../utils/stages.js';
 import {
@@ -88,12 +89,6 @@ export function adminBulkAddUsers() {
     saveUsers(true); updateAdminUserTable(); renderDashboardTable();
     document.getElementById('admin-bulk-names').value = '';
     showCustomAlert(`${added} 人を追加しました！`);
-}
-
-function escapeCsvCell(value) {
-    const text = String(value ?? '');
-    if (/[",\r\n]/.test(text)) return `"${text.replace(/"/g, '""')}"`;
-    return text;
 }
 
 function parseCsvLine(line) {
@@ -1909,11 +1904,6 @@ export function processAutoRuby() {
     }
     document.getElementById('admin-text-content').value = result; toggleAutoRubyTool();
     showCustomAlert('✨ 自動ルビ振りが完了しました！\n\n上のテキストボックスの内容を確認し、問題なければ「課題を追加・更新」ボタンを押してください。');
-}
-
-function getBackupDateStamp() {
-    const date = new Date();
-    return `${date.getFullYear()}${(date.getMonth()+1).toString().padStart(2,'0')}${date.getDate().toString().padStart(2,'0')}_${date.getHours().toString().padStart(2,'0')}${date.getMinutes().toString().padStart(2,'0')}`;
 }
 
 function countStudentRows(collection) {

@@ -1,18 +1,8 @@
 import { currentUser, users, hasLessonRole, getUserDisplayName } from '../api/user.js';
+import { escapeCsvCell, getBackupDateStamp } from '../utils/export-format.js';
 
 const ADMIN_AUDIT_STORAGE_KEY = 'd_lesson_admin_audit_log';
 const ADMIN_AUDIT_LIMIT = 200;
-
-function getBackupDateStamp() {
-    const date = new Date();
-    return `${date.getFullYear()}${(date.getMonth() + 1).toString().padStart(2, '0')}${date.getDate().toString().padStart(2, '0')}_${date.getHours().toString().padStart(2, '0')}${date.getMinutes().toString().padStart(2, '0')}`;
-}
-
-function escapeCsvCell(value) {
-    const text = String(value ?? '');
-    if (/[",\r\n]/.test(text)) return `"${text.replace(/"/g, '""')}"`;
-    return text;
-}
 
 export function loadAdminAuditLog() {
     try {
