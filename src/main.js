@@ -60,6 +60,7 @@ import {
     renderLastPracticeCard,
     renderPracticeHistorySection
 } from './ui/practice-history.js';
+import { setCurrentKeyboardChapter } from './ui/keyboard-state.js';
 
 import {
     showScreen,
@@ -475,7 +476,6 @@ function getActiveUserOrTitle() {
 function goToMouseMenu() { updateMouseButtons(); showScreen('screen-mouse-menu'); }
 function goToKeyboardCategory() { showScreen('screen-keyboard-category'); }
 
-export let currentKeyboardChapter = null;
 function goToKeyboardMenu(type) { 
     if (type) currentKeyboardCategory = type; 
     document.getElementById('kb-chapter-container').style.display = 'flex';
@@ -489,7 +489,7 @@ function goToKeyboardMenu(type) {
     if(type === 'word') title = "ことばのれんしゅう";
     document.getElementById('kb-menu-title').innerText = title;
     
-    currentKeyboardChapter = null;
+    setCurrentKeyboardChapter(null);
     renderKeyboardChapters(); 
     showScreen('screen-keyboard-menu'); 
 }
@@ -668,7 +668,7 @@ function showRomajiMenu() {
 }
 
 export function renderKeyboardStages(chap) {
-    currentKeyboardChapter = chap; // ★追加
+    setCurrentKeyboardChapter(chap);
 
     document.getElementById('kb-chapter-container').style.display = 'none';
     document.getElementById('kb-stage-container').style.display = 'flex';

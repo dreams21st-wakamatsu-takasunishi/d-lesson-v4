@@ -25,8 +25,8 @@ import { showCustomAlert } from '../ui/modal.js';
 import { getStageName } from '../utils/stages.js';
 import { convertNameToRomaji, shuffle } from '../utils/helpers.js';
 import { createConfetti, showRewardOverlay } from '../ui/reward.js';
+import { getCurrentKeyboardChapter } from '../ui/keyboard-state.js';
 import {
-    currentKeyboardChapter,
     renderKeyboardStages,
     updateKeyboardButtons,
     updateMouseButtons
@@ -246,6 +246,7 @@ export function backToMenu() {
         else {
             updateKeyboardButtons();
             // ★追加: もしステージ一覧を開いていたなら、最新の進捗で再描画する
+            const currentKeyboardChapter = getCurrentKeyboardChapter();
             if (currentKeyboardChapter && document.getElementById('kb-stage-container').style.display === 'flex') {
                 renderKeyboardStages(currentKeyboardChapter);
             }
