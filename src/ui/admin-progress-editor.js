@@ -3,6 +3,11 @@ import { STAGE_ORDER, THEMES, EFFECTS } from '../data/constants.js';
 import { getStageName } from '../utils/stages.js';
 import { showCustomAlert, showCustomConfirm } from './modal.js';
 import { recordAdminAudit } from './admin-audit.js';
+import {
+    buildForceProgressPatch,
+    buildProgressEditPatch,
+    buildResetProgressPatch
+} from './admin-progress-editor-utils.js';
 
 let editTargetUser = null;
 
@@ -18,12 +23,7 @@ export function resetUserProgress(userId, afterChange) {
             user: getUserDisplayName(userId),
             userDataId: userId
         });
-        users[userId].mouseLevel = 0;
-        users[userId].keyboardSequence = 0;
-        users[userId].examRecords = {};
-        users[userId].textRecords = {};
-        users[userId].globalMistakes = {};
-        users[userId].theme = 'default';
+        Object.assign(users[userId], buildResetProgressPatch());
         saveUsers(true);
         runAfterChange(afterChange);
     });
@@ -37,8 +37,7 @@ export function forceUserProgress(userId, afterChange) {
             user: getUserDisplayName(userId),
             userDataId: userId
         });
-        users[userId].mouseLevel = 7;
-        users[userId].keyboardSequence = STAGE_ORDER.length;
+        Object.assign(users[userId], buildForceProgressPatch(STAGE_ORDER.length));
         saveUsers(true);
         runAfterChange(afterChange);
     });
@@ -107,32 +106,15 @@ export function closeEditProgress() {
 export function saveEditProgress(afterChange) {
     if (!editTargetUser) return;
 
-    users[editTargetUser].mouseLevel = parseInt(document.getElementById('edit-mouse-level').value, 10);
-    users[editTargetUser].keyboardSequence = parseInt(document.getElementById('edit-keyboard-seq').value, 10);
-
     const newItems = [];
     document.querySelectorAll('.edit-item-cb').forEach(checkbox => {
         if (checkbox.checked) newItems.push(checkbox.value);
     });
-    users[editTargetUser].items = newItems;
-
-    const currentTheme = THEMES.find(theme => theme.id === users[editTargetUser].theme);
-    const currentThemeCheckId = currentTheme?.isCustom
-        ? users[editTargetUser].theme
-        : `theme_${users[editTargetUser].theme}`;
-    if (
-        users[editTargetUser].theme !== 'default'
-        && !newItems.includes(currentThemeCheckId)
-        && !newItems.includes(users[editTargetUser].theme)
-    ) {
-        users[editTargetUser].theme = 'default';
-    }
-    if (
-        users[editTargetUser].activeEffect !== 'default'
-        && !newItems.includes(users[editTargetUser].activeEffect)
-    ) {
-        users[editTargetUser].activeEffect = 'default';
-    }
+    Object.assign(users[editTargetUser], buildProgressEditPatch({
+        mouseLevel: document.getElementById('edit-mouse-level').value,
+        keyboardSequence: document.getElementById('edit-keyboard-seq').value,
+        items: newItems
+    }, users[editTargetUser], THEMES));
 
     recordAdminAudit('進捗編集', {
         user: getUserDisplayName(editTargetUser),

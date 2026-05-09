@@ -6,6 +6,10 @@ import {
 } from '../api/user.js';
 import { STAGE_ORDER, VISION_STAGES } from '../data/constants.js';
 import { calculateGrade, sortGrades } from '../utils/helpers.js';
+import {
+    getDashboardProgressPercent,
+    getVisionDifficultySuffix
+} from './admin-dashboard-utils.js';
 
 export function switchDashTab(tab) {
     if(tab === 'basic') {
@@ -99,14 +103,14 @@ export function renderDashboardTable() {
             let tdMouse = document.createElement('td'); 
             tdMouse.style.cssText = 'border:1px solid #ccc; padding:8px;';
             let mouseLevel = item.user.mouseLevel || 0;
-            let mousePct = Math.floor((mouseLevel / 7) * 100);
+            let mousePct = getDashboardProgressPercent(mouseLevel, 7);
             tdMouse.innerHTML = `<div style="width:100%; background:#eee; border-radius:5px;"><div style="width:${mousePct}%; background:#2196F3; color:#fff; text-align:center; font-size:12px; border-radius:5px;">${mousePct}%</div></div>`; 
             tr.appendChild(tdMouse);
 
             let tdKb = document.createElement('td'); 
             tdKb.style.cssText = 'border:1px solid #ccc; padding:8px;';
             let kbSeq = item.user.keyboardSequence || 0;
-            let kbPct = Math.floor((kbSeq / STAGE_ORDER.length) * 100);
+            let kbPct = getDashboardProgressPercent(kbSeq, STAGE_ORDER.length);
             tdKb.innerHTML = `<div style="width:100%; background:#eee; border-radius:5px;"><div style="width:${kbPct}%; background:#FF9800; color:#fff; text-align:center; font-size:12px; border-radius:5px;">${kbPct}%</div></div>`; 
             tr.appendChild(tdKb);
 
@@ -122,7 +126,7 @@ export function renderVisionDashboardTable() {
     if (!tbody || !thead || !diffSelect) return;
     
     let diffVal = diffSelect.value; 
-    let suffix = diffVal === 'normal' ? '' : '_' + diffVal;
+    let suffix = getVisionDifficultySuffix(diffVal);
 
     let htmlHead = '<tr><th style="border:1px solid #ccc; padding:8px; position:sticky; left:0; background:#f2f2f2; z-index:11;">名前</th>';
     VISION_STAGES.forEach(st => { htmlHead += `<th style="border:1px solid #ccc; padding:8px; font-size:14px;">${st.title}</th>`; });
