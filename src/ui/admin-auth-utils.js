@@ -22,7 +22,17 @@ export function normalizeTeacherScope(scopeType, scopeValue) {
     }
     return {
         scope_type: 'all',
-        scope_value: null
+        scope_value: ''
+    };
+}
+
+export function normalizeAccessScope(role, scope = {}) {
+    if (role === 'teacher') {
+        return normalizeTeacherScope(scope.scope_type, scope.scope_value);
+    }
+    return {
+        scope_type: 'all',
+        scope_value: ''
     };
 }
 
@@ -31,12 +41,7 @@ function sqlString(value) {
 }
 
 export function buildAccessSql(authUserId, userDataId, role, scope = {}) {
-    const scopeValues = role === 'teacher'
-        ? normalizeTeacherScope(scope.scope_type, scope.scope_value)
-        : {
-            scope_type: role === 'admin' ? 'all' : null,
-            scope_value: null
-        };
+    const scopeValues = normalizeAccessScope(role, scope);
     const scopeTypeSql = scopeValues.scope_type === null ? 'null' : `'${sqlString(scopeValues.scope_type)}'`;
     const scopeValueSql = scopeValues.scope_value === null ? 'null' : `'${sqlString(scopeValues.scope_value)}'`;
 

@@ -6,6 +6,7 @@ import {
   getRoleAccessDataId,
   isMissingLessonScopeColumnError,
   isUuid,
+  normalizeAccessScope,
   normalizeTeacherScope
 } from '../src/ui/admin-auth-utils.js';
 
@@ -23,7 +24,19 @@ assert.deepEqual(normalizeTeacherScope('group', '  monday-a  '), {
 });
 assert.deepEqual(normalizeTeacherScope('all', 'monday-a'), {
   scope_type: 'all',
-  scope_value: null
+  scope_value: ''
+});
+assert.deepEqual(normalizeAccessScope('student'), {
+  scope_type: 'all',
+  scope_value: ''
+});
+assert.deepEqual(normalizeAccessScope('admin'), {
+  scope_type: 'all',
+  scope_value: ''
+});
+assert.deepEqual(normalizeAccessScope('teacher', { scope_type: 'group', scope_value: ' A ' }), {
+  scope_type: 'group',
+  scope_value: 'A'
 });
 
 assert.equal(isMissingLessonScopeColumnError({ message: 'column scope_type does not exist' }), true);
@@ -43,6 +56,6 @@ assert.match(teacherSql, /'mon''day-a'/);
 assert.match(teacherSql, /on conflict \(auth_user_id, user_data_id\)/);
 
 const studentSql = buildAccessSql('36c95d17-621a-447d-b44b-638e21219ca1', 'student_001', 'student');
-assert.match(studentSql, /'student_001', 'student', null, null/);
+assert.match(studentSql, /'student_001', 'student', 'all', ''/);
 
 console.log('Admin auth utility check passed.');

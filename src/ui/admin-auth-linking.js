@@ -13,6 +13,7 @@ import {
     getRoleAccessDataId,
     isMissingLessonScopeColumnError,
     isUuid,
+    normalizeAccessScope,
     normalizeTeacherScope
 } from './admin-auth-utils.js';
 
@@ -31,12 +32,7 @@ function ensureAuthLinkingReady() {
 }
 
 async function upsertLessonUserAccess(authUserId, userDataId, role, scope = {}) {
-    const nextScope = role === 'teacher'
-        ? normalizeTeacherScope(scope.scope_type, scope.scope_value)
-        : {
-            scope_type: role === 'admin' ? 'all' : null,
-            scope_value: null
-        };
+    const nextScope = normalizeAccessScope(role, scope);
 
     const basePayload = {
         auth_user_id: authUserId,
@@ -52,7 +48,7 @@ async function upsertLessonUserAccess(authUserId, userDataId, role, scope = {}) 
         .from('lesson_user_access')
         .upsert(scopedPayload, { onConflict: 'auth_user_id,user_data_id' });
 
-    if (error && role === 'teacher' && nextScope.scope_type === 'all' && isMissingLessonScopeColumnError(error)) {
+    if (error && isMissingLessonScopeColumnError(error)) {
         const fallback = await supabase
             .from('lesson_user_access')
             .upsert(basePayload, { onConflict: 'auth_user_id,user_data_id' });
@@ -76,7 +72,7 @@ export async function linkRoleAuthUser(role) {
 
     const scope = role === 'teacher'
         ? getTeacherScopeFormValues()
-        : { scope_type: 'all', scope_value: null };
+        : { scope_type: 'all', scope_value: '' };
 
     if (role === 'teacher' && scope.scope_type === 'group' && !scope.scope_value) {
         showCustomAlert('先生の対象グループを入力してください。');
@@ -160,7 +156,7 @@ export function copyRoleAccessSql(role) {
     }
     const scope = role === 'teacher'
         ? getTeacherScopeFormValues()
-        : { scope_type: 'all', scope_value: null };
+        : { scope_type: 'all', scope_value: '' };
     if (role === 'teacher' && scope.scope_type === 'group' && !scope.scope_value) {
         showCustomAlert('先生の対象グループを入力してください。');
         return;
