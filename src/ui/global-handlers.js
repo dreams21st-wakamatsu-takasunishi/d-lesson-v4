@@ -7,9 +7,9 @@ export function registerGlobalFunctions(functions) {
 }
 
 export function registerModuleFunctions(moduleExports) {
-    Object.values(moduleExports).forEach(fn => {
+    Object.entries(moduleExports).forEach(([name, fn]) => {
         if (typeof fn === 'function') {
-            window[fn.name] = fn;
+            window[name] = fn;
         }
     });
 }
@@ -37,6 +37,6 @@ export function validateInlineEventHandlers() {
     });
 
     if (missing.size > 0) {
-        console.error('Missing inline event handlers:', Array.from(missing).sort());
+        console.error('Missing inline event handlers:', Array.from(missing).sort().join(', '));
     }
 }

@@ -44,10 +44,25 @@ function collectMainGlobals(source) {
 function collectAdminExports(source) {
     const names = new Set();
     const exportPattern = /export\s+(?:async\s+)?function\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*\(/g;
+    const namedExportPattern = /export\s*\{([\s\S]*?)\}\s*;/g;
     let match;
 
     while ((match = exportPattern.exec(source)) !== null) {
         names.add(match[1]);
+    }
+
+    while ((match = namedExportPattern.exec(source)) !== null) {
+        match[1].split(',').forEach(part => {
+            const item = part.trim();
+            if (!item) return;
+            const aliasMatch = item.match(/\bas\s+([A-Za-z_$][A-Za-z0-9_$]*)$/);
+            if (aliasMatch) {
+                names.add(aliasMatch[1]);
+                return;
+            }
+            const nameMatch = item.match(/^([A-Za-z_$][A-Za-z0-9_$]*)$/);
+            if (nameMatch) names.add(nameMatch[1]);
+        });
     }
 
     return names;
