@@ -10,13 +10,11 @@ import {
     deleteCloudUserRows,
     userDisplayNameExists
 } from '../api/user.js';
-import { STAGE_ORDER, THEMES, EFFECTS } from '../data/constants.js';
-import { SoundManager } from '../utils/sound.js';
+import { STAGE_ORDER } from '../data/constants.js';
 import { showCustomAlert, showCustomConfirm } from './modal.js';
 import { showScreen } from './screen.js';
 import { calculateGrade, sortGrades } from '../utils/helpers.js';
 import { escapeCsvCell, getBackupDateStamp } from '../utils/export-format.js';
-import { getStageName } from '../utils/stages.js';
 import {
     recordAdminAudit,
     renderAdminAuditLog as renderAdminAuditLogImpl,
@@ -84,6 +82,13 @@ import {
     renderAuthAccessOverview as renderAuthAccessOverviewImpl,
     renderAuthLinkingAdmin as renderAuthLinkingAdminImpl
 } from './admin-auth-linking.js';
+import {
+    resetUserProgress as resetUserProgressImpl,
+    forceUserProgress as forceUserProgressImpl,
+    openEditProgress as openEditProgressImpl,
+    closeEditProgress as closeEditProgressImpl,
+    saveEditProgress as saveEditProgressImpl
+} from './admin-progress-editor.js';
 
 export function renderAdminAuditLog() {
     renderAdminAuditLogImpl();
@@ -378,67 +383,30 @@ export function copyLessonSettingsCheckGuide() {
 }
 
 export function getSelUser() { const r = document.querySelector('input[name="asel"]:checked'); return r ? r.value : null; }
-export function adminResetUser() {
-    const n = getSelUser();
-    if(n) {
-        showCustomConfirm('リセットしますか？', () => {
-            recordAdminAudit('進捗リセット', { user: getUserDisplayName(n), userDataId: n });
-            users[n].mouseLevel=0; users[n].keyboardSequence=0; users[n].examRecords={}; users[n].textRecords={}; users[n].globalMistakes={}; users[n].theme='default'; saveUsers(true); updateAdminUserTable();
-        });
-    }
-}
-export function adminForceProgress() {
-    const n = getSelUser();
-    if(n) {
-        showCustomConfirm('全開放しますか？', () => {
-            recordAdminAudit('進捗全開放', { user: getUserDisplayName(n), userDataId: n });
-            users[n].mouseLevel=7; users[n].keyboardSequence=STAGE_ORDER.length; saveUsers(true); updateAdminUserTable();
-        });
-    }
+
+function refreshAdminStudentViews() {
+    updateAdminUserTable();
+    renderDashboardTable();
 }
 
-let editTargetUser = null;
-export function openEditProgress() {
-    const n = getSelUser(); if (!n) return showCustomAlert('ユーザーを選択してください');
-    editTargetUser = n; document.getElementById('edit-modal-title').innerText = `${getUserDisplayName(n)} さんの進捗編集`;
-    document.getElementById('edit-mouse-level').value = users[n].mouseLevel || 0;
-    const kbSelect = document.getElementById('edit-keyboard-seq'); kbSelect.innerHTML = `<option value="0">0: 初期状態</option>`;
-    STAGE_ORDER.forEach((sid, idx) => { kbSelect.innerHTML += `<option value="${idx + 1}">${idx + 1}: ${getStageName(sid)} までクリア済</option>`; });
-    kbSelect.value = users[n].keyboardSequence || 0; 
-    const itemsContainer = document.getElementById('edit-items-container'); itemsContainer.innerHTML = '';
-    const userItems = users[n].items ||[];
-    let allCollectibles =[];
-    THEMES.forEach(t => { if(t.id !== 'default') allCollectibles.push({ id: t.isCustom ? t.id : 'theme_' + t.id, name: '🎨 ' + t.name }); });
-    EFFECTS.forEach(e => { if(e.id !== 'default') allCollectibles.push({ id: e.id, name: '🎉 ' + e.name }); });
-    if (allCollectibles.length === 0) { itemsContainer.innerHTML = '<span style="color:#999;">ガチャアイテムがまだシステムにありません</span>'; } 
-    else {
-        allCollectibles.forEach(item => {
-            const isOwned = userItems.includes(item.id) || (item.id.startsWith('theme_') && userItems.includes(item.id.replace('theme_', '')));
-            const lbl = document.createElement('label'); lbl.style.cssText = 'display:inline-block; background:#fff; border:1px solid #ccc; padding:5px 10px; border-radius:20px; cursor:pointer; user-select:none; font-size:14px;';
-            lbl.innerHTML = `<input type="checkbox" value="${item.id}" class="edit-item-cb" ${isOwned ? 'checked' : ''} style="margin-right:5px; transform:scale(1.2); cursor:pointer;">${item.name}`;
-            itemsContainer.appendChild(lbl);
-        });
-    }
-    document.getElementById('admin-edit-modal').style.display = 'flex';
+export function adminResetUser() {
+    resetUserProgressImpl(getSelUser(), refreshAdminStudentViews);
 }
-export function closeEditProgress() { document.getElementById('admin-edit-modal').style.display = 'none'; editTargetUser = null; }
+
+export function adminForceProgress() {
+    forceUserProgressImpl(getSelUser(), refreshAdminStudentViews);
+}
+
+export function openEditProgress() {
+    openEditProgressImpl(getSelUser());
+}
+
+export function closeEditProgress() {
+    closeEditProgressImpl();
+}
 
 export function saveEditProgress() {
-    if (!editTargetUser) return;
-    users[editTargetUser].mouseLevel = parseInt(document.getElementById('edit-mouse-level').value, 10);
-    users[editTargetUser].keyboardSequence = parseInt(document.getElementById('edit-keyboard-seq').value, 10);
-    const cbs = document.querySelectorAll('.edit-item-cb'); let newItems =[];
-    cbs.forEach(cb => { if (cb.checked) newItems.push(cb.value); }); users[editTargetUser].items = newItems;
-    let currentThemeCheckId = THEMES.find(t=>t.id === users[editTargetUser].theme)?.isCustom ? users[editTargetUser].theme : 'theme_' + users[editTargetUser].theme;
-    if(users[editTargetUser].theme !== 'default' && !newItems.includes(currentThemeCheckId) && !newItems.includes(users[editTargetUser].theme)) { users[editTargetUser].theme = 'default'; }
-    if(users[editTargetUser].activeEffect !== 'default' && !newItems.includes(users[editTargetUser].activeEffect)) { users[editTargetUser].activeEffect = 'default'; }
-    recordAdminAudit('進捗編集', {
-        user: getUserDisplayName(editTargetUser),
-        userDataId: editTargetUser,
-        mouseLevel: users[editTargetUser].mouseLevel,
-        keyboardSequence: users[editTargetUser].keyboardSequence
-    });
-    saveUsers(true); updateAdminUserTable(); closeEditProgress(); showCustomAlert('進捗とアイテム情報を保存しました。');
+    saveEditProgressImpl(refreshAdminStudentViews);
 }
 
 export function switchDashTab(tab) {
