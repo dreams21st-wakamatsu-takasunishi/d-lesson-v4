@@ -3,8 +3,6 @@ import {
     saveUsers,
     hasLessonRole,
     refreshCurrentLessonAccess,
-    REQUIRE_SUPABASE_AUTH,
-    supabase,
     GLOBAL_SETTINGS_ID,
     createUserDataId,
     getUserDisplayName,
@@ -78,6 +76,14 @@ import {
     copyDeviceHandoffChecklist as copyDeviceHandoffChecklistImpl,
     copyLessonSettingsCheckGuide as copyLessonSettingsCheckGuideImpl
 } from './admin-ops-guide.js';
+import {
+    linkRoleAuthUser as linkRoleAuthUserImpl,
+    linkStudentAuthUser as linkStudentAuthUserImpl,
+    copyStudentAccessSql as copyStudentAccessSqlImpl,
+    copyRoleAccessSql as copyRoleAccessSqlImpl,
+    renderAuthAccessOverview as renderAuthAccessOverviewImpl,
+    renderAuthLinkingAdmin as renderAuthLinkingAdminImpl
+} from './admin-auth-linking.js';
 
 export function renderAdminAuditLog() {
     renderAdminAuditLogImpl();
@@ -660,272 +666,28 @@ export function updateUserGroup(name, newGroup) {
     }
 }
 
-function isUuid(value) {
-    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || '').trim());
-}
-
-function getRoleAccessDataId(role) {
-    if (role === 'admin') return '__admin__';
-    if (role === 'teacher') return '__teacher__';
-    return null;
-}
-
-function isMissingLessonScopeColumnError(error) {
-    const message = `${error?.code || ''} ${error?.message || ''}`;
-    return /scope_type|scope_value|42703/i.test(message);
-}
-
-function normalizeTeacherScope(scopeType, scopeValue) {
-    const type = scopeType === 'group' ? 'group' : 'all';
-    const value = type === 'group'
-        ? String(scopeValue || '').split(',').map(group => group.trim()).filter(Boolean).join(',')
-        : '';
-    return { scopeType: type, scopeValue: value };
-}
-
-function formatTeacherScope(scopeType, scopeValue) {
-    const { scopeType: type, scopeValue: value } = normalizeTeacherScope(scopeType, scopeValue);
-    return type === 'group' ? `グループ: ${value || '未指定'}` : '全児童';
-}
-
-function getTeacherScopeFormValues() {
-    const scopeType = document.getElementById('auth-teacher-scope-type')?.value || 'all';
-    const scopeValue = document.getElementById('auth-teacher-scope-value')?.value || '';
-    return normalizeTeacherScope(scopeType, scopeValue);
-}
-
-function ensureAuthLinkingReady() {
-    if (!REQUIRE_SUPABASE_AUTH || !supabase) {
-        showCustomAlert('Supabase Auth設定が有効な環境で使用してください。');
-        return false;
-    }
-    if (!hasLessonRole('admin')) {
-        showCustomAlert('管理者アカウントでログインしてください。');
-        return false;
-    }
-    return true;
-}
-
-async function upsertLessonUserAccess(authUserId, userDataId, role, scope = {}) {
-    if (!ensureAuthLinkingReady()) return false;
-    if (!isUuid(authUserId)) {
-        showCustomAlert('Auth User ID はUUID形式で入力してください。');
-        return false;
-    }
-    if (!userDataId || !role) return false;
-
-    const { scopeType, scopeValue } = role === 'teacher'
-        ? normalizeTeacherScope(scope.scopeType, scope.scopeValue)
-        : { scopeType: 'all', scopeValue: '' };
-
-    if (role === 'teacher' && scopeType === 'group' && !scopeValue) {
-        showCustomAlert('先生の担当範囲がグループ指定ですが、グループ名が入力されていません。');
-        return false;
-    }
-
-    const basePayload = { auth_user_id: authUserId.trim(), user_data_id: userDataId, role };
-    const scopedPayload = role === 'teacher'
-        ? { ...basePayload, scope_type: scopeType, scope_value: scopeValue }
-        : basePayload;
-
-    let { error } = await supabase
-        .from('lesson_user_access')
-        .upsert(scopedPayload, { onConflict: 'auth_user_id,user_data_id' });
-
-    if (error && role === 'teacher' && scopeType === 'all' && isMissingLessonScopeColumnError(error)) {
-        const fallback = await supabase
-            .from('lesson_user_access')
-            .upsert(basePayload, { onConflict: 'auth_user_id,user_data_id' });
-        error = fallback.error;
-    }
-
-    if (error) {
-        console.error('lesson_user_access upsert failed:', error);
-        const migrationHint = isMissingLessonScopeColumnError(error)
-            ? '\nsupabase/sql/teacher_group_scope_policies.sql を実行してから再登録してください。'
-            : '\nsupabase/sql/admin_lesson_user_access_policies.sql を実行済みか確認してください。';
-        showCustomAlert(`Auth連携の登録に失敗しました。${migrationHint}`);
-        return false;
-    }
-
-    recordAdminAudit('Auth連携登録', {
-        role,
-        userDataId,
-        authUserId: authUserId.trim(),
-        scope: role === 'teacher' ? formatTeacherScope(scopeType, scopeValue) : ''
-    });
-    await refreshCurrentLessonAccess();
-    await renderAuthAccessOverview();
-    showCustomAlert('Auth連携を登録しました。');
-    return true;
-}
-
 export async function linkRoleAuthUser(role) {
-    const inputId = role === 'admin' ? 'auth-admin-user-id' : 'auth-teacher-user-id';
-    const input = document.getElementById(inputId);
-    const authUserId = input?.value.trim();
-    const userDataId = getRoleAccessDataId(role);
-    const label = role === 'admin' ? '管理者' : '先生';
-    if (!userDataId) return;
-    const teacherScope = role === 'teacher' ? getTeacherScopeFormValues() : {};
-
-    showCustomConfirm(`${label}ロールを登録しますか？`, async () => {
-        const ok = await upsertLessonUserAccess(authUserId, userDataId, role, teacherScope);
-        if (ok && input) input.value = '';
-    });
+    await linkRoleAuthUserImpl(role);
 }
 
 export async function linkStudentAuthUser(userDataId, inputId) {
-    const input = document.getElementById(inputId);
-    const authUserId = input?.value.trim();
-    const displayName = getUserDisplayName(userDataId);
-
-    showCustomConfirm(`${displayName} さんを生徒アカウントに紐づけますか？`, async () => {
-        const ok = await upsertLessonUserAccess(authUserId, userDataId, 'student');
-        if (ok && input) input.value = '';
-    });
-}
-
-function sqlString(value) {
-    return String(value || '').replace(/'/g, "''");
-}
-
-function buildAccessSql(authUserId, userDataId, role, scope = {}) {
-    const safeAuthUserId = sqlString(authUserId || 'AUTH_USER_ID_HERE');
-    const safeUserDataId = sqlString(userDataId);
-    const safeRole = sqlString(role);
-    const { scopeType, scopeValue } = role === 'teacher'
-        ? normalizeTeacherScope(scope.scopeType, scope.scopeValue)
-        : { scopeType: 'all', scopeValue: '' };
-    if (role === 'teacher') {
-        const safeScopeType = sqlString(scopeType);
-        const safeScopeValue = sqlString(scopeValue);
-        return `insert into public.lesson_user_access (auth_user_id, user_data_id, role, scope_type, scope_value)\nvalues ('${safeAuthUserId}', '${safeUserDataId}', '${safeRole}', '${safeScopeType}', '${safeScopeValue}')\non conflict (auth_user_id, user_data_id) do update\nset role = excluded.role,\n    scope_type = excluded.scope_type,\n    scope_value = excluded.scope_value;`;
-    }
-    return `insert into public.lesson_user_access (auth_user_id, user_data_id, role)\nvalues ('${safeAuthUserId}', '${safeUserDataId}', '${safeRole}')\non conflict (auth_user_id, user_data_id) do update\nset role = excluded.role;`;
-}
-
-async function copyText(text) {
-    try {
-        await navigator.clipboard.writeText(text);
-        showCustomAlert('コピーしました。');
-    } catch (err) {
-        console.warn('Clipboard copy failed:', err);
-        showCustomAlert(text);
-    }
+    await linkStudentAuthUserImpl(userDataId, inputId);
 }
 
 export function copyStudentAccessSql(userDataId, inputId) {
-    const input = document.getElementById(inputId);
-    copyText(buildAccessSql(input?.value.trim(), userDataId, 'student'));
+    copyStudentAccessSqlImpl(userDataId, inputId);
 }
 
 export function copyRoleAccessSql(role) {
-    const inputId = role === 'admin' ? 'auth-admin-user-id' : 'auth-teacher-user-id';
-    const input = document.getElementById(inputId);
-    const userDataId = getRoleAccessDataId(role);
-    if (!userDataId) return;
-    copyText(buildAccessSql(input?.value.trim(), userDataId, role, role === 'teacher' ? getTeacherScopeFormValues() : {}));
+    copyRoleAccessSqlImpl(role);
 }
 
 export async function renderAuthAccessOverview() {
-    const tbody = document.getElementById('auth-access-tbody');
-    const status = document.getElementById('auth-access-status');
-    if (!tbody || !status) return;
-    tbody.innerHTML = '';
-
-    if (!supabase || !REQUIRE_SUPABASE_AUTH) {
-        status.innerText = 'Supabase Auth未使用';
-        return;
-    }
-
-    let { data, error } = await supabase
-        .from('lesson_user_access')
-        .select('auth_user_id,user_data_id,role,scope_type,scope_value,created_at')
-        .order('created_at', { ascending: false });
-
-    if (error && isMissingLessonScopeColumnError(error)) {
-        const fallback = await supabase
-            .from('lesson_user_access')
-            .select('auth_user_id,user_data_id,role,created_at')
-            .order('created_at', { ascending: false });
-        data = fallback.data;
-        error = fallback.error;
-    }
-
-    if (error) {
-        status.innerText = '管理者用RLS未適用または読込権限なし';
-        return;
-    }
-
-    status.innerText = `${data?.length || 0}件`;
-    (data || []).forEach(row => {
-        const tr = document.createElement('tr');
-        [row.role, row.user_data_id, row.scope_type || 'all', row.scope_value || '', row.auth_user_id].forEach(value => {
-            const td = document.createElement('td');
-            td.style.cssText = 'border:1px solid #ddd; padding:6px; word-break:break-all;';
-            td.innerText = value || '';
-            tr.appendChild(td);
-        });
-        tbody.appendChild(tr);
-    });
+    await renderAuthAccessOverviewImpl();
 }
 
 export async function renderAuthLinkingAdmin() {
-    const tbody = document.getElementById('auth-link-student-tbody');
-    if (!tbody) return;
-    tbody.innerHTML = '';
-
-    const list = Object.keys(users)
-        .filter(userId => users[userId] && !users[userId].isMaster && !isSystemUserId(userId))
-        .map(userId => ({ id: userId, name: getUserDisplayName(userId), user: users[userId] }))
-        .sort((a, b) => a.name.localeCompare(b.name, 'ja'));
-
-    list.forEach((item, index) => {
-        const inputId = `auth-student-${index}`;
-        const tr = document.createElement('tr');
-
-        const nameTd = document.createElement('td');
-        nameTd.style.cssText = 'border:1px solid #ddd; padding:6px; font-weight:bold;';
-        nameTd.innerText = item.name;
-        tr.appendChild(nameTd);
-
-        const idTd = document.createElement('td');
-        idTd.style.cssText = 'border:1px solid #ddd; padding:6px; word-break:break-all; font-family:monospace;';
-        idTd.innerText = item.id;
-        tr.appendChild(idTd);
-
-        const inputTd = document.createElement('td');
-        inputTd.style.cssText = 'border:1px solid #ddd; padding:6px;';
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.id = inputId;
-        input.placeholder = 'Auth User ID';
-        input.style.cssText = 'width:220px; max-width:100%; padding:6px; font-size:13px;';
-        inputTd.appendChild(input);
-        tr.appendChild(inputTd);
-
-        const actionTd = document.createElement('td');
-        actionTd.style.cssText = 'border:1px solid #ddd; padding:6px; white-space:nowrap;';
-        const linkBtn = document.createElement('button');
-        linkBtn.className = 'btn-primary';
-        linkBtn.style.cssText = 'font-size:13px; padding:6px 10px; margin-right:6px;';
-        linkBtn.innerText = '登録';
-        linkBtn.onclick = () => linkStudentAuthUser(item.id, inputId);
-        actionTd.appendChild(linkBtn);
-
-        const copyBtn = document.createElement('button');
-        copyBtn.className = 'btn-secondary';
-        copyBtn.style.cssText = 'font-size:13px; padding:6px 10px;';
-        copyBtn.innerText = 'SQL';
-        copyBtn.onclick = () => copyStudentAccessSql(item.id, inputId);
-        actionTd.appendChild(copyBtn);
-        tr.appendChild(actionTd);
-
-        tbody.appendChild(tr);
-    });
-
-    await renderAuthAccessOverview();
+    await renderAuthLinkingAdminImpl();
 }
 
 export function renderDashboardTable() {
