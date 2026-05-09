@@ -8,6 +8,7 @@ import {
 } from '../api/user.js';
 import { showCustomAlert, showCustomConfirm } from './modal.js';
 import { recordAdminAudit } from './admin-audit.js';
+import { renderStudentLoginCardBuilder } from './student-login-cards.js';
 import {
     buildAccessSql,
     getRoleAccessDataId,
@@ -211,6 +212,7 @@ export async function renderAuthLinkingAdmin() {
     const body = document.getElementById('auth-link-student-tbody');
     if (!body) return;
     body.innerHTML = '';
+    renderStudentLoginCardBuilder();
 
     const list = Object.keys(users)
         .filter(userId => users[userId] && !users[userId].isMaster && !isSystemUserId(userId))
