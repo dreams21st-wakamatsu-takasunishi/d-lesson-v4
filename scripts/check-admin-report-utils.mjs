@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 
 import {
   escapeHtml,
+  getTopMistakeDetails,
+  formatWeakKeyLabel,
   formatRecordSeconds,
   getTopMistakes,
   progressPercent,
@@ -20,14 +22,30 @@ assert.equal(progressPercent(3, 0), 0);
 
 assert.equal(formatRecordSeconds(12.345), '12.3\u79d2');
 assert.equal(formatRecordSeconds(null), '-');
+assert.equal(formatWeakKeyLabel('='), 'キー「=（イコール）」');
+assert.equal(formatWeakKeyLabel('SPACE'), 'スペースキー');
 
 assert.deepEqual(getTopMistakes({
   globalMistakes: {
     A: 2,
+    '=': 3,
+    J: 1.2e+48,
+    customThemes: [{ name: 'legacy' }],
     B: 0,
     SPACE: 5
   }
-}), ['\u7a7a\u767d(5)', 'A(2)']);
+}), ['スペースキー：5回', 'キー「=（イコール）」：3回', 'キー「A」：2回']);
+
+assert.deepEqual(getTopMistakeDetails({
+  globalMistakes: {
+    A: 2,
+    '=': 3,
+    '-': 1.4e+48
+  }
+}), [
+  { key: '=', label: 'キー「=（イコール）」', count: 3 },
+  { key: 'A', label: 'キー「A」', count: 2 }
+]);
 
 const barHtml = reportBar('<mouse>', 3, 7, '#2196F3');
 assert.match(barHtml, /&lt;mouse&gt;/);

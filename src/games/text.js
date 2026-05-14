@@ -14,6 +14,26 @@ export function getCurrentTextTask() {
     return currentTextTask;
 }
 
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function renderTextChar(char, charClass) {
+    return `<span class="${charClass}">${escapeHtml(char)}</span>`;
+}
+
+function renderTextSpace(charClass, isLineHead) {
+    const classes = ['text-space', charClass, isLineHead ? 'text-space-leading' : '']
+        .filter(Boolean)
+        .join(' ');
+    return `<span class="${classes}" aria-label="スペース">&nbsp;</span>`;
+}
+
 export function toggleRuby() {
     isRubyOn = !isRubyOn;
     const btn = document.getElementById('btn-toggle-ruby');
@@ -53,6 +73,7 @@ function renderTextContent() {
     let html = '';
     let plainIndex = 0;
     let i = 0;
+    let isLineHead = true;
     
     while (i < rawText.length) {
         if (rawText[i] === '{') {
@@ -62,17 +83,18 @@ function renderTextContent() {
                 let kanji = rawText.substring(i + 1, pipeIdx);
                 let ruby = rawText.substring(pipeIdx + 1, closeIdx);
                 
-                if (isRubyOn) html += '<ruby>';
+                if (isRubyOn) html += '<ruby class="text-ruby">';
                 for (let k = 0; k < kanji.length; k++) {
                     let charClass = '';
                     if (isNaviOn) {
                         if (plainIndex < matchLen) charClass = 'text-done';
                         else if (plainIndex === matchLen) charClass = 'text-current';
                     }
-                    html += `<span class="${charClass}">${kanji[k].replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>`;
+                    html += renderTextChar(kanji[k], charClass);
                     plainIndex++;
+                    isLineHead = false;
                 }
-                if (isRubyOn) html += `<rt style="color:#E91E63; font-size:0.7em; font-weight:normal;">${ruby}</rt></ruby>`;
+                if (isRubyOn) html += `<rt class="text-ruby-reading">${escapeHtml(ruby)}</rt></ruby>`;
                 
                 i = closeIdx + 1;
                 continue;
@@ -89,12 +111,14 @@ function renderTextContent() {
         if (char === '\n') {
             html += `<span class="${charClass}" style="color:#ccc;">↵</span><br>`;
             plainIndex++;
+            isLineHead = true;
         } else if (char === ' ' || char === '　') {
-            html += `<span class="${charClass}">&nbsp;</span>`;
+            html += renderTextSpace(charClass, isLineHead);
             plainIndex++;
         } else {
-            html += `<span class="${charClass}">${char.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>`;
+            html += renderTextChar(char, charClass);
             plainIndex++;
+            isLineHead = false;
         }
         i++;
     }
@@ -310,28 +334,63 @@ function showTextResult() {
     }
     SoundManager.playClear(); createConfetti(users[currentUser]?.activeEffect || 'default');
 
-    let diffHtml = generateDiffHtml(refClean, typedClean);
+    const sourceHtml = generateSourceHtml(refClean);
+    const reviewedInputHtml = generateReviewedInputHtml(refClean, typedClean);
 
     const details = document.getElementById('text-result-details');
     details.innerHTML = `
-        <div style="display:flex; gap:20px; justify-content:center; margin-bottom:15px; font-size:24px;">
+        <div class="text-result-summary">
+            <div style="font-size:22px; font-weight:900; color:#0277bd;">結果</div>
             <div>総字数： <span style="color:#0288d1">${totalCount}</span> 文字</div>
             <div>ミス数： <span style="color:#d32f2f">${missCount}</span> 箇所</div>
+            <div>純字数： <span style="color:#4CAF50; font-weight:bold;">${netCount}</span> (スコア)</div>
+            <div style="color:#FF9800; font-weight:bold;">💰 獲得コイン: ${coinGain} 枚</div>
         </div>
-        <div style="font-size:36px; text-align:center;">純字数： <span style="color:#4CAF50; font-weight:bold;">${netCount}</span> (スコア)</div>
-        <div style="font-size:24px; color:#FF9800; text-align:center; margin-top:10px; font-weight:bold;">💰 獲得コイン: ${coinGain} 枚</div>
         ${!canSaveResult ? '<div style="font-size:18px; color:#607D8B; text-align:center; margin-top:8px;">先生確認モード：結果は保存されません</div>' : ''}
         ${isNewRecord ? '<div style="color:#ffeb3b; font-size:24px; text-shadow: 1px 1px #000; animation:bounce 1s infinite; text-align:center; margin-top:10px;">★しんきろく！★</div>' : ''}
-        <div style="margin-top: 15px; padding-top: 15px; border-top: 2px dashed #81d4fa; text-align: left; font-size: 18px; max-height: 150px; overflow-y: auto; background: rgba(255,255,255,0.7); padding: 10px; border-radius: 8px;">
-            <div style="font-size:14px; color:#555; font-weight:bold; margin-bottom:5px;">🔍 ミスした場所のふりかえり（赤=お手本 / 緑=あなたの入力）</div>
-            ${diffHtml}
+        <div class="text-result-compare">
+            <section class="text-result-card">
+                <h3>原文</h3>
+                <div class="text-review-box">${sourceHtml}</div>
+            </section>
+            <section class="text-result-card">
+                <h3>入力内容の添削</h3>
+                <div class="text-review-box">${reviewedInputHtml}</div>
+                <div class="text-review-legend"><span class="legend-correct">正解</span><span class="legend-miss">ミス</span></div>
+            </section>
         </div>
     `;
     document.getElementById('text-result-overlay').style.display = 'flex';
 }
 
 export function closeTextResult() { document.getElementById('text-result-overlay').style.display = 'none'; showScreen('screen-text-menu'); renderTextTasks(); }
+
+function formatElapsedSeconds(seconds) {
+    const safeSeconds = Math.max(0, Math.floor(Number(seconds || 0)));
+    const minutes = Math.floor(safeSeconds / 60);
+    const rest = safeSeconds % 60;
+    return `${minutes}分${rest.toString().padStart(2, '0')}秒`;
+}
+
+function recordTextPracticeInterrupt() {
+    if (!currentTextTask || !canWriteCurrentUserRow()) return;
+    const typeBox = document.getElementById('type-text-box');
+    const typedCount = (typeBox?.value || '').replace(/\r\n/g, '\n').length;
+    const totalSeconds = Number(currentTextTask.time || 0) * 60;
+    const elapsed = Math.max(0, totalSeconds - Number(textTimeLeft || 0));
+    if (!textTimerInterval && typedCount === 0) return;
+    recordPracticeActivity({
+        category: 'text',
+        title: `文章入力 ${currentTextTask.title}`,
+        detail: '中断',
+        amount: `入力 ${typedCount}文字 / 経過 ${formatElapsedSeconds(elapsed)}`,
+        coins: 0
+    });
+    saveUsers(false);
+}
+
 export function backToMenuFromText() {
+    recordTextPracticeInterrupt();
     if (textTimerInterval) { clearInterval(textTimerInterval); textTimerInterval = null; }
     if (cancelStartHandler) { document.removeEventListener('keydown', cancelStartHandler); cancelStartHandler = null; const overlay = document.getElementById('text-start-overlay'); if (overlay) overlay.style.display = 'none'; }
     const typeBox = document.getElementById('type-text-box');
@@ -353,35 +412,25 @@ function calcMissCount(ref, typed) {
     return minMiss;
 }
 
-function generateDiffHtml(ref, typed) {
-    const N = ref.length, M = typed.length;
-    const dp = Array.from({length: N + 1}, () => Array(M + 1).fill(0));
-    for (let i = 0; i <= N; i++) dp[i][0] = i; for (let j = 0; j <= M; j++) dp[0][j] = j;
-    for (let i = 1; i <= N; i++) {
-        for (let j = 1; j <= M; j++) {
-            if (ref[i - 1] === typed[j - 1]) dp[i][j] = dp[i - 1][j - 1];
-            else dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + 1);
-        }
+function generateSourceHtml(ref) {
+    return `<span class="diff-source">${formatReviewText(ref)}</span>`;
+}
+
+function generateReviewedInputHtml(ref, typed) {
+    if (!typed) return '<span class="diff-empty">入力はありません</span>';
+    const renderDiffChar = (str, className) => `<span class="${className}">${formatReviewText(str)}</span>`;
+    let reviewedHtml = '';
+    const typedLength = typed.length;
+    for (let i = 0; i < typedLength; i++) {
+        const className = typed[i] === ref[i] ? 'diff-correct' : 'diff-miss';
+        reviewedHtml += renderDiffChar(typed[i], className);
     }
-    let diffHtml = '', i = N, j = M, ops =[];
-    while (i > 0 || j > 0) {
-        if (i > 0 && j > 0 && ref[i - 1] === typed[j - 1]) { ops.push({ type: 'match', char: ref[i - 1] }); i--; j--; } 
-        else {
-            let cDel = i > 0 ? dp[i - 1][j] : Infinity, cIns = j > 0 ? dp[i][j - 1] : Infinity, cRep = (i > 0 && j > 0) ? dp[i - 1][j - 1] : Infinity;
-            let minC = Math.min(cDel, cIns, cRep);
-            if (minC === cRep && dp[i][j] === cRep + 1) { ops.push({ type: 'replace', exp: ref[i - 1], act: typed[j - 1] }); i--; j--; } 
-            else if (minC === cIns && dp[i][j] === cIns + 1) { ops.push({ type: 'insert', act: typed[j - 1] }); j--; } 
-            else if (minC === cDel && dp[i][j] === cDel + 1) { ops.push({ type: 'delete', exp: ref[i - 1] }); i--; } 
-            else { if (i > 0 && j > 0) { ops.push({ type: 'replace', exp: ref[i - 1], act: typed[j - 1] }); i--; j--; } else if (i > 0) { ops.push({ type: 'delete', exp: ref[i - 1] }); i--; } else { ops.push({ type: 'insert', act: typed[j - 1] }); j--; } }
-        }
-    }
-    ops.reverse();
-    ops.forEach(op => {
-        let esc = (str) => str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '↵<br>');
-        if (op.type === 'match') diffHtml += `<span class="diff-match">${esc(op.char)}</span>`;
-        else if (op.type === 'replace') diffHtml += `<span class="diff-delete">${esc(op.exp)}</span><span class="diff-insert">${esc(op.act)}</span>`;
-        else if (op.type === 'insert') diffHtml += `<span class="diff-insert">${esc(op.act)}</span>`;
-        else if (op.type === 'delete') diffHtml += `<span class="diff-delete">${esc(op.exp)}</span>`;
-    });
-    return diffHtml;
+    return reviewedHtml;
+}
+
+function formatReviewText(str) {
+    return escapeHtml(str)
+        .replace(/ /g, '&nbsp;')
+        .replace(/　/g, '　')
+        .replace(/\n/g, '<span class="diff-newline">↵</span><br>');
 }

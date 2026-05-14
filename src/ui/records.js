@@ -11,7 +11,9 @@ import {
     currentUser,
     canWriteCurrentUserRow
 } from '../api/user.js';
+import { renderCertificateSection } from './certificates.js';
 import { renderPracticeHistorySection } from './practice-history.js';
+import { getValidMistakeEntries, normalizeMistakeCount } from '../utils/weak-mistakes.js';
 
 const ACHIEVEMENTS = [
     { id: 'login_3', title: '三日坊主じゃない！', desc: 'ログインスタンプを 3こ あつめる', icon: '📅', check: u => u.loginStamps && u.loginStamps.length >= 3 },
@@ -46,6 +48,9 @@ export function renderRecords() {
 
     const pCont = document.getElementById('rec-practice');
     if (pCont) renderPracticeHistorySection(pCont, currentUser);
+
+    const certificateCont = document.getElementById('rec-certificate');
+    if (certificateCont) renderCertificateSection(certificateCont, currentUser);
 
     const gCont = document.getElementById('rec-gacha');
     gCont.innerHTML = `<div class="gacha-section">
@@ -165,18 +170,18 @@ export function renderRecords() {
     weakDiv.style.boxShadow = '0 4px 6px rgba(0,0,0,0.05)';
     weakDiv.innerHTML = `<h4 style="margin-top:0; color:#555; border-bottom:2px solid #eee; padding-bottom:10px;">⚠️ あなたの苦手なキー</h4>`;
     let mistakes = u.globalMistakes || {};
-    let sorted = Object.keys(mistakes).filter(k => mistakes[k] > 0).sort((a, b) => mistakes[b] - mistakes[a]);
+    let sorted = getValidMistakeEntries(mistakes);
 
     if (sorted.length === 0) {
         weakDiv.innerHTML += `<div style="color:#4CAF50; font-weight:bold; margin-top:20px; text-align:center; font-size:20px;">✨ すばらしい！<br>弱点はありません。</div>`;
     } else {
-        let maxMiss = mistakes[sorted[0]];
+        let maxMiss = sorted[0].count;
         let heatmapHtml = `<div class="heatmap-kb">`;
         KB_LAYOUT.forEach(row => {
             heatmapHtml += `<div class="heatmap-row">`;
             row.forEach(k => {
                 let disp = k === 'SPACE' ? '空白' : k;
-                let count = mistakes[k] || 0;
+                let count = normalizeMistakeCount(mistakes[k]);
                 let pct = maxMiss > 0 ? (count / maxMiss) * 100 : 0;
                 let cls = k === 'SPACE' ? 'heatmap-key space' : 'heatmap-key';
                 heatmapHtml += `<div class="${cls}" title="${disp}: ${count}回ミス"><div class="heatmap-bg" style="height:${pct}%;"></div><span class="heatmap-text">${disp}</span></div>`;

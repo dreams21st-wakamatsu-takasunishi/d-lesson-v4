@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { SoundManager } from '../utils/sound.js';
 import { calculateGrade, sortGrades } from '../utils/helpers.js';
+import { sanitizeGlobalMistakes } from '../utils/weak-mistakes.js';
 import { showScreen } from '../ui/screen.js';
 import { applyTheme } from '../ui/home.js';
 import { createConfetti } from '../ui/effects.js';
@@ -14,15 +15,19 @@ const SUPABASE_PROJECT_REF = getSupabaseProjectRef(supabaseUrl);
 // Use an app-specific auth key so legacy/test sessions do not collide with production.
 const SUPABASE_AUTH_STORAGE_KEY = SUPABASE_PROJECT_REF ? `sb-${SUPABASE_PROJECT_REF}-d-lesson-auth-token` : '';
 const SUPABASE_LEGACY_AUTH_STORAGE_KEY = SUPABASE_PROJECT_REF ? `sb-${SUPABASE_PROJECT_REF}-auth-token` : '';
+const SUPABASE_SESSION_STORAGE = getSupabaseSessionStorage();
 const supabaseClientOptions = {
     auth: {
         ...(SUPABASE_AUTH_STORAGE_KEY ? { storageKey: SUPABASE_AUTH_STORAGE_KEY } : {}),
+        ...(SUPABASE_SESSION_STORAGE
+            ? { storage: SUPABASE_SESSION_STORAGE, persistSession: true }
+            : { persistSession: false }),
         skipAutoInitialize: true
     }
 };
 
 export const HAS_SUPABASE_CONFIG = Boolean(supabaseUrl && supabaseKey);
-export const ENABLE_LEGACY_SUPABASE_SYNC = import.meta.env.VITE_ENABLE_LEGACY_SUPABASE_SYNC === 'true';
+export const ENABLE_LEGACY_SUPABASE_SYNC = false;
 export const ENABLE_RLS_CLOUD_SYNC = import.meta.env.VITE_ENABLE_RLS_CLOUD_SYNC === 'true';
 export const REQUIRE_SUPABASE_AUTH = import.meta.env.VITE_REQUIRE_SUPABASE_AUTH === 'true';
 export const ENABLE_SETTINGS_TABLE = import.meta.env.VITE_ENABLE_SETTINGS_TABLE === 'true';
@@ -72,6 +77,15 @@ function getSupabaseProjectRef(url) {
     }
 }
 
+function getSupabaseSessionStorage() {
+    if (typeof window === 'undefined') return null;
+    try {
+        return window.sessionStorage || null;
+    } catch (_err) {
+        return null;
+    }
+}
+
 function parseEnvInteger(value, fallback, min, max) {
     const parsed = Number.parseInt(value, 10);
     if (!Number.isFinite(parsed)) return fallback;
@@ -91,7 +105,7 @@ function forEachBrowserStorage(callback) {
 }
 
 function removeSupabaseAuthStorage() {
-    const storageKeys = [SUPABASE_AUTH_STORAGE_KEY, SUPABASE_LEGACY_AUTH_STORAGE_KEY].filter(Boolean);
+    const storageKeys = getSupabaseAuthStorageKeys();
     if (storageKeys.length === 0) return;
     forEachBrowserStorage(storage => {
         storageKeys.forEach(key => {
@@ -101,6 +115,27 @@ function removeSupabaseAuthStorage() {
         });
     });
 }
+
+function getSupabaseAuthStorageKeys() {
+    return [SUPABASE_AUTH_STORAGE_KEY, SUPABASE_LEGACY_AUTH_STORAGE_KEY].filter(Boolean);
+}
+
+function removePersistentSupabaseAuthStorage() {
+    if (typeof window === 'undefined' || !window.localStorage) return;
+    const storageKeys = getSupabaseAuthStorageKeys();
+    if (storageKeys.length === 0) return;
+    try {
+        storageKeys.forEach(key => {
+            window.localStorage.removeItem(key);
+            window.localStorage.removeItem(`${key}-code-verifier`);
+            window.localStorage.removeItem(`${key}-user`);
+        });
+    } catch (err) {
+        console.warn('Failed to clear persistent auth storage:', err);
+    }
+}
+
+removePersistentSupabaseAuthStorage();
 
 function isInvalidRefreshTokenError(error) {
     const message = `${error?.name || ''} ${error?.message || ''} ${error?.code || ''} ${error?.status || ''}`;
@@ -492,6 +527,7 @@ function normalizeUserRecord(userId, data) {
     if (!isSystemUserId(userId)) {
         if (!data.displayName) data.displayName = getUserDataDisplayName(userId, data);
         if (!data.userDataId) data.userDataId = userId;
+        data.globalMistakes = sanitizeGlobalMistakes(data.globalMistakes);
         data.practiceLogs = normalizePracticeLogs(data.practiceLogs);
     }
     return data;

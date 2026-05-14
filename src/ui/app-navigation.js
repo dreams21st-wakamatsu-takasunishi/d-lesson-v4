@@ -5,6 +5,7 @@ import { showCustomAlert } from './modal.js';
 import { renderRecords } from './records.js';
 import { showScreen } from './screen.js';
 import { loadCustomGlobalSettings } from './custom-settings.js';
+import { hasValidMistakes } from '../utils/weak-mistakes.js';
 
 function getActiveUserOrTitle() {
     const u = currentUser ? users[currentUser] : null;
@@ -59,9 +60,7 @@ export function goToWeakTraining() {
     const u = getActiveUserOrTitle();
     if (!u) return;
 
-    const mistakes = u.globalMistakes || {};
-    const hasMistakes = Object.values(mistakes).some(count => count > 0);
-    if (hasMistakes) {
+    if (hasValidMistakes(u.globalMistakes)) {
         startGame(9888, 'keyboard');
         return;
     }

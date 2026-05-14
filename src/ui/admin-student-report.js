@@ -13,7 +13,7 @@ import { recordAdminAudit } from './admin-audit.js';
 import {
     escapeHtml,
     formatRecordSeconds,
-    getTopMistakes,
+    getTopMistakeDetails,
     reportBar,
     reportSection
 } from './admin-report-utils.js';
@@ -94,9 +94,20 @@ function buildStudentReportHtml(userId) {
         </table>`
         : '<p style="color:#777; margin:0;">ビジョンのタイム記録はまだありません。</p>';
 
-    const mistakeList = getTopMistakes(user);
+    const mistakeList = getTopMistakeDetails(user);
     const mistakeHtml = mistakeList.length
-        ? `<p style="margin:0; font-weight:bold; color:#d84315;">${escapeHtml(mistakeList.join(' / '))}</p>`
+        ? `<table style="width:100%; border-collapse:collapse; font-size:13px;">
+            <thead>
+                <tr>
+                    <th style="border:1px solid #ffccbc; background:#fff3ed; padding:6px; text-align:left;">キー</th>
+                    <th style="border:1px solid #ffccbc; background:#fff3ed; padding:6px; text-align:right; width:72px;">回数</th>
+                </tr>
+            </thead>
+            <tbody>${mistakeList.map(item => `<tr>
+                <td style="border:1px solid #ffccbc; padding:6px; font-weight:bold; color:#bf360c;">${escapeHtml(item.label)}</td>
+                <td style="border:1px solid #ffccbc; padding:6px; text-align:right; color:#bf360c;">${item.count}回</td>
+            </tr>`).join('')}</tbody>
+        </table>`
         : '<p style="margin:0; color:#2e7d32; font-weight:bold;">目立った苦手キーはありません。</p>';
     const practiceLogHtml = buildPracticeLogReportHtml(userId);
 

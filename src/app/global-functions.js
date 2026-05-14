@@ -1,7 +1,7 @@
 import { closeStampOverlay, goToGradeSelect } from '../api/user.js';
 import { backToMenu, handleSecretMenuClick, retryExam, startRecommendedStage } from '../games/core.js';
 import { changeEffect, changeTheme, drawGacha, useTicket } from '../games/gacha.js';
-import { startMinigame, stopMinigame } from '../games/minigame.js';
+import { openExternalTypingSite, startMinigame, stopMinigame } from '../games/minigame.js';
 import {
     backToMenuFromText,
     closeTextPrepModal,
@@ -32,6 +32,7 @@ import {
 } from '../ui/keyboard-menu.js';
 import { showCustomAlert } from '../ui/modal.js';
 import { goToMouseMenu } from '../ui/mouse-menu.js';
+import { printCertificate, printEarnedCertificates } from '../ui/certificates.js';
 import { backToRecordMenu, showRecordSection } from '../ui/records.js';
 import { closeRewardOverlay } from '../ui/reward.js';
 import { handleGlobalBack, handleGlobalHome, handleGlobalLogout, showScreen, toggleFullScreen } from '../ui/screen.js';
@@ -47,13 +48,13 @@ export function registerAppGlobalHandlers() {
         handleGlobalBack, handleGlobalHome, handleGlobalLogout,
         closeStampOverlay, closeRewardOverlay,
 
-        startMinigame, stopMinigame,
+        startMinigame, stopMinigame, openExternalTypingSite,
         toggleRubyInPrep, toggleNaviInPrep, confirmStartTextPractice, closeTextPrepModal,
         submitTextPractice, closeTextResult, backToMenuFromText,
 
         retryExam, backToMenu, handleSecretMenuClick,
         showRomajiMenu, renderKeyboardStages, backToKbChapter,
-        showRecordSection, backToRecordMenu, exportDashboardCSV, startRecommendedStage, loadCustomGlobalSettings,
+        showRecordSection, backToRecordMenu, printCertificate, printEarnedCertificates, exportDashboardCSV, startRecommendedStage, loadCustomGlobalSettings,
         updateGlobalHeader, updateHomeDashboard,
 
         drawGacha, useTicket, changeTheme, changeEffect,

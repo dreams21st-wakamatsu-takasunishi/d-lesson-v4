@@ -1,3 +1,5 @@
+import { getValidMistakeEntries } from '../utils/weak-mistakes.js';
+
 export function escapeHtml(value) {
     return String(value ?? '')
         .replace(/&/g, '&amp;')
@@ -39,11 +41,88 @@ export function formatRecordSeconds(value) {
     return typeof value === 'number' ? `${value.toFixed(1)}\u79d2` : '-';
 }
 
+const SPECIAL_KEY_LABELS = {
+    ' ': 'スペースキー',
+    '　': 'スペースキー',
+    SPACE: 'スペースキー',
+    SPACEBAR: 'スペースキー',
+    ENTER: 'Enterキー',
+    RETURN: 'Enterキー',
+    BACKSPACE: 'Backspaceキー',
+    TAB: 'Tabキー',
+    ESC: 'Escキー',
+    ESCAPE: 'Escキー',
+    SHIFT: 'Shiftキー',
+    CONTROL: 'Ctrlキー',
+    CTRL: 'Ctrlキー',
+    ALT: 'Altキー',
+    META: 'Windowsキー',
+    CAPSLOCK: 'CapsLockキー',
+    ARROWUP: '↑キー',
+    ARROWDOWN: '↓キー',
+    ARROWLEFT: '←キー',
+    ARROWRIGHT: '→キー'
+};
+
+const SYMBOL_KEY_LABELS = {
+    '=': '=（イコール）',
+    '+': '+（プラス）',
+    '-': '-（マイナス）',
+    '_': '_（アンダーバー）',
+    '*': '*（アスタリスク）',
+    '/': '/（スラッシュ）',
+    '\\': '\\（バックスラッシュ）',
+    '|': '|（縦線）',
+    '.': '.（ピリオド）',
+    ',': ',（カンマ）',
+    ':': ':（コロン）',
+    ';': ';（セミコロン）',
+    '?': '?（クエスチョン）',
+    '!': '!（びっくり）',
+    '@': '@（アットマーク）',
+    '#': '#（シャープ）',
+    '$': '$（ドル）',
+    '%': '%（パーセント）',
+    '&': '&（アンド）',
+    '^': '^（キャレット）',
+    '~': '~（チルダ）',
+    '`': '`（バッククォート）',
+    '"': '"（ダブルクォート）',
+    "'": "'（アポストロフィ）",
+    '(': '(（左かっこ）',
+    ')': ')（右かっこ）',
+    '[': '[（左角かっこ）',
+    ']': ']（右角かっこ）',
+    '{': '{（左波かっこ）',
+    '}': '}（右波かっこ）',
+    '<': '<（小なり）',
+    '>': '>（大なり）'
+};
+
+export function formatWeakKeyLabel(key) {
+    const raw = String(key ?? '');
+    const trimmed = raw.trim();
+    const lookup = trimmed || raw;
+    const upper = lookup.toUpperCase();
+    if (SPECIAL_KEY_LABELS[lookup]) return SPECIAL_KEY_LABELS[lookup];
+    if (SPECIAL_KEY_LABELS[upper]) return SPECIAL_KEY_LABELS[upper];
+    if (SYMBOL_KEY_LABELS[lookup]) return `キー「${SYMBOL_KEY_LABELS[lookup]}」`;
+    if (/^KEY[A-Z]$/.test(upper)) return `キー「${upper.slice(3)}」`;
+    if (/^DIGIT\d$/.test(upper)) return `キー「${upper.slice(5)}」`;
+    if (!trimmed) return '不明なキー';
+    return `キー「${trimmed}」`;
+}
+
+export function getTopMistakeDetails(user, limit = 8) {
+    return getValidMistakeEntries(user?.globalMistakes, limit)
+        .map(key => ({
+            key: key.key,
+            label: formatWeakKeyLabel(key.key),
+            count: key.count
+        }));
+}
+
 export function getTopMistakes(user, limit = 8) {
-    const mistakes = user?.globalMistakes || {};
-    return Object.keys(mistakes)
-        .filter(key => mistakes[key] > 0)
-        .sort((a, b) => mistakes[b] - mistakes[a])
-        .slice(0, limit)
-        .map(key => `${key === 'SPACE' ? '\u7a7a\u767d' : key}(${mistakes[key]})`);
+    return getTopMistakeDetails(user, limit)
+        .map(item => `${item.label}：${item.count}回`);
 }

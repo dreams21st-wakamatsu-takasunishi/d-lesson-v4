@@ -2,10 +2,12 @@ import {
     users,
     currentUser,
     saveUsers,
-    getUserDisplayName,
     isSystemUserId,
     canWriteCurrentUserRow,
-    recordPracticeActivity
+    recordPracticeActivity,
+    supabase,
+    REQUIRE_SUPABASE_AUTH,
+    ENABLE_RLS_CLOUD_SYNC
 } from '../api/user.js';
 import { WORD_DATA } from '../data/constants.js';
 import { SoundManager } from '../utils/sound.js';
@@ -14,12 +16,210 @@ import { createConfetti } from '../ui/reward.js';
 
 let mgInterval, mgSpawnInterval, mgTimeInterval, mgTime = 60, mgScore = 0, mgWords =[], mgActiveWord = null, cancelMgStartHandler = null;
 let currentMinigameType = 'meteor';
+let mgStartedAt = 0;
 
 let dBoost = 1.0;
 let dLevel = 1;
 let dClearedWords = 0;
 let dChallengeWords = { 1:[], 2:[], 3:[], 4:[] };
 let dCurrentWordMissed = false;
+let rankingWarningShown = false;
+
+const TYPING_RANKING_TABLE = 'lesson_typing_rankings';
+
+const EXTERNAL_TYPING_SITES = {
+    sushida: {
+        title: '寿司打',
+        url: 'https://sushida.net/'
+    },
+    pop: {
+        title: 'Popタイピング',
+        url: 'https://keyx0.net/pop/'
+    }
+};
+
+function formatLogTime(date) {
+    return date.toLocaleTimeString('ja-JP', {
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+function recordExternalTypingLog(site, detail, amount) {
+    if (!canWriteCurrentUserRow()) return;
+    recordPracticeActivity({
+        category: 'external-typing',
+        title: `外部タイピング ${site.title}`,
+        detail,
+        amount,
+        coins: 0
+    });
+    saveUsers(false);
+}
+
+function getCurrentMinigameModeKey() {
+    return currentMinigameType === 'd_challenge' ? 'd_challenge' : 'meteor';
+}
+
+function getCurrentMinigameTitle() {
+    return currentMinigameType === 'd_challenge' ? 'Dチャレンジ' : 'タイピングゲーム';
+}
+
+function canUseCloudTypingRanking() {
+    return Boolean(supabase && REQUIRE_SUPABASE_AUTH && ENABLE_RLS_CLOUD_SYNC);
+}
+
+function getAnonymousRankingLabel(userId) {
+    const text = String(userId || '');
+    let hash = 0;
+    for (let i = 0; i < text.length; i++) {
+        hash = (hash * 31 + text.charCodeAt(i)) % 997;
+    }
+    return `児童 ${String(hash + 1).padStart(3, '0')}`;
+}
+
+function getLocalMinigameRanking(modeKey) {
+    const ranking =[];
+    Object.keys(users).forEach(userId => {
+        const user = users[userId];
+        if (!user || user.isMaster || isSystemUserId(userId)) return;
+        const score = modeKey === 'd_challenge'
+            ? (user.examRecords?.mg_d_challenge || user.dChallengeHighscore || 0)
+            : (user.examRecords?.mg_meteor || user.minigameHighscore || 0);
+        if (score > 0) ranking.push({
+            id: userId,
+            label: userId === currentUser ? '自分' : getAnonymousRankingLabel(userId),
+            score
+        });
+    });
+    return ranking.sort((a, b) => b.score - a.score);
+}
+
+function renderMinigameRanking(ranking, options = {}) {
+    const rankBoard = document.getElementById('mg-ranking-board');
+    if (!rankBoard) return;
+
+    const sourceLabel = options.sourceLabel || 'ランキング';
+    const statusHtml = options.status ? `<div style="font-size:13px; color:#607d8b; margin-bottom:8px;">${options.status}</div>` : '';
+    const topRows = ranking.slice(0, 5);
+    let rankHtml = `<h3 style="margin-top:0; color:#E91E63; border-bottom:2px solid #E91E63;">${sourceLabel}</h3>${statusHtml}`;
+
+    if (topRows.length === 0) {
+        rankHtml += '<div style="font-size:16px; color:#607d8b; padding:10px;">まだランキング記録がありません。</div>';
+    } else {
+        rankHtml += '<ul style="list-style:none; padding:0; font-size:20px; text-align:left; color:#333;">';
+        topRows.forEach((row, index) => {
+            const medal =['🥇', '🥈', '🥉', '４.', '５.'][index];
+            const isMe = row.id === currentUser ? 'background:#fff9c4; font-weight:bold; border-radius:5px;' : '';
+            rankHtml += `<li style="padding:5px; margin-bottom:5px; ${isMe}">${medal} ${row.label} : ${row.score} 点</li>`;
+        });
+        rankHtml += '</ul>';
+    }
+
+    const myRankIdx = ranking.findIndex(row => row.id === currentUser);
+    const myRankText = myRankIdx !== -1 ? `あなたの順位： ${myRankIdx + 1} 位` : 'あなたの順位： ランク外';
+    rankHtml += `<div style="margin-top: 15px; font-weight: bold; font-size: 22px; color: #1565C0; border-top: 2px dashed #90CAF9; padding-top: 10px;">${myRankText}</div>`;
+
+    if (options.isNewRecord) {
+        rankHtml += '<div style="color:#E91E63; font-weight:bold; font-size:24px; animation:bounce 1s infinite; margin-top: 10px;">★しんきろく 達成！★</div>';
+    }
+
+    rankBoard.innerHTML = rankHtml;
+    rankBoard.style.display = 'block';
+}
+
+async function saveCloudMinigameRanking(modeKey, score) {
+    if (!canUseCloudTypingRanking() || !currentUser || score <= 0) return false;
+    const { data: existing, error: readError } = await supabase
+        .from(TYPING_RANKING_TABLE)
+        .select('score')
+        .eq('mode', modeKey)
+        .eq('user_data_id', currentUser)
+        .maybeSingle();
+
+    if (readError) throw readError;
+    if (Number(existing?.score || 0) >= score) return true;
+
+    const { error } = await supabase
+        .from(TYPING_RANKING_TABLE)
+        .upsert({
+            mode: modeKey,
+            user_data_id: currentUser,
+            display_label: getAnonymousRankingLabel(currentUser),
+            score,
+            updated_at: new Date().toISOString()
+        }, { onConflict: 'mode,user_data_id' });
+
+    if (error) throw error;
+    return true;
+}
+
+async function loadCloudMinigameRanking(modeKey) {
+    if (!canUseCloudTypingRanking()) return null;
+    const { data, error } = await supabase
+        .from(TYPING_RANKING_TABLE)
+        .select('user_data_id,display_label,score,updated_at')
+        .eq('mode', modeKey)
+        .order('score', { ascending: false })
+        .order('updated_at', { ascending: true })
+        .limit(50);
+
+    if (error) throw error;
+    return (data || []).map(row => ({
+        id: row.user_data_id,
+        label: row.user_data_id === currentUser ? '自分' : (row.display_label || getAnonymousRankingLabel(row.user_data_id)),
+        score: Number(row.score || 0)
+    }));
+}
+
+async function refreshCloudMinigameRanking(modeKey, score, isNewRecord) {
+    try {
+        await saveCloudMinigameRanking(modeKey, score);
+        const cloudRanking = await loadCloudMinigameRanking(modeKey);
+        if (cloudRanking) {
+            renderMinigameRanking(cloudRanking, {
+                sourceLabel: 'クラス匿名ランキング',
+                status: '名前は表示せず、匿名ラベルとスコアだけを表示しています。',
+                isNewRecord
+            });
+        }
+    } catch (err) {
+        if (!rankingWarningShown) {
+            console.warn('Typing ranking table is unavailable. Falling back to local ranking:', err);
+            rankingWarningShown = true;
+        }
+        const localRanking = getLocalMinigameRanking(modeKey);
+        renderMinigameRanking(localRanking, {
+            sourceLabel: 'この端末のランキング',
+            status: '匿名ランキングテーブル未設定のため、この画面で読める範囲だけ表示しています。',
+            isNewRecord
+        });
+    }
+}
+
+export function openExternalTypingSite(siteId) {
+    const site = EXTERNAL_TYPING_SITES[siteId];
+    if (!site) return;
+
+    const openedAt = new Date();
+    const popup = window.open('about:blank', '_blank');
+    if (!popup) {
+        alert('外部サイトを開けませんでした。ブラウザのポップアップ許可を確認してください。');
+        return;
+    }
+
+    popup.opener = null;
+    popup.location.href = site.url;
+    recordExternalTypingLog(site, '開始', `開始 ${formatLogTime(openedAt)}`);
+
+    const closeCheck = setInterval(() => {
+        if (!popup.closed) return;
+        clearInterval(closeCheck);
+        const closedAt = new Date();
+        const elapsedMinutes = Math.max(0, Math.round((closedAt.getTime() - openedAt.getTime()) / 60000));
+        recordExternalTypingLog(site, '終了', `開始 ${formatLogTime(openedAt)} / 終了 ${formatLogTime(closedAt)} / 約${elapsedMinutes}分`);
+    }, 2000);
+}
 
 function initDChallengeWords() {
     dChallengeWords = { 1: [], 2: [], 3:[], 4:[] };
@@ -82,7 +282,7 @@ export function startMinigame(type) {
         document.getElementById('mg-score-label').innerHTML = `スコア: <span id="mg-score">0</span>`;
     }
 
-    mgTime = 60; mgScore = 0; mgWords =[]; mgActiveWord = null; updateMgHud();
+    mgTime = 60; mgScore = 0; mgWords =[]; mgActiveWord = null; mgStartedAt = 0; updateMgHud();
     const overlay = document.getElementById('mg-start-overlay'); overlay.style.display = 'flex';
 
     if (cancelMgStartHandler) {
@@ -99,6 +299,7 @@ export function startMinigame(type) {
             overlay.style.display = 'none';
 
             document.addEventListener('keydown', mgHandleKey);
+            mgStartedAt = Date.now();
             mgTimeInterval = setInterval(() => { mgTime--; updateMgHud(); if (mgTime <= 0) endMinigame(); }, 1000);
 
             if (currentMinigameType === 'meteor') {
@@ -128,7 +329,22 @@ export function startMinigame(type) {
     setTimeout(() => { document.addEventListener('keydown', mgStartHandler); overlay.addEventListener('mousedown', mgStartHandler); }, 300);
 }
 
-export function stopMinigame() {
+function recordMinigameInterrupt(shouldRecord) {
+    const wasRunning = Boolean(mgTimeInterval || mgSpawnInterval || mgInterval);
+    if (!shouldRecord || !wasRunning || !mgStartedAt || !canWriteCurrentUserRow()) return;
+    const elapsed = Math.max(0, (Date.now() - mgStartedAt) / 1000);
+    recordPracticeActivity({
+        category: 'minigame',
+        title: getCurrentMinigameTitle(),
+        detail: '中断',
+        amount: `スコア ${mgScore}点 / 経過 ${elapsed.toFixed(0)}秒`,
+        coins: 0
+    });
+    saveUsers(false);
+}
+
+export function stopMinigame(recordInterrupt = false) {
+    recordMinigameInterrupt(recordInterrupt);
     if (cancelMgStartHandler) {
         document.removeEventListener('keydown', cancelMgStartHandler);
         const overlay = document.getElementById('mg-start-overlay');
@@ -136,11 +352,12 @@ export function stopMinigame() {
         cancelMgStartHandler = null;
     }
     clearInterval(mgTimeInterval); clearInterval(mgSpawnInterval); clearInterval(mgInterval);
+    mgTimeInterval = null; mgSpawnInterval = null; mgInterval = null;
     document.removeEventListener('keydown', mgHandleKey);
 }
 
 function endMinigame() {
-    stopMinigame(); SoundManager.playClear();
+    stopMinigame(false); SoundManager.playClear();
     let scoreText = `スコア: ${mgScore}`;
     document.getElementById('mg-final-score').innerText = scoreText;
 
@@ -159,7 +376,7 @@ function endMinigame() {
     if (canSaveResult) {
         recordPracticeActivity({
             category: 'minigame',
-            title: currentMinigameType === 'd_challenge' ? 'Dチャレンジ' : 'タイピングゲーム',
+            title: getCurrentMinigameTitle(),
             detail: isNewRecord ? '新記録' : '練習完了',
             amount: `スコア ${mgScore}点`,
             coins: 0
@@ -167,32 +384,16 @@ function endMinigame() {
         saveUsers(false);
     }
 
-    let rankHtml = `<h3 style="margin-top:0; color:#E91E63; border-bottom:2px solid #E91E63;">👑 トップ5 👑</h3><ul style="list-style:none; padding:0; font-size:20px; text-align:left; color:#333;">`;
-    let ranking =[];
-    Object.keys(users).forEach(n => {
-        if (!users[n].isMaster && !isSystemUserId(n)) {
-            let s = currentMinigameType === 'd_challenge' ? (users[n].examRecords?.['mg_d_challenge'] || users[n].dChallengeHighscore || 0) : (users[n].examRecords?.['mg_meteor'] || users[n].minigameHighscore || 0);
-            if (s > 0) ranking.push({ id: n, name: getUserDisplayName(n), score: s });
-        }
+    const modeKey = getCurrentMinigameModeKey();
+    const localRanking = getLocalMinigameRanking(modeKey);
+    renderMinigameRanking(localRanking, {
+        sourceLabel: 'この端末のランキング',
+        status: canUseCloudTypingRanking() ? '匿名ランキングを更新中です。' : 'この画面で読める範囲だけ表示しています。',
+        isNewRecord
     });
-    ranking.sort((a, b) => b.score - a.score);
-
-    let displayRank = ranking.slice(0, 5);
-    displayRank.forEach((r, i) => {
-        let medal =['🥇', '🥈', '🥉', '４.', '５.'][i];
-        let isMe = (r.id === currentUser) ? 'background:#fff9c4; font-weight:bold; border-radius:5px;' : '';
-        rankHtml += `<li style="padding:5px; margin-bottom:5px; ${isMe}">${medal} ${r.name} : ${r.score} 点</li>`;
-    });
-    rankHtml += `</ul>`;
-
-    let myRankIdx = ranking.findIndex(r => r.id === currentUser);
-    let myRankText = myRankIdx !== -1 ? `あなたの順位： ${myRankIdx + 1} 位` : `あなたの順位： ランク外`;
-    rankHtml += `<div style="margin-top: 15px; font-weight: bold; font-size: 22px; color: #1565C0; border-top: 2px dashed #90CAF9; padding-top: 10px;">${myRankText}</div>`;
-
-    if (isNewRecord) rankHtml += `<div style="color:#E91E63; font-weight:bold; font-size:24px; animation:bounce 1s infinite; margin-top: 10px;">★しんきろく 達成！★</div>`;
-
-    const rankBoard = document.getElementById('mg-ranking-board');
-    rankBoard.innerHTML = rankHtml; rankBoard.style.display = 'block';
+    if (canSaveResult && canUseCloudTypingRanking()) {
+        refreshCloudMinigameRanking(modeKey, mgScore, isNewRecord);
+    }
     document.getElementById('mg-result-overlay').style.display = 'flex';
     createConfetti();
 }

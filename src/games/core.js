@@ -24,6 +24,7 @@ import { showScreen, showImeWarning } from '../ui/screen.js';
 import { showCustomAlert } from '../ui/modal.js';
 import { getStageName } from '../utils/stages.js';
 import { convertNameToRomaji, shuffle } from '../utils/helpers.js';
+import { getValidMistakeEntries, normalizeMistakeCount } from '../utils/weak-mistakes.js';
 import { createConfetti, showRewardOverlay } from '../ui/reward.js';
 import { getCurrentKeyboardChapter } from '../ui/keyboard-state.js';
 import { startVisionGame, renderVisionMenu } from './vision.js';
@@ -127,11 +128,43 @@ function getPracticeAmount(elapsed) {
     return `打鍵 ${totalKeysTyped}回 / ミス ${missKeysTyped}回 / 正確率 ${acc}%`;
 }
 
+function getPracticeInterruptAmount(elapsed) {
+    if (gameMode === 'mouse') return `進行 ${currentCount}/${totalCount}`;
+    if (gameMode === 'vision') return `正解 ${visionScore}/${visionTarget} / 経過 ${elapsed.toFixed(1)}秒`;
+    if (gameMode === 'romaji') return `正解 ${romajiCorrectCells}/${romajiTotalCells} / 経過 ${elapsed.toFixed(1)}秒`;
+    return getPracticeAmount(elapsed);
+}
+
+function isOverlayVisible(element) {
+    return element && element.style.display !== 'none' && element.style.display !== '';
+}
+
+function recordPracticeInterrupt(shouldRecord) {
+    if (!shouldRecord || !currentStage || !gameMode || !startTime || !canWriteCurrentUserRow()) return;
+    if (isOverlayVisible(els.fbOverlay) || isOverlayVisible(els.failOverlay)) return;
+    const elapsed = Math.max(0, (Date.now() - startTime) / 1000);
+    const hasActivity = elapsed >= 1
+        || currentCount > 0
+        || totalKeysTyped + missKeysTyped > 0
+        || visionScore > 0
+        || romajiCorrectCells > 0;
+    if (!hasActivity) return;
+    recordPracticeActivity({
+        category: gameMode || 'practice',
+        title: getPracticeTitle(),
+        detail: '中断',
+        amount: getPracticeInterruptAmount(elapsed),
+        coins: 0
+    });
+    saveUsers(false);
+}
+
 export function startGame(sid, mode) {
     SoundManager.init(); currentStage = sid; gameMode = mode; isProcessing = false;
     mainQueue =[]; currentCount = 0; totalCount = 1; pendingHome = null; isHomeReturn = false;
     mistakeCount = 0; mistakeStats = {}; currRomajiIdx = 0; activeRomajiList =[]; currHiraObj = null; totalKeysTyped = 0; missKeysTyped = 0;
     typedRomajiStr = ""; 
+    startTime = 0;
     
     isExam =[1101,1102,1103,1104,1999, 2101,2102,2103,2104,2999, 3301,3302,3303,3304,3999, 4101,4102,4103,4999].includes(sid) || (sid >= 3200 && sid < 3300);
     isHiragana = (sid >= 3000 && sid < 4000) || sid === 9888;
@@ -225,8 +258,9 @@ export function startGame(sid, mode) {
     cancelStartHandler = startHandler; document.addEventListener('keydown', startHandler); els.startOverlay.addEventListener('mousedown', startHandler);
 }
 
-export function backToMenu() {
+export function backToMenu(recordInterrupt = false) {
     try {
+        recordPracticeInterrupt(recordInterrupt);
         if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
         if (visionInterval) { clearInterval(visionInterval); visionInterval = null; }
         if (visionTimeout) { clearTimeout(visionTimeout); visionTimeout = null; }
@@ -340,7 +374,7 @@ function handleKeyDown(e) {
             let sk = (isHiragana || isWord) ? currHiraObj.h : targetKey; 
             if (users[currentUser]) {
                 if (!users[currentUser].globalMistakes) users[currentUser].globalMistakes = {};
-                users[currentUser].globalMistakes[sk] = (users[currentUser].globalMistakes[sk] || 0) + 1;
+                users[currentUser].globalMistakes[sk] = normalizeMistakeCount(users[currentUser].globalMistakes[sk]) + 1;
             }
         }
         if (hasMissLimit) {
@@ -462,9 +496,8 @@ function setupRomajiTable(sid) {
 function setupKeyboard(s) {
     renderKeyboard(); let pool =[];
     if (s === 9888) { 
-        let mistakes = users[currentUser].globalMistakes || {}; 
-        let validKeys = Object.keys(mistakes).filter(k => mistakes[k] > 0); 
-        let sortedKeys = validKeys.sort((a, b) => mistakes[b] - mistakes[a]).slice(0, 8); 
+        let mistakes = users[currentUser].globalMistakes || {};
+        let sortedKeys = getValidMistakeEntries(mistakes, 8).map(item => item.key);
         let raw =[];
         sortedKeys.forEach(k => { 
             if (/[ぁ-ん]/.test(k) || WORD_DATA.some(d => d.chars.some(c=>c.h===k))) { 

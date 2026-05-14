@@ -15,7 +15,6 @@ import {
     getStudentIdleLogoutMinutes,
     refreshStudentIdleLogoutTimer
 } from '../api/user.js';
-import { getLegacyAdminPassStatus } from '../utils/security.js';
 import { showCustomAlert } from './modal.js';
 import { recordAdminAudit } from './admin-audit.js';
 
@@ -180,37 +179,6 @@ function renderOpsUserIdDetails(anchor, legacyRows, mismatchRows) {
         `;
 }
 
-function renderOpsGuideAdminLegacy() {
-    const grid = document.getElementById('ops-status-grid');
-    if (!grid) return;
-
-    const syncText = document.getElementById('sync-status')?.innerText || '未確認';
-    const role = getCurrentLessonRole() || (REQUIRE_SUPABASE_AUTH ? '未登録/未ログイン' : '旧方式');
-    const teacherScope = getTeacherScopeSummary();
-    const teacherScopeTone = teacherScope === '全児童' ? 'warn' : (teacherScope === 'なし' ? 'neutral' : 'good');
-    const legacyPassStatus = getLegacyAdminPassStatus();
-    const legacyPassTone = legacyPassStatus === 'ローカルのみ有効' ? 'warn' : 'good';
-    const studentCount = Object.keys(users).filter(userId => users[userId] && !users[userId].isMaster && !isSystemUserId(userId)).length;
-    const idleLogoutMinutes = getStudentIdleLogoutMinutes();
-    const syncTone = /synced|rls synced/.test(syncText) ? 'good' : (/error|offline|locked/.test(syncText) ? 'bad' : 'warn');
-
-    grid.innerHTML = [
-        renderOpsStatusCard('先生範囲', teacherScope, teacherScopeTone),
-        renderOpsStatusCard('Supabase設定', HAS_SUPABASE_CONFIG ? 'あり' : 'なし', HAS_SUPABASE_CONFIG ? 'good' : 'warn'),
-        renderOpsStatusCard('Auth必須', REQUIRE_SUPABASE_AUTH ? '有効' : '無効', REQUIRE_SUPABASE_AUTH ? 'good' : 'bad'),
-        renderOpsStatusCard('旧パスワード', legacyPassStatus, legacyPassTone),
-        renderOpsStatusCard('RLS同期', ENABLE_RLS_CLOUD_SYNC ? '有効' : '無効', ENABLE_RLS_CLOUD_SYNC ? 'good' : 'warn'),
-        renderOpsStatusCard('設定テーブル', ENABLE_SETTINGS_TABLE ? SETTINGS_TABLE_KEY : '旧方式', ENABLE_SETTINGS_TABLE ? 'good' : 'warn'),
-        renderOpsStatusCard('旧同期', ENABLE_LEGACY_SUPABASE_SYNC ? '有効' : '無効', ENABLE_LEGACY_SUPABASE_SYNC ? 'bad' : 'good'),
-        renderOpsStatusCard('現在ロール', role, role === 'admin' ? 'good' : 'warn'),
-        renderOpsStatusCard('保存状態', syncText, syncTone),
-        renderOpsStatusCard('児童数', `${studentCount}人`, studentCount > 0 ? 'good' : 'warn'),
-        renderOpsStatusCard('児童自動ログアウト', idleLogoutMinutes > 0 ? `${idleLogoutMinutes}分` : '無効', idleLogoutMinutes > 0 ? 'good' : 'warn')
-    ].join('');
-
-    renderStudentIdleLogoutSetting();
-}
-
 export function renderOpsGuideAdmin() {
     const grid = document.getElementById('ops-status-grid');
     if (!grid) return;
@@ -219,8 +187,6 @@ export function renderOpsGuideAdmin() {
     const role = getCurrentLessonRole() || (REQUIRE_SUPABASE_AUTH ? '未登録/未ログイン' : '旧方式');
     const teacherScope = getTeacherScopeSummary();
     const teacherScopeTone = teacherScope === '全児童' ? 'warn' : (teacherScope === 'なし' ? 'neutral' : 'good');
-    const legacyPassStatus = getLegacyAdminPassStatus();
-    const legacyPassTone = legacyPassStatus === 'ローカルのみ有効' ? 'warn' : 'good';
     const studentCount = getStudentUserIds().length;
     const idleLogoutMinutes = getStudentIdleLogoutMinutes();
     const legacyStudentIdRows = getLegacyStudentIdRows();
@@ -235,7 +201,6 @@ export function renderOpsGuideAdmin() {
         renderOpsStatusCard('先生範囲', teacherScope, teacherScopeTone),
         renderOpsStatusCard('Supabase設定', HAS_SUPABASE_CONFIG ? 'あり' : 'なし', HAS_SUPABASE_CONFIG ? 'good' : 'warn'),
         renderOpsStatusCard('Auth必須', REQUIRE_SUPABASE_AUTH ? '有効' : '無効', REQUIRE_SUPABASE_AUTH ? 'good' : 'bad'),
-        renderOpsStatusCard('旧パスワード', legacyPassStatus, legacyPassTone),
         renderOpsStatusCard('RLS同期', ENABLE_RLS_CLOUD_SYNC ? '有効' : '無効', ENABLE_RLS_CLOUD_SYNC ? 'good' : 'warn'),
         renderOpsStatusCard('設定テーブル', ENABLE_SETTINGS_TABLE ? SETTINGS_TABLE_KEY : '旧方式', ENABLE_SETTINGS_TABLE ? 'good' : 'warn'),
         renderOpsStatusCard('旧同期', ENABLE_LEGACY_SUPABASE_SYNC ? '有効' : '無効', ENABLE_LEGACY_SUPABASE_SYNC ? 'bad' : 'good'),

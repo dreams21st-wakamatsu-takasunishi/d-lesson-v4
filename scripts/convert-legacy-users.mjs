@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { sanitizeGlobalMistakes } from '../src/utils/weak-mistakes.js';
 
 const SYSTEM_USER_IDS = new Set([
   '__GLOBAL_SETTINGS__',
@@ -98,7 +99,7 @@ function normalizeStudentData(oldId, newId, source) {
     birthdate: data.birthdate || data.birth || '',
     theme: data.theme || 'default',
     examRecords: toObject(data.examRecords),
-    globalMistakes: toObject(data.globalMistakes),
+    globalMistakes: sanitizeGlobalMistakes(data.globalMistakes),
     loginStamps: toArray(data.loginStamps),
     minigameHighscore: toNumber(data.minigameHighscore),
     coins: toNumber(data.coins),

@@ -27,9 +27,9 @@ export function initFocusNavigation({ backToMenu, stopMinigame, backToMenuFromTe
         if (e.key === 'Escape') {
             e.preventDefault();
             if (activeScreen.id === 'screen-game') {
-                backToMenu();
+                backToMenu(true);
             } else if (activeScreen.id === 'screen-minigame') {
-                stopMinigame();
+                stopMinigame(true);
                 showScreen('screen-minigame-menu');
             } else if (activeScreen.id === 'screen-text-game') {
                 backToMenuFromText();

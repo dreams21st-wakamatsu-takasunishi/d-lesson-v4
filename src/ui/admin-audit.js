@@ -34,9 +34,10 @@ function normalizeAdminAuditLog(log) {
 }
 
 function getAdminActorLabel() {
-    if (hasLessonRole('admin')) return 'Supabase admin';
-    if (currentUser && users[currentUser]) return `legacy admin after ${getUserDisplayName(currentUser)}`;
-    return 'legacy admin';
+    if (hasLessonRole('admin')) return 'Supabase Auth 管理者';
+    if (hasLessonRole('teacher')) return 'Supabase Auth 先生';
+    if (currentUser && users[currentUser]) return `ログイン中: ${getUserDisplayName(currentUser)}`;
+    return '未確認ユーザー';
 }
 
 function summarizeAuditDetails(details = {}) {
