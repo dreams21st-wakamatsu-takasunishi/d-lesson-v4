@@ -2,6 +2,8 @@ import { showCustomConfirm } from './modal.js';
 import { currentUser, users, setCurrentUser, setCurrentSelectedGrade, signOutSupabaseAuth } from '../api/user.js';
 
 export function showScreen(id) {
+    const practiceScreenIds = new Set(['screen-game', 'screen-text-game', 'screen-minigame']);
+
     document.querySelectorAll('.screen').forEach(screen => {
         screen.classList.remove('active');
     });
@@ -11,7 +13,7 @@ export function showScreen(id) {
 
     const header = document.getElementById('global-header');
     if (header) {
-        header.style.display = id === 'screen-title' ? 'none' : 'flex';
+        header.style.display = id === 'screen-title' || practiceScreenIds.has(id) ? 'none' : 'flex';
     }
 
     if (document.activeElement) document.activeElement.blur();

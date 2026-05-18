@@ -131,35 +131,57 @@ let currentTextPage = 0;
 const TEXT_ITEMS_PER_PAGE = 6;
 
 function renderTextTasks() {
-    const cont = document.getElementById('text-menu-content'); cont.innerHTML = '';
+    const cont = document.getElementById('text-menu-content');
+    cont.innerHTML = '';
     const glob = users['__GLOBAL_SETTINGS__'];
-    if (!glob || !glob.textTasks || glob.textTasks.length === 0) { cont.innerHTML = '<p style="font-size:20px; color:#666;">先生が作った課題はまだありません。</p>'; return; }
-    
+    const tasks = Array.isArray(glob?.textTasks) ? glob.textTasks : [];
+    if (tasks.length === 0) {
+        cont.innerHTML = `
+            <div class="text-empty-state">
+                <div class="text-empty-title">まだ文章課題がありません</div>
+                <div class="text-empty-note">先生・管理者画面で課題を作ると、ここに表示されます。</div>
+            </div>
+        `;
+        return;
+    }
+
+    const totalPages = Math.ceil(tasks.length / TEXT_ITEMS_PER_PAGE);
+    if (currentTextPage >= totalPages) currentTextPage = Math.max(0, totalPages - 1);
+
     const grid = document.createElement('div');
-    grid.style.display = 'flex'; grid.style.flexWrap = 'wrap'; grid.style.justifyContent = 'center'; grid.style.gap = '15px'; grid.style.width = '100%';
+    grid.className = 'text-task-grid';
     
-    const tasks = glob.textTasks; const totalPages = Math.ceil(tasks.length / TEXT_ITEMS_PER_PAGE);
     const start = currentTextPage * TEXT_ITEMS_PER_PAGE; const pageTasks = tasks.slice(start, start + TEXT_ITEMS_PER_PAGE);
 
     pageTasks.forEach(task => {
-        const btn = document.createElement('button'); btn.className = 'stage-btn unlocked'; 
-        btn.style.height = 'auto'; btn.style.minHeight = '130px'; btn.style.padding = '15px'; btn.style.marginBottom = '0'; btn.style.width = '45%'; btn.style.minWidth = '350px';
+        const btn = document.createElement('button'); btn.className = 'stage-btn unlocked text-task-card';
         
         let recordHtml = '';
-        if (users[currentUser] && users[currentUser].textRecords && users[currentUser].textRecords[task.id]) {
-            const r = users[currentUser].textRecords[task.id]; recordHtml = `<br><span style="font-size:16px; color:#E91E63; font-weight:bold;">🏆 最高純字数: ${r.score}文字 (ミス${r.miss})</span>`;
+        if (users[currentUser]?.textRecords?.[task.id]) {
+            const r = users[currentUser].textRecords[task.id];
+            recordHtml = `<span class="text-task-record">🏆 最高純字数: ${escapeHtml(r.score)}文字 / ミス${escapeHtml(r.miss)}</span>`;
         }
         let stars = "⭐".repeat(task.star || 3);
-        btn.innerHTML = `<span style="font-size:22px; font-weight:bold;">${task.title}</span> <span class="reward-badge-text">💰最高15000</span><br><span style="font-size:16px; color:#FF9800;">難易度: ${stars}</span><br><span style="font-size:16px; color:#666;">制限時間: ${task.time}分</span>${recordHtml}`;
+        const plainContent = String(task.content || '').replace(/\{([^|]+)\|([^}]+)\}/g, '$1');
+        btn.innerHTML = `
+            <span class="text-task-title">${escapeHtml(task.title)}</span>
+            <span class="text-task-meta">
+                <span>難易度: ${escapeHtml(stars)}</span>
+                <span>制限時間: ${escapeHtml(task.time)}分</span>
+                <span>${escapeHtml(plainContent.length)}文字</span>
+            </span>
+            ${recordHtml}
+            <span class="text-task-reward">💰最高15000</span>
+        `;
         btn.onclick = () => startTextPractice(task.id); grid.appendChild(btn);
     });
     cont.appendChild(grid);
 
     if (totalPages > 1) {
-        const pc = document.createElement('div'); pc.style.display = 'flex'; pc.style.gap = '20px'; pc.style.marginTop = '20px';
-        const pBtn = document.createElement('button'); pBtn.className = 'btn-secondary'; pBtn.innerText = '◀ まえのページ'; pBtn.disabled = currentTextPage === 0; pBtn.onclick = () => { currentTextPage--; renderTextTasks(); };
-        const pTxt = document.createElement('span'); pTxt.style.fontSize = '20px'; pTxt.style.fontWeight = 'bold'; pTxt.style.alignSelf = 'center'; pTxt.innerText = `${currentTextPage + 1} / ${totalPages}`;
-        const nBtn = document.createElement('button'); nBtn.className = 'btn-secondary'; nBtn.innerText = 'つぎのページ ▶'; nBtn.disabled = currentTextPage === totalPages - 1; nBtn.onclick = () => { currentTextPage++; renderTextTasks(); };
+        const pc = document.createElement('div'); pc.className = 'text-task-pager';
+        const pBtn = document.createElement('button'); pBtn.className = 'btn-secondary'; pBtn.innerText = '◀ まえ'; pBtn.disabled = currentTextPage === 0; pBtn.onclick = () => { currentTextPage--; renderTextTasks(); };
+        const pTxt = document.createElement('span'); pTxt.className = 'text-task-page-label'; pTxt.innerText = `${currentTextPage + 1} / ${totalPages}`;
+        const nBtn = document.createElement('button'); nBtn.className = 'btn-secondary'; nBtn.innerText = 'つぎ ▶'; nBtn.disabled = currentTextPage === totalPages - 1; nBtn.onclick = () => { currentTextPage++; renderTextTasks(); };
         pc.appendChild(pBtn); pc.appendChild(pTxt); pc.appendChild(nBtn); cont.appendChild(pc);
     }
 }

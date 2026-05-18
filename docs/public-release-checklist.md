@@ -70,6 +70,7 @@ VITE_ENABLE_RLS_CLOUD_SYNC=true
 - 管理者画面の児童削除・バックアップ復元を使う場合は、`supabase/sql/admin_user_data_delete_policies.sql` も実行する。
 - 先生アカウントの担当範囲をグループで制限する場合は、`supabase/sql/teacher_group_scope_policies.sql` を実行し、`docs/teacher-scope-setup.md` に沿って確認する。
 - 全体設定を児童テーブルから分ける場合は、`supabase/sql/lesson_settings_table.sql` を実行し、`docs/lesson-settings-table.md` に沿って確認する。
+- タイピングゲームの匿名ランキングを使う場合は、`supabase/sql/lesson_typing_rankings.sql` を実行し、`supabase/sql/verify_lesson_typing_rankings.sql` の `result` がすべて `OK` になることを確認する。ランキングページと上位5位ニックネーム登録を使う場合も同じSQLを再実行する。
 - 詳細手順は [Supabase Auth / RLS 設定手順](supabase-rls-setup.md) に沿って確認する。
 - RLS有効後、未ログイン状態でデータが読めないことを確認する。
 - 生徒アカウントで、他の生徒データが読めないことを確認する。

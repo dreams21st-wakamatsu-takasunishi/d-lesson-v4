@@ -7,9 +7,16 @@ import {
     recordPracticeActivity,
     supabase,
     REQUIRE_SUPABASE_AUTH,
-    ENABLE_RLS_CLOUD_SYNC
+    ENABLE_RLS_CLOUD_SYNC,
+    GLOBAL_SETTINGS_ID
 } from '../api/user.js';
 import { WORD_DATA } from '../data/constants.js';
+import {
+    getDynamicDChallengeWord,
+    getDynamicTypingPrompt,
+    getExtraTypingPrompts
+} from '../data/typing-prompts.js';
+import { getTypingRankingNicknameBlockWords } from '../data/typing-ranking-settings.js';
 import { SoundManager } from '../utils/sound.js';
 import { showScreen, showImeWarning } from '../ui/screen.js';
 import { createConfetti } from '../ui/reward.js';
@@ -24,8 +31,12 @@ let dClearedWords = 0;
 let dChallengeWords = { 1:[], 2:[], 3:[], 4:[] };
 let dCurrentWordMissed = false;
 let rankingWarningShown = false;
+let lastTypingPromptByBucket = {};
 
 const TYPING_RANKING_TABLE = 'lesson_typing_rankings';
+const TYPING_RANKING_TOP_LIMIT = 5;
+const NICKNAME_MAX_LENGTH = 10;
+const EXTRA_TYPING_PROMPTS = getExtraTypingPrompts();
 
 const EXTERNAL_TYPING_SITES = {
     sushida: {
@@ -78,6 +89,90 @@ function getAnonymousRankingLabel(userId) {
     return `児童 ${String(hash + 1).padStart(3, '0')}`;
 }
 
+function getMinigameTitleByMode(modeKey) {
+    return modeKey === 'd_challenge' ? 'Dチャレンジ' : 'メテオタイピング';
+}
+
+function normalizeRankingMode(modeKey) {
+    return modeKey === 'd_challenge' ? 'd_challenge' : 'meteor';
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function normalizeNicknameInput(value) {
+    return String(value || '').trim().replace(/\s+/g, ' ');
+}
+
+function compactForNicknameSafety(value) {
+    return normalizeNicknameInput(value)
+        .normalize('NFKC')
+        .toLowerCase()
+        .replace(/[\s　]+/g, '');
+}
+
+function getNicknameBlockWords() {
+    return getTypingRankingNicknameBlockWords(users[GLOBAL_SETTINGS_ID] || {});
+}
+
+function isAnonymousRankingLabel(label, userId) {
+    return compactForNicknameSafety(label) === compactForNicknameSafety(getAnonymousRankingLabel(userId));
+}
+
+function validateRankingNickname(rawNickname, userId = currentUser) {
+    const nickname = normalizeNicknameInput(rawNickname);
+    const compactNickname = compactForNicknameSafety(nickname);
+    const compactUserId = compactForNicknameSafety(userId);
+
+    if (!nickname) return { ok: false, message: 'ニックネームを入力してください。' };
+    if (Array.from(nickname).length > NICKNAME_MAX_LENGTH) {
+        return { ok: false, message: `ニックネームは${NICKNAME_MAX_LENGTH}文字までです。` };
+    }
+    if (!/^[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}\p{Letter}\p{Number}ーｰ・\s_-]+$/u.test(nickname)) {
+        return { ok: false, message: '記号、絵文字、URLは使えません。' };
+    }
+    if (/@|https?:\/\/|www\.|[0-9０-９]{4,}/i.test(nickname)) {
+        return { ok: false, message: 'メールアドレス、URL、電話番号のような文字は使えません。' };
+    }
+    if (getNicknameBlockWords().some(word => compactNickname.includes(compactForNicknameSafety(word)))) {
+        return { ok: false, message: 'その言葉はニックネームに使えません。' };
+    }
+    if (
+        compactUserId
+        && compactNickname.length >= 2
+        && compactUserId.includes(compactNickname)
+        && !isAnonymousRankingLabel(nickname, userId)
+    ) {
+        return { ok: false, message: '実名や名字は使わず、別のニックネームにしてください。' };
+    }
+
+    return { ok: true, nickname };
+}
+
+function getVisibleRankingLabel(userId, rawDisplayLabel) {
+    const anonymousLabel = getAnonymousRankingLabel(userId);
+    const displayLabel = normalizeNicknameInput(rawDisplayLabel) || anonymousLabel;
+    const validation = validateRankingNickname(displayLabel, userId);
+    const safeLabel = validation.ok ? displayLabel : anonymousLabel;
+
+    if (userId === currentUser) {
+        return isAnonymousRankingLabel(safeLabel, userId) ? '自分' : `${safeLabel}（自分）`;
+    }
+    return safeLabel;
+}
+
+function getEditableNickname(row) {
+    const label = normalizeNicknameInput(row?.displayLabel);
+    if (!row || !label || isAnonymousRankingLabel(label, row.id)) return '';
+    return validateRankingNickname(label, row.id).ok ? label : '';
+}
+
 function getLocalMinigameRanking(modeKey) {
     const ranking =[];
     Object.keys(users).forEach(userId => {
@@ -95,57 +190,133 @@ function getLocalMinigameRanking(modeKey) {
     return ranking.sort((a, b) => b.score - a.score);
 }
 
-function renderMinigameRanking(ranking, options = {}) {
-    const rankBoard = document.getElementById('mg-ranking-board');
+function dedupeRankingRows(rows) {
+    const byUser = new Map();
+
+    (rows || []).forEach(row => {
+        const userId = row?.id || row?.user_data_id;
+        if (!userId) return;
+        const score = Number(row?.score || 0);
+        const existing = byUser.get(userId);
+        const isBetter = !existing
+            || score > existing.score
+            || (score === existing.score && String(row?.updatedAt || row?.updated_at || '') < String(existing.updatedAt || ''));
+        if (!isBetter) return;
+
+        byUser.set(userId, {
+            id: userId,
+            label: row.label ?? getVisibleRankingLabel(userId, row.displayLabel ?? row.display_label),
+            displayLabel: normalizeNicknameInput(row.displayLabel ?? row.display_label) || getAnonymousRankingLabel(userId),
+            score,
+            updatedAt: row.updatedAt ?? row.updated_at
+        });
+    });
+
+    return Array.from(byUser.values()).sort((a, b) => (
+        b.score - a.score || String(a.updatedAt || '').localeCompare(String(b.updatedAt || ''))
+    ));
+}
+
+function renderTypingRankingBoard(rankBoard, ranking, options = {}) {
     if (!rankBoard) return;
 
+    const modeKey = normalizeRankingMode(options.modeKey || getCurrentMinigameModeKey());
+    const context = options.context || 'result';
     const sourceLabel = options.sourceLabel || 'ランキング';
-    const statusHtml = options.status ? `<div style="font-size:13px; color:#607d8b; margin-bottom:8px;">${options.status}</div>` : '';
-    const topRows = ranking.slice(0, 5);
-    let rankHtml = `<h3 style="margin-top:0; color:#E91E63; border-bottom:2px solid #E91E63;">${sourceLabel}</h3>${statusHtml}`;
+    const topRows = ranking.slice(0, TYPING_RANKING_TOP_LIMIT);
+    const myRankIdx = ranking.findIndex(row => row.id === currentUser);
+    const showNicknameForm = Boolean(
+        options.allowNickname
+        && canUseCloudTypingRanking()
+        && myRankIdx >= 0
+        && myRankIdx < TYPING_RANKING_TOP_LIMIT
+    );
+    const currentRow = myRankIdx >= 0 ? ranking[myRankIdx] : null;
+    const inputId = `typing-ranking-nickname-${context}`;
+    const messageId = `typing-ranking-message-${context}`;
+    const statusHtml = options.status
+        ? `<div class="typing-ranking-status">${escapeHtml(options.status)}</div>`
+        : '';
+
+    let rankHtml = `<h3 class="typing-ranking-title">${escapeHtml(sourceLabel)}</h3>${statusHtml}`;
 
     if (topRows.length === 0) {
-        rankHtml += '<div style="font-size:16px; color:#607d8b; padding:10px;">まだランキング記録がありません。</div>';
+        rankHtml += '<div class="typing-ranking-empty">まだランキング記録がありません。</div>';
     } else {
-        rankHtml += '<ul style="list-style:none; padding:0; font-size:20px; text-align:left; color:#333;">';
+        rankHtml += '<ol class="typing-ranking-list">';
         topRows.forEach((row, index) => {
-            const medal =['🥇', '🥈', '🥉', '４.', '５.'][index];
-            const isMe = row.id === currentUser ? 'background:#fff9c4; font-weight:bold; border-radius:5px;' : '';
-            rankHtml += `<li style="padding:5px; margin-bottom:5px; ${isMe}">${medal} ${row.label} : ${row.score} 点</li>`;
+            const medal = ['🥇', '🥈', '🥉', '4.', '5.'][index];
+            const isMe = row.id === currentUser ? ' is-me' : '';
+            rankHtml += `
+                <li class="typing-ranking-row${isMe}">
+                    <span class="typing-ranking-rank">${escapeHtml(medal)}</span>
+                    <span class="typing-ranking-name">${escapeHtml(row.label)}</span>
+                    <span class="typing-ranking-score">${escapeHtml(row.score)} 点</span>
+                </li>
+            `;
         });
-        rankHtml += '</ul>';
+        rankHtml += '</ol>';
     }
 
-    const myRankIdx = ranking.findIndex(row => row.id === currentUser);
     const myRankText = myRankIdx !== -1 ? `あなたの順位： ${myRankIdx + 1} 位` : 'あなたの順位： ランク外';
-    rankHtml += `<div style="margin-top: 15px; font-weight: bold; font-size: 22px; color: #1565C0; border-top: 2px dashed #90CAF9; padding-top: 10px;">${myRankText}</div>`;
+    rankHtml += `<div class="typing-ranking-my-rank">${escapeHtml(myRankText)}</div>`;
 
     if (options.isNewRecord) {
-        rankHtml += '<div style="color:#E91E63; font-weight:bold; font-size:24px; animation:bounce 1s infinite; margin-top: 10px;">★しんきろく 達成！★</div>';
+        rankHtml += '<div class="typing-ranking-new-record">★しんきろく 達成！★</div>';
     }
 
+    if (showNicknameForm) {
+        rankHtml += `
+            <div class="typing-ranking-nickname-panel">
+                <div class="typing-ranking-nickname-title">上位5位に入りました。ニックネームを登録できます。</div>
+                <div class="typing-ranking-warning">実名、名字、学校名、人を傷つける言葉、電話番号やメールアドレスは使わないでください。</div>
+                <div class="typing-ranking-nickname-form">
+                    <input id="${inputId}" type="text" maxlength="${NICKNAME_MAX_LENGTH}" value="${escapeHtml(getEditableNickname(currentRow))}" placeholder="ニックネーム">
+                    <button class="btn-primary typing-ranking-save-btn" onclick="saveTypingRankingNickname('${modeKey}', '${context}')">登録</button>
+                </div>
+                <div id="${messageId}" class="typing-ranking-message">${escapeHtml(options.nicknameMessage || '')}</div>
+            </div>
+        `;
+    }
+
+    rankBoard.classList.add('typing-ranking-board');
     rankBoard.innerHTML = rankHtml;
     rankBoard.style.display = 'block';
+}
+
+function renderMinigameRanking(ranking, options = {}) {
+    renderTypingRankingBoard(document.getElementById('mg-ranking-board'), ranking, {
+        ...options,
+        context: 'result'
+    });
 }
 
 async function saveCloudMinigameRanking(modeKey, score) {
     if (!canUseCloudTypingRanking() || !currentUser || score <= 0) return false;
     const { data: existing, error: readError } = await supabase
         .from(TYPING_RANKING_TABLE)
-        .select('score')
+        .select('score,display_label')
         .eq('mode', modeKey)
         .eq('user_data_id', currentUser)
+        .order('score', { ascending: false })
+        .order('updated_at', { ascending: true })
+        .limit(1)
         .maybeSingle();
 
     if (readError) throw readError;
     if (Number(existing?.score || 0) >= score) return true;
+
+    const existingLabel = normalizeNicknameInput(existing?.display_label);
+    const safeExistingLabel = existingLabel && validateRankingNickname(existingLabel, currentUser).ok
+        ? existingLabel
+        : '';
 
     const { error } = await supabase
         .from(TYPING_RANKING_TABLE)
         .upsert({
             mode: modeKey,
             user_data_id: currentUser,
-            display_label: getAnonymousRankingLabel(currentUser),
+            display_label: safeExistingLabel || getAnonymousRankingLabel(currentUser),
             score,
             updated_at: new Date().toISOString()
         }, { onConflict: 'mode,user_data_id' });
@@ -165,11 +336,13 @@ async function loadCloudMinigameRanking(modeKey) {
         .limit(50);
 
     if (error) throw error;
-    return (data || []).map(row => ({
+    return dedupeRankingRows((data || []).map(row => ({
         id: row.user_data_id,
-        label: row.user_data_id === currentUser ? '自分' : (row.display_label || getAnonymousRankingLabel(row.user_data_id)),
-        score: Number(row.score || 0)
-    }));
+        label: getVisibleRankingLabel(row.user_data_id, row.display_label),
+        displayLabel: normalizeNicknameInput(row.display_label) || getAnonymousRankingLabel(row.user_data_id),
+        score: Number(row.score || 0),
+        updatedAt: row.updated_at
+    })));
 }
 
 async function refreshCloudMinigameRanking(modeKey, score, isNewRecord) {
@@ -180,7 +353,9 @@ async function refreshCloudMinigameRanking(modeKey, score, isNewRecord) {
             renderMinigameRanking(cloudRanking, {
                 sourceLabel: 'クラス匿名ランキング',
                 status: '名前は表示せず、匿名ラベルとスコアだけを表示しています。',
-                isNewRecord
+                isNewRecord,
+                allowNickname: true,
+                modeKey
             });
         }
     } catch (err) {
@@ -194,6 +369,119 @@ async function refreshCloudMinigameRanking(modeKey, score, isNewRecord) {
             status: '匿名ランキングテーブル未設定のため、この画面で読める範囲だけ表示しています。',
             isNewRecord
         });
+    }
+}
+
+async function updateCloudTypingRankingNickname(modeKey, nickname) {
+    const { error } = await supabase
+        .from(TYPING_RANKING_TABLE)
+        .update({
+            display_label: nickname,
+            updated_at: new Date().toISOString()
+        })
+        .eq('mode', normalizeRankingMode(modeKey))
+        .eq('user_data_id', currentUser);
+
+    if (error) throw error;
+}
+
+function setNicknameMessage(context, message, isError = false) {
+    const messageEl = document.getElementById(`typing-ranking-message-${context}`);
+    if (!messageEl) return;
+    messageEl.textContent = message;
+    messageEl.classList.toggle('is-error', isError);
+}
+
+async function loadRankingForView(modeKey) {
+    const mode = normalizeRankingMode(modeKey);
+    if (canUseCloudTypingRanking()) {
+        const cloudRanking = await loadCloudMinigameRanking(mode);
+        if (cloudRanking) {
+            return {
+                ranking: cloudRanking,
+                sourceLabel: 'クラス匿名ランキング',
+                status: '公開用ランキングです。実名ではなく、匿名ラベルまたはニックネームで表示します。',
+                allowNickname: true
+            };
+        }
+    }
+
+    return {
+        ranking: getLocalMinigameRanking(mode),
+        sourceLabel: 'この端末のランキング',
+        status: 'クラウドランキング未設定のため、この画面で読める範囲だけ表示しています。',
+        allowNickname: false
+    };
+}
+
+export async function openTypingRankingPage(modeKey = 'meteor', nicknameMessage = '') {
+    const mode = normalizeRankingMode(modeKey);
+    showScreen('screen-typing-ranking');
+
+    const titleEl = document.getElementById('typing-ranking-mode-title');
+    const board = document.getElementById('typing-ranking-page-board');
+    document.querySelectorAll('[data-ranking-mode]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.rankingMode === mode);
+    });
+    if (titleEl) titleEl.textContent = `${getMinigameTitleByMode(mode)} ランキング`;
+    if (board) {
+        board.style.display = 'block';
+        board.innerHTML = '<div class="typing-ranking-loading">ランキングを読み込み中...</div>';
+    }
+
+    try {
+        const view = await loadRankingForView(mode);
+        renderTypingRankingBoard(board, view.ranking, {
+            modeKey: mode,
+            context: 'page',
+            sourceLabel: view.sourceLabel,
+            status: view.status,
+            allowNickname: view.allowNickname,
+            nicknameMessage
+        });
+    } catch (err) {
+        console.warn('Typing ranking page failed:', err);
+        renderTypingRankingBoard(board, getLocalMinigameRanking(mode), {
+            modeKey: mode,
+            context: 'page',
+            sourceLabel: 'この端末のランキング',
+            status: 'クラウドランキングを読み込めませんでした。時間をおいてもう一度確認してください。',
+            allowNickname: false
+        });
+    }
+}
+
+export async function saveTypingRankingNickname(modeKey = 'meteor', context = 'page') {
+    if (!canUseCloudTypingRanking() || !currentUser) {
+        setNicknameMessage(context, 'クラウドランキング利用時だけ登録できます。', true);
+        return;
+    }
+
+    const input = document.getElementById(`typing-ranking-nickname-${context}`);
+    const validation = validateRankingNickname(input?.value || '', currentUser);
+    if (!validation.ok) {
+        setNicknameMessage(context, validation.message, true);
+        return;
+    }
+
+    try {
+        setNicknameMessage(context, '保存中です...');
+        await updateCloudTypingRankingNickname(modeKey, validation.nickname);
+        if (context === 'page') {
+            await openTypingRankingPage(modeKey, 'ニックネームを保存しました。');
+        } else {
+            const cloudRanking = await loadCloudMinigameRanking(normalizeRankingMode(modeKey));
+            renderMinigameRanking(cloudRanking || [], {
+                modeKey,
+                sourceLabel: 'クラス匿名ランキング',
+                status: '名前は表示せず、匿名ラベルとスコアだけを表示しています。',
+                allowNickname: true,
+                nicknameMessage: 'ニックネームを保存しました。'
+            });
+        }
+    } catch (err) {
+        console.warn('Typing ranking nickname update failed:', err);
+        setNicknameMessage(context, '保存できませんでした。言葉を変えるか、時間をおいてもう一度ためしてください。', true);
     }
 }
 
@@ -231,20 +519,45 @@ function initDChallengeWords() {
         else dChallengeWords[4].push(c);
     };
     WORD_DATA.forEach(d => { d.chars.forEach(addWord); });
-    const MG_NOUNS = WORD_DATA[0].chars;
-    const MG_EXTRA_WORDS = WORD_DATA[1].chars;
-    MG_NOUNS.forEach(addWord);
-    MG_EXTRA_WORDS.forEach(addWord);
+    EXTRA_TYPING_PROMPTS.forEach(addWord);
 }
 
-function getDChallengeWord(level) {
+function getTypingPromptKey(wordData) {
+    return String(wordData?.h || wordData?.r?.[0] || '');
+}
+
+function pickNonRepeatingTypingPrompt(bucket, picker, maxAttempts = 10) {
+    let candidate = null;
+    for (let i = 0; i < maxAttempts; i++) {
+        candidate = picker();
+        const key = getTypingPromptKey(candidate);
+        if (!key || key !== lastTypingPromptByBucket[bucket]) break;
+    }
+
+    const key = getTypingPromptKey(candidate);
+    if (key) lastTypingPromptByBucket[bucket] = key;
+    return candidate;
+}
+
+function pickDChallengeWord(level) {
+    if (Math.random() < 0.45) return getDynamicDChallengeWord(level);
     const list = dChallengeWords[level] || dChallengeWords[1];
     return list[Math.floor(Math.random() * list.length)];
 }
 
-function getRandomMinigameWord() {
+function getDChallengeWord(level) {
+    return pickNonRepeatingTypingPrompt(`d_challenge_${level}`, () => pickDChallengeWord(level));
+}
+
+function pickRandomMinigameWord() {
+    if (Math.random() < 0.55) return getDynamicTypingPrompt();
+    if (Math.random() < 0.35) return EXTRA_TYPING_PROMPTS[Math.floor(Math.random() * EXTRA_TYPING_PROMPTS.length)];
     const group = WORD_DATA[Math.floor(Math.random() * WORD_DATA.length)];
     return group.chars[Math.floor(Math.random() * group.chars.length)];
+}
+
+function getRandomMinigameWord() {
+    return pickNonRepeatingTypingPrompt('meteor', pickRandomMinigameWord);
 }
 
 function updateBoostGauge() {

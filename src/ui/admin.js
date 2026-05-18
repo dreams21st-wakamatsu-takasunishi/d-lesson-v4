@@ -32,7 +32,10 @@ import {
     insertRuby,
     toggleAutoRubyTool,
     generateAutoRuby,
-    processAutoRuby
+    processAutoRuby,
+    loadTextTaskTemplate,
+    addStandardTextTaskTemplates,
+    renderTextTaskTemplateOptions
 } from './admin-text-tasks.js';
 import {
     openThemeCreator,
@@ -58,6 +61,10 @@ import {
     copyDeviceHandoffChecklist,
     copyLessonSettingsCheckGuide
 } from './admin-ops-guide.js';
+import {
+    renderTypingRankingSettingsAdmin,
+    saveTypingRankingNicknameBlockWords
+} from './admin-ranking-settings.js';
 import {
     linkRoleAuthUser,
     linkStudentAuthUser,
@@ -97,6 +104,8 @@ export {
     saveTicketSettings,
     saveStudentIdleLogoutSetting,
     renderOpsGuideAdmin,
+    renderTypingRankingSettingsAdmin,
+    saveTypingRankingNicknameBlockWords,
     copyInternalIdCheckGuide,
     copyDeviceHandoffChecklist,
     copyLessonSettingsCheckGuide,
@@ -112,6 +121,9 @@ export {
     toggleAutoRubyTool,
     generateAutoRuby,
     processAutoRuby,
+    loadTextTaskTemplate,
+    addStandardTextTaskTemplates,
+    renderTextTaskTemplateOptions,
     openThemeCreator,
     closeThemeCreator,
     updateThemePreview,
@@ -172,6 +184,7 @@ function adminShellCallbacks() {
         renderAuthLinkingAdmin,
         renderAdminAuditLog,
         renderOpsGuideAdmin,
+        renderTypingRankingSettingsAdmin,
         updateAdminUserTable,
         renderAdminTextTasks,
         renderTicketAdmin

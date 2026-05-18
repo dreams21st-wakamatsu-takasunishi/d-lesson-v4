@@ -48,6 +48,8 @@ supabase/sql/admin_lesson_user_access_policies.sql
 supabase/sql/admin_user_data_delete_policies.sql
 supabase/sql/teacher_group_scope_policies.sql
 supabase/sql/lesson_settings_table.sql
+supabase/sql/lesson_typing_rankings.sql
+supabase/sql/verify_lesson_typing_rankings.sql
 supabase/sql/preflight_public_release.sql
 ```
 
@@ -58,6 +60,7 @@ supabase/sql/preflight_public_release.sql
 - 先生ログインで担当範囲だけ読める。
 - 管理者ログインで管理画面操作ができる。
 - 旧 public read / insert / update / delete policy が残っていない。
+- タイピングランキング確認SQLで `NG` が出ない。上位5位ニックネーム登録を使う場合は、SQL再実行後に確認する。
 
 ### 4. GitHub Actions Variables の本番切替
 
@@ -113,6 +116,8 @@ https://dreams21st-wakamatsu-takasunishi.github.io/d-lesson-v4/
 - 本番切替後は `npm.cmd run check:public-production-url` が成功する。
 - 未ログインでは児童一覧や管理画面に入れない。
 - 生徒でログインして、練習後にコイン、進捗、おすすめ、練習履歴が保存される。
+- 生徒でタイピングゲームを1回クリアし、ランキングページで匿名ランキングにスコアが残る。
+- 上位5位に入った場合、実名ではないニックネームを登録でき、NGワードや連絡先らしい文字列は登録できない。
 - 先生でログインして、担当範囲だけ見える。
 - 先生操作では児童データが保存変更されない。
 - 管理者で児童追加、編集、削除、バックアップ、復元ができる。

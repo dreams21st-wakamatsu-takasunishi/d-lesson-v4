@@ -166,7 +166,7 @@ export function startGame(sid, mode) {
     typedRomajiStr = ""; 
     startTime = 0;
     
-    isExam =[1101,1102,1103,1104,1999, 2101,2102,2103,2104,2999, 3301,3302,3303,3304,3999, 4101,4102,4103,4999].includes(sid) || (sid >= 3200 && sid < 3300);
+    isExam = EXAMS.some(ex => ex.id === sid) || [2101, 2102, 2103, 2104].includes(sid) || (sid >= 3200 && sid < 3300);
     isHiragana = (sid >= 3000 && sid < 4000) || sid === 9888;
     isWord = (sid >= 4000 && sid < 5000);
     hasMissLimit = isExam;
@@ -182,6 +182,7 @@ export function startGame(sid, mode) {
 
     if (document.activeElement) document.activeElement.blur();
     els.playArea.innerHTML = ''; els.fbOverlay.style.display = 'none'; els.fbTime.style.display = 'none'; els.failOverlay.style.display = 'none'; els.ctxMenu.style.display = 'none';
+    els.playArea.classList.toggle('vision-play-area', mode === 'vision');
     let statDiv = document.getElementById('feedback-stats'); if(statDiv) statDiv.style.display = 'none';
     document.removeEventListener('keydown', handleKeyDown);
 
@@ -526,10 +527,8 @@ function setupKeyboard(s) {
         else if (s >= 3200 && s < 3300) { const d = HIRAGANA_DATA.find(x => x.id === (s - 200)); d.chars.forEach(c => { for (let i = 0; i < 3; i++) raw.push({...c, blind: true}) }); pool = shuffle(raw); } 
         else { const d = HIRAGANA_DATA.find(x => x.id === s); d.chars.forEach(c => { for (let i = 0; i < 3; i++) raw.push(c); }); pool = shuffle(raw); }
     } else if (isWord) { 
-        let raw =[]; if (s === 4999) { WORD_DATA.forEach(d => { d.chars.forEach(c => { raw.push({...c, blind: false}) }); }); pool = shuffle(raw).slice(0, 20); } 
-        else if (s === 4101) { WORD_DATA.slice(0, 4).forEach(d => { d.chars.forEach(c => raw.push({...c, blind: false})); }); raw = shuffle(raw).slice(0, 15); } 
-        else if (s === 4102) { WORD_DATA.slice(4, 8).forEach(d => { d.chars.forEach(c => raw.push({...c, blind: false})); }); raw = shuffle(raw).slice(0, 15); } 
-        else if (s === 4103) { WORD_DATA.slice(8, 13).forEach(d => { d.chars.forEach(c => raw.push({...c, blind: false})); }); raw = shuffle(raw).slice(0, 15); } 
+        let raw =[]; if (s === 4999) { const finalExamIndex = STAGE_ORDER.indexOf(4999); WORD_DATA.forEach(d => { if (STAGE_ORDER.indexOf(d.id) !== -1 && STAGE_ORDER.indexOf(d.id) < finalExamIndex) d.chars.forEach(c => { raw.push({...c, blind: false}) }); }); pool = shuffle(raw).slice(0, 20); }
+        else if (EXAMS.some(ex => ex.id === s)) { const chap = KB_CHAPTERS.find(c => c.exam === s); const stageIds = chap ? chap.stages : []; WORD_DATA.forEach(d => { if (stageIds.includes(d.id)) d.chars.forEach(c => raw.push({...c, blind: false})); }); raw = shuffle(raw).slice(0, 18); }
         else { const d = WORD_DATA.find(x => x.id === s); if(d) { d.chars.forEach(c => { for (let i = 0; i < 2; i++) raw.push({...c, blind: false}) }); raw = shuffle(raw); } }
         if (s !== 4999) { const displayName = getUserDisplayName(currentUser); const nameRomaji = convertNameToRomaji(displayName); raw.unshift({ h: displayName, r:[nameRomaji], blind: false }); } pool = raw;
     } else if (s === 1999) { 

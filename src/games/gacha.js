@@ -1,9 +1,9 @@
 import { users, currentUser, saveUsers, hasLessonRole, canWriteCurrentUserRow } from '../api/user.js'
 import { GACHA_ITEMS } from '../data/gacha-items.js'
-import { THEMES, EFFECTS } from '../data/constants.js'
 import { SoundManager } from '../utils/sound.js'
 import { showCustomAlert, showCustomConfirm } from '../ui/modal.js'
 import { createConfetti, showCapsuleAnimation, showRewardOverlay } from '../ui/reward.js'
+import { applyTheme } from '../ui/home.js'
 
 let renderRecordsHandler = () => {
     if (typeof window.renderRecords === 'function') window.renderRecords();
@@ -106,67 +106,4 @@ export function useTicket(idx) {
 export function changeTheme(themeId) { applyTheme(themeId); if (users[currentUser] && canWriteCurrentUserRow()) { users[currentUser].theme = themeId; saveUsers(false); } refreshRecords(); }
 
 export function changeEffect(effId) { if (users[currentUser] && canWriteCurrentUserRow()) { users[currentUser].activeEffect = effId; saveUsers(false); } refreshRecords(); createConfetti(); }
-
-function applyTheme(themeId) {
-    document.body.className = '';
-    let styleTag = document.getElementById('custom-theme-style');
-    if (!styleTag) { styleTag = document.createElement('style'); styleTag.id = 'custom-theme-style'; document.head.appendChild(styleTag); }
-    styleTag.innerHTML = ''; 
-    
-    if (themeId !== 'default') {
-        const t = THEMES.find(th => th.id === themeId);
-        if (t) {
-            styleTag.innerHTML = `
-                body, #game-container, #play-area, 
-                .admin-section, #records-container, 
-                #instruction, #header-right, .text-hud, #mg-hud,
-                #ref-text-box, #type-text-box, .gacha-section { 
-                    background-color: ${t.bg} !important; 
-                    color: ${t.text} !important;
-                    border-color: ${t.text} !important;
-                }
-                .screen h1, .screen h2, .screen h3, .screen p { 
-                    color: ${t.text} !important; 
-                    border-bottom-color: ${t.text} !important; 
-                }
-                button, .btn-primary, .btn-secondary, .btn-danger, .btn-gacha, .btn-retry, .category-btn { 
-                    background-color: ${t.btnBg} !important; 
-                    color: ${t.btnText} !important; 
-                }
-                button span, .btn-primary span, .btn-secondary span, .btn-danger span, .btn-gacha span, .btn-retry span, .category-btn span {
-                    color: ${t.btnText} !important;
-                }
-                .stage-btn, .exam-btn { 
-                    background-color: transparent !important; 
-                    color: ${t.text} !important; 
-                    border-color: ${t.text} !important;
-                    opacity: 0.5 !important;
-                }
-                .stage-btn span, .exam-btn span { color: ${t.text} !important; }
-                .stage-btn.unlocked, .exam-btn.unlocked { 
-                    background-color: ${t.btnBg} !important; 
-                    color: ${t.btnText} !important; 
-                    border-color: ${t.btnText} !important;
-                    opacity: 1 !important;
-                }
-                .stage-btn.unlocked span, .exam-btn.unlocked span { color: ${t.btnText} !important; }
-                .stage-btn.cleared, .exam-btn.cleared { opacity: 0.7 !important; }
-                
-                .reward-badge, .reward-badge-text, 
-                button span.reward-badge, button span.reward-badge-text {
-                    background-color: #FF9800 !important;
-                    color: #ffffff !important;
-                    border: 2px solid #ffffff !important;
-                    text-shadow: 1px 1px 2px rgba(0,0,0,0.8) !important;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
-                }
-
-                .badge-item { background-color: transparent !important; border-color: ${t.text} !important; }
-                .badge-item span, .badge-item div { color: ${t.text} !important; }
-                .badge-item.earned { background-color: ${t.btnBg} !important; border-color: ${t.btnText} !important; }
-                .badge-item.earned span, .badge-item.earned div { color: ${t.btnText} !important; }
-            `;
-        }
-    }
-}
 

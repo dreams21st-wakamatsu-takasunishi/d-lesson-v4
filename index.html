@@ -320,6 +320,14 @@
                     <div style="display:flex; gap:20px; width:100%; align-items: flex-start;">
                         <div style="flex:1; display:flex; flex-direction:column; gap:10px;">
                             <p style="font-size:14px; color:#E91E63; margin:0; font-weight:bold;">※ふりがなを付ける時は {漢字|かんじ} と入力してね （例： {昔|むかし}話）</p>
+                            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; background:#fff8e1; border:2px solid #ffcc80; border-radius:10px; padding:10px;">
+                                <span style="font-weight:bold; color:#e65100;">標準課題</span>
+                                <select id="admin-text-template-select" style="flex:1; min-width:220px; padding:9px; font-size:16px; border-radius:8px; border:2px solid #ffcc80;">
+                                    <option value="">テンプレートを選択</option>
+                                </select>
+                                <button class="btn-secondary" style="font-size:14px; padding:8px 12px; margin:0;" onclick="loadTextTaskTemplate(document.getElementById('admin-text-template-select').value)">フォームに入れる</button>
+                                <button class="btn-primary" style="font-size:14px; padding:8px 12px; margin:0;" onclick="addStandardTextTaskTemplates()">標準6課題を追加</button>
+                            </div>
                             <div style="display:flex; gap:10px; width:100%;">
                                 <input type="text" id="admin-text-title" placeholder="課題のタイトル" style="flex:2;">
                                 <input type="number" id="admin-text-time" placeholder="時間(分)" style="flex:1; padding:10px; font-size:18px; text-align:center; border-radius:10px; border:2px solid #ccc;" min="1" max="60">
@@ -432,6 +440,15 @@
                             <button class="btn-primary" onclick="saveStudentIdleLogoutSetting()" style="font-size:15px; padding:10px 18px;">保存</button>
                         </div>
                         <p style="margin:10px 0 0; color:#546e7a; font-size:13px; line-height:1.6;">0分で無効。未設定時は公開環境の初期値を使います。共有端末では20分前後を目安にしてください。</p>
+                    </div>
+                    <div style="width:min(1000px, 96%); background:#fff; border:1px solid #ddd; border-radius:8px; padding:15px; box-sizing:border-box;">
+                        <h4 style="margin:0 0 10px; color:#37474f;">タイピングランキング NGワード</h4>
+                        <p style="margin:0 0 10px; color:#546e7a; font-size:13px; line-height:1.6;">ランキング上位者が登録するニックネームで使えない言葉を追加できます。標準のNGワードは常に有効です。</p>
+                        <textarea id="typing-ranking-ng-words" placeholder="1行に1つ入力&#10;例: からかい言葉&#10;例: 教室名" style="width:100%; min-height:120px; box-sizing:border-box; padding:10px; border:1px solid #b0bec5; border-radius:6px; font-size:15px; line-height:1.5;"></textarea>
+                        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:10px;">
+                            <button class="btn-primary" onclick="saveTypingRankingNicknameBlockWords()" style="font-size:15px; padding:10px 18px;">保存</button>
+                            <span id="typing-ranking-ng-words-status" style="color:#546e7a; font-size:13px;"></span>
+                        </div>
                     </div>
                     <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:14px; width:min(1000px, 96%);">
                         <div style="background:#fff; border:1px solid #ddd; border-radius:8px; padding:15px;">
@@ -558,8 +575,9 @@
     <div id="screen-minigame-menu" class="screen">
         <div class="screen-content">
             <h2>タイピングゲーム</h2>
-            <p>あそびながら タイピングを はやくしよう！</p>
-            <div style="display:flex; flex-wrap: wrap; gap: 20px; justify-content: center; max-width: 800px;">
+            <p>あそびながら タイピングを はやくしよう！ことばは毎回ランダムに出ます。</p>
+            <div class="minigame-menu-layout">
+                <div class="minigame-practice-actions">
                 <button class="btn-primary category-btn" onclick="startMinigame('meteor')" style="background-color: #ff5722; width: 320px; height: 130px;">
                     <span style="font-size:40px;">☄️</span>
                     <span style="font-size:22px;">メテオタイピング</span>
@@ -570,19 +588,44 @@
                     <span style="font-size:22px;">Dチャレンジ</span>
                     <span style="font-size:14px; margin-top:5px; font-weight:normal;">(ミスなくうってスコアUP)</span>
                 </button>
-                <button class="btn-primary category-btn" onclick="openExternalTypingSite('sushida')" style="background-color: #00897b; width: 320px; height: 130px;">
-                    <span style="font-size:40px;">寿</span>
-                    <span style="font-size:22px;">寿司打をひらく</span>
-                    <span style="font-size:14px; margin-top:5px; font-weight:normal;">(開始・終了を記録)</span>
-                </button>
-                <button class="btn-primary category-btn" onclick="openExternalTypingSite('pop')" style="background-color: #7b1fa2; width: 320px; height: 130px;">
-                    <span style="font-size:40px;">P</span>
-                    <span style="font-size:22px;">Popタイピングをひらく</span>
-                    <span style="font-size:14px; margin-top:5px; font-weight:normal;">(開始・終了を記録)</span>
-                </button>
+                </div>
+                <div class="minigame-sub-actions">
+                    <button class="minigame-ranking-button" onclick="openTypingRankingPage('meteor')">
+                        <span class="minigame-sub-icon">🏅</span>
+                        <span class="minigame-sub-main">ランキングを見る</span>
+                        <span class="minigame-sub-note">メテオ / Dチャレンジ</span>
+                    </button>
+                    <div class="minigame-external-actions">
+                        <button class="minigame-external-button" onclick="openExternalTypingSite('sushida')">
+                            <span class="minigame-sub-icon">寿</span>
+                            <span class="minigame-sub-main">寿司打</span>
+                            <span class="minigame-sub-note">外部サイト</span>
+                        </button>
+                        <button class="minigame-external-button" onclick="openExternalTypingSite('pop')">
+                            <span class="minigame-sub-icon">P</span>
+                            <span class="minigame-sub-main">Popタイピング</span>
+                            <span class="minigame-sub-note">外部サイト</span>
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
         <button class="btn-secondary bottom-back-btn" onclick="showScreen('screen-category')" tabindex="0">もどる</button>
+    </div>
+
+    <!-- タイピングランキング確認画面 -->
+    <div id="screen-typing-ranking" class="screen">
+        <div class="screen-content typing-ranking-page">
+            <h2>タイピングランキング</h2>
+            <p>クラスの上位記録を、実名を出さずに確認できます。</p>
+            <div class="typing-ranking-tabs">
+                <button class="btn-primary typing-ranking-tab" data-ranking-mode="meteor" onclick="openTypingRankingPage('meteor')">メテオ</button>
+                <button class="btn-primary typing-ranking-tab" data-ranking-mode="d_challenge" onclick="openTypingRankingPage('d_challenge')">Dチャレンジ</button>
+            </div>
+            <h3 id="typing-ranking-mode-title" class="typing-ranking-mode-title">メテオタイピング ランキング</h3>
+            <div id="typing-ranking-page-board" class="typing-ranking-page-board"></div>
+        </div>
+        <button class="btn-secondary bottom-back-btn" onclick="showScreen('screen-minigame-menu')" tabindex="0">もどる</button>
     </div>
 
     <!-- 4. マウスメニュー -->
@@ -612,6 +655,7 @@
                 <button class="btn-secondary" onclick="backToKbChapter()" tabindex="0">⬅ 章をえらびなおす</button>
             </div>
             <h3 id="kb-stage-title" style="margin-top:0;"></h3>
+            <div id="kb-stage-guide" class="kb-stage-guide"></div>
             <div id="kb-stage-grid" class="stage-grid keyboard-grid"></div>
             <div id="kb-stage-exams" style="display:flex; gap:20px; justify-content:center; margin-top:20px; width:100%;"></div>
         </div>
@@ -635,7 +679,7 @@
             <h2 style="margin-top: 10px; margin-bottom: 5px;">ビジョントレーニング</h2>
             <button class="btn-primary" style="position: absolute; left: 20px; top: 10px; font-size: 16px; padding: 5px 15px; margin:0;" onclick="showVisionCompare()">📊 みんなとタイムをくらべる</button>
             <p>目をきたえて、パソコンをもっととくいになろう！</p>
-            <div class="stage-grid mouse-grid" id="vision-menu-content" style="max-width: 900px; gap: 15px;"></div>
+            <div class="vision-menu-layout" id="vision-menu-content"></div>
         </div>
         <button class="btn-secondary bottom-back-btn" onclick="showScreen('screen-category')" tabindex="0">もどる</button>
     </div>

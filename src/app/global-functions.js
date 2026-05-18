@@ -1,7 +1,13 @@
 import { closeStampOverlay, goToGradeSelect } from '../api/user.js';
 import { backToMenu, handleSecretMenuClick, retryExam, startRecommendedStage } from '../games/core.js';
 import { changeEffect, changeTheme, drawGacha, useTicket } from '../games/gacha.js';
-import { openExternalTypingSite, startMinigame, stopMinigame } from '../games/minigame.js';
+import {
+    openExternalTypingSite,
+    openTypingRankingPage,
+    saveTypingRankingNickname,
+    startMinigame,
+    stopMinigame
+} from '../games/minigame.js';
 import {
     backToMenuFromText,
     closeTextPrepModal,
@@ -48,7 +54,7 @@ export function registerAppGlobalHandlers() {
         handleGlobalBack, handleGlobalHome, handleGlobalLogout,
         closeStampOverlay, closeRewardOverlay,
 
-        startMinigame, stopMinigame, openExternalTypingSite,
+        startMinigame, stopMinigame, openExternalTypingSite, openTypingRankingPage, saveTypingRankingNickname,
         toggleRubyInPrep, toggleNaviInPrep, confirmStartTextPractice, closeTextPrepModal,
         submitTextPractice, closeTextResult, backToMenuFromText,
 

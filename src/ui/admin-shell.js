@@ -24,7 +24,10 @@ export function showAdminSection(sectionId, callbacks = {}) {
     if (sectionId === 'admin-sec-practice-history') getCallback(callbacks, 'renderPracticeHistoryAdmin')();
     if (sectionId === 'admin-sec-auth-link') getCallback(callbacks, 'renderAuthLinkingAdmin')();
     if (sectionId === 'admin-sec-backup') getCallback(callbacks, 'renderAdminAuditLog')();
-    if (sectionId === 'admin-sec-ops-guide') getCallback(callbacks, 'renderOpsGuideAdmin')();
+    if (sectionId === 'admin-sec-ops-guide') {
+        getCallback(callbacks, 'renderOpsGuideAdmin')();
+        getCallback(callbacks, 'renderTypingRankingSettingsAdmin')();
+    }
 }
 
 export function backToAdminMenu() {
@@ -38,6 +41,7 @@ function openAdminScreen(callbacks = {}) {
     getCallback(callbacks, 'renderAdminTextTasks')();
     getCallback(callbacks, 'renderTicketAdmin')();
     getCallback(callbacks, 'renderPracticeHistoryAdmin')();
+    getCallback(callbacks, 'renderTypingRankingSettingsAdmin')();
     backToAdminMenu();
     showScreen('screen-admin');
 }

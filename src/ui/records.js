@@ -133,6 +133,10 @@ export function renderRecords() {
     let viTimes = `<h4 style="color:#555; margin-bottom:5px; border-bottom:1px solid #ccc; padding-bottom:5px;">👁️ ビジョントレーニング</h4><div style="display:flex; flex-wrap:wrap; gap:10px;">`;
     let hasViRecord = false;
     VISION_STAGES.forEach(st => {
+        if (records[st.id + '_easy']) {
+            hasViRecord = true;
+            viTimes += `<div style="background:#e8f5e9; border:2px solid #a5d6a7; padding:5px 15px; border-radius:8px; font-weight:bold; color:#2e7d32;">${st.title}(やさしい): <span style="color:#e65100;">${records[st.id + '_easy'].toFixed(1)}秒</span></div>`;
+        }
         if (records[st.id]) {
             hasViRecord = true;
             viTimes += `<div style="background:#e3f2fd; border:2px solid #90caf9; padding:5px 15px; border-radius:8px; font-weight:bold; color:#0277bd;">${st.title}: <span style="color:#e65100;">${records[st.id].toFixed(1)}秒</span></div>`;
@@ -153,7 +157,7 @@ export function renderRecords() {
     gWrap.style.justifyContent = 'center';
     gWrap.style.width = '100%';
 
-    const vPct = Math.floor(((u.visionCleared ? u.visionCleared.length : 0) / (VISION_STAGES.length * 2)) * 100);
+    const vPct = Math.min(100, Math.floor(((u.visionCleared ? u.visionCleared.length : 0) / (VISION_STAGES.length * 3)) * 100));
     gWrap.innerHTML += `<div style="flex:1; background:#fff; padding:20px; border-radius:12px; border:1px solid #ccc; box-shadow:0 4px 6px rgba(0,0,0,0.05);">
         <h4 style="margin-top:0; color:#555; border-bottom:2px solid #eee; padding-bottom:10px;">🎮 全体の達成度</h4>
         <div style="margin-bottom:15px;"><div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>🖱️ マウス</span><span>${Math.floor((mLv / 7) * 100)}%</span></div><div style="width:100%; height:20px; background:#eee; border-radius:10px; overflow:hidden;"><div style="width:${Math.floor((mLv / 7) * 100)}%; height:100%; background:#2196F3;"></div></div></div>
