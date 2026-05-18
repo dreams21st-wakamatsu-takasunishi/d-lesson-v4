@@ -1315,6 +1315,49 @@ input[type="text"], input[type="date"], input[type="number"] { padding: 10px; fo
     max-width: 1320px !important;
 }
 
+.text-task-filter {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    width: min(1120px, 94%);
+    margin: 4px auto 0;
+    padding: 8px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.72);
+    border: 2px solid rgba(120,144,156,0.28);
+}
+
+.text-task-filter-btn {
+    min-width: 118px;
+    min-height: 44px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 2px solid #90a4ae;
+    background: #fff;
+    color: #37474f;
+    font-size: 16px;
+    font-weight: 900;
+    cursor: pointer;
+    box-shadow: 0 3px 0 #b0bec5;
+}
+
+.text-task-filter-btn.active {
+    background: #00695c;
+    color: #fff;
+    border-color: #004d40;
+    box-shadow: 0 3px 0 #003d33;
+}
+
+.text-task-filter-btn:hover {
+    transform: translateY(-1px);
+}
+
+.text-task-filter-btn:active {
+    transform: translateY(3px);
+    box-shadow: none;
+}
+
 .text-task-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
@@ -1420,6 +1463,15 @@ input[type="text"], input[type="date"], input[type="number"] { padding: 10px; fo
 }
 
 @media (max-width: 760px) {
+    .text-task-filter {
+        width: 96%;
+        gap: 8px;
+    }
+
+    .text-task-filter-btn {
+        flex: 1 1 140px;
+    }
+
     .text-task-grid {
         grid-template-columns: 1fr;
     }

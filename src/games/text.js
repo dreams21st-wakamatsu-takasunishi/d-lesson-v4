@@ -128,13 +128,52 @@ function renderTextContent() {
 export function goToTextMenu() { renderTextTasks(); showScreen('screen-text-menu'); }
 
 let currentTextPage = 0;
+let currentTextFilter = 'all';
 const TEXT_ITEMS_PER_PAGE = 6;
+
+function getTextTaskFilterLabel(filter) {
+    const labels = {
+        all: 'すべて',
+        easy: 'かんたん',
+        normal: 'ふつう',
+        hard: 'むずかしい',
+        done: 'やったことあり'
+    };
+    return labels[filter] || labels.all;
+}
+
+function filterTextTasks(tasks) {
+    return tasks.filter(task => {
+        const star = Number(task.star || 3);
+        if (currentTextFilter === 'easy') return star <= 2;
+        if (currentTextFilter === 'normal') return star === 3;
+        if (currentTextFilter === 'hard') return star >= 4;
+        if (currentTextFilter === 'done') return Boolean(users[currentUser]?.textRecords?.[task.id]);
+        return true;
+    });
+}
+
+function updateTextTaskFilterButtons() {
+    document.querySelectorAll('[data-text-task-filter]').forEach(button => {
+        const active = button.dataset.textTaskFilter === currentTextFilter;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+}
+
+export function setTextTaskFilter(filter = 'all') {
+    const allowed = new Set(['all', 'easy', 'normal', 'hard', 'done']);
+    currentTextFilter = allowed.has(filter) ? filter : 'all';
+    currentTextPage = 0;
+    renderTextTasks();
+}
 
 function renderTextTasks() {
     const cont = document.getElementById('text-menu-content');
     cont.innerHTML = '';
     const glob = users['__GLOBAL_SETTINGS__'];
     const tasks = Array.isArray(glob?.textTasks) ? glob.textTasks : [];
+    updateTextTaskFilterButtons();
     if (tasks.length === 0) {
         cont.innerHTML = `
             <div class="text-empty-state">
@@ -145,13 +184,24 @@ function renderTextTasks() {
         return;
     }
 
-    const totalPages = Math.ceil(tasks.length / TEXT_ITEMS_PER_PAGE);
+    const filteredTasks = filterTextTasks(tasks);
+    if (filteredTasks.length === 0) {
+        cont.innerHTML = `
+            <div class="text-empty-state">
+                <div class="text-empty-title">${escapeHtml(getTextTaskFilterLabel(currentTextFilter))} の課題はありません</div>
+                <div class="text-empty-note">別のボタンをえらぶと、ほかの課題を表示できます。</div>
+            </div>
+        `;
+        return;
+    }
+
+    const totalPages = Math.ceil(filteredTasks.length / TEXT_ITEMS_PER_PAGE);
     if (currentTextPage >= totalPages) currentTextPage = Math.max(0, totalPages - 1);
 
     const grid = document.createElement('div');
     grid.className = 'text-task-grid';
     
-    const start = currentTextPage * TEXT_ITEMS_PER_PAGE; const pageTasks = tasks.slice(start, start + TEXT_ITEMS_PER_PAGE);
+    const start = currentTextPage * TEXT_ITEMS_PER_PAGE; const pageTasks = filteredTasks.slice(start, start + TEXT_ITEMS_PER_PAGE);
 
     pageTasks.forEach(task => {
         const btn = document.createElement('button'); btn.className = 'stage-btn unlocked text-task-card';

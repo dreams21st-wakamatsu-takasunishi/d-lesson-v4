@@ -33,6 +33,8 @@ import {
     toggleAutoRubyTool,
     generateAutoRuby,
     processAutoRuby,
+    duplicateTextTask,
+    cancelTextTaskEdit,
     loadTextTaskTemplate,
     addStandardTextTaskTemplates,
     renderTextTaskTemplateOptions
@@ -121,6 +123,8 @@ export {
     toggleAutoRubyTool,
     generateAutoRuby,
     processAutoRuby,
+    duplicateTextTask,
+    cancelTextTaskEdit,
     loadTextTaskTemplate,
     addStandardTextTaskTemplates,
     renderTextTaskTemplateOptions,

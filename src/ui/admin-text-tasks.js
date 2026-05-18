@@ -59,6 +59,38 @@ function getTextTasks() {
     return users[GLOBAL_SETTINGS_ID].textTasks;
 }
 
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function resetTextTaskForm() {
+    editingTextTaskId = null;
+    document.getElementById('admin-text-title').value = '';
+    document.getElementById('admin-text-time').value = '';
+    document.getElementById('admin-text-star').value = '3';
+    document.getElementById('admin-text-content').value = '';
+    document.getElementById('btn-admin-text-save').innerText = '課題を追加';
+    const cancelButton = document.getElementById('btn-admin-text-cancel');
+    if (cancelButton) cancelButton.style.display = 'none';
+}
+
+function makeTextTaskListButton(label, className, onClick, options = {}) {
+    const button = document.createElement('button');
+    button.className = className;
+    button.type = 'button';
+    button.textContent = label;
+    button.disabled = Boolean(options.disabled);
+    button.style.fontSize = '14px';
+    button.style.padding = '5px 10px';
+    button.addEventListener('click', onClick);
+    return button;
+}
+
 export function adminAddTextTask() {
     const title = document.getElementById('admin-text-title').value.trim();
     const time = parseInt(document.getElementById('admin-text-time').value, 10);
@@ -88,10 +120,7 @@ export function adminAddTextTask() {
     }
     
     saveUsers(true); 
-    document.getElementById('admin-text-title').value = ''; 
-    document.getElementById('admin-text-time').value = ''; 
-    document.getElementById('admin-text-star').value = '3'; 
-    document.getElementById('admin-text-content').value = '';
+    resetTextTaskForm();
     renderAdminTextTasks();
 }
 
@@ -104,6 +133,8 @@ export function loadTextTaskTemplate(templateId) {
     document.getElementById('admin-text-star').value = template.star;
     document.getElementById('admin-text-content').value = template.content;
     document.getElementById('btn-admin-text-save').innerText = '課題を追加';
+    const cancelButton = document.getElementById('btn-admin-text-cancel');
+    if (cancelButton) cancelButton.style.display = 'none';
 }
 
 export function addStandardTextTaskTemplates() {
@@ -142,7 +173,32 @@ export function editTextTask(id) {
     document.getElementById('admin-text-star').value = task.star || 3;
     document.getElementById('admin-text-content').value = task.content;
     document.getElementById('btn-admin-text-save').innerText = '課題を更新';
+    const cancelButton = document.getElementById('btn-admin-text-cancel');
+    if (cancelButton) cancelButton.style.display = 'inline-flex';
     document.getElementById('admin-text-title').focus();
+}
+
+export function cancelTextTaskEdit() {
+    resetTextTaskForm();
+}
+
+export function duplicateTextTask(id) {
+    const tasks = getTextTasks();
+    const idx = tasks.findIndex(t => t.id === id);
+    if (idx === -1) return showCustomAlert('複製する課題が見つかりませんでした。');
+    const original = tasks[idx];
+    const duplicated = {
+        id: 'tt_' + Date.now(),
+        title: `${original.title} のコピー`,
+        time: original.time,
+        star: original.star || 3,
+        content: original.content
+    };
+    tasks.splice(idx + 1, 0, duplicated);
+    recordAdminAudit('文章課題複製', { from: original.title, title: duplicated.title });
+    saveUsers(true);
+    renderAdminTextTasks();
+    showCustomAlert('課題を複製しました。必要に応じて編集してください。');
 }
 
 export function moveTextTask(idx, dir) {
@@ -167,19 +223,29 @@ export function renderAdminTextTasks() {
         li.style.display = 'flex'; li.style.justifyContent = 'space-between'; li.style.alignItems = 'center'; li.style.marginBottom = '10px'; li.style.background = '#f9f9f9'; li.style.padding = '10px'; li.style.borderRadius = '5px'; li.style.border = '1px solid #ccc';
         
         let stars = "⭐".repeat(task.star || 3);
-        
-        li.innerHTML = `
-            <div style="flex:1;">
-                <strong>${task.title}</strong> <span style="font-size:12px; color:#FF9800;">${stars}</span> (${task.time}分)<br>
-                <span style="font-size:12px; color:#666;">${task.content.substring(0, 30)}...</span>
-            </div>
-            <div style="display:flex; gap:5px;">
-                <button class="btn-secondary" style="font-size:14px; padding:5px 10px;" onclick="moveTextTask(${idx}, -1)" ${idx === 0 ? 'disabled' : ''}>▲</button>
-                <button class="btn-secondary" style="font-size:14px; padding:5px 10px;" onclick="moveTextTask(${idx}, 1)" ${idx === tasks.length - 1 ? 'disabled' : ''}>▼</button>
-                <button class="btn-primary" style="font-size:14px; padding:5px 15px;" onclick="editTextTask('${task.id}')">編集</button>
-                <button class="btn-danger" style="font-size:14px; padding:5px 15px;" onclick="deleteTextTask(${idx}, '${task.title}')">削除</button>
-            </div>
+
+        const info = document.createElement('div');
+        info.style.flex = '1';
+        info.style.minWidth = '0';
+        info.innerHTML = `
+            <strong>${escapeHtml(task.title)}</strong>
+            <span style="font-size:12px; color:#FF9800;">${escapeHtml(stars)}</span>
+            <span>(${escapeHtml(task.time)}分)</span><br>
+            <span style="font-size:12px; color:#666;">${escapeHtml(String(task.content || '').substring(0, 40))}...</span>
         `;
+
+        const controls = document.createElement('div');
+        controls.style.display = 'flex';
+        controls.style.gap = '5px';
+        controls.style.flexWrap = 'wrap';
+        controls.style.justifyContent = 'flex-end';
+        controls.appendChild(makeTextTaskListButton('▲', 'btn-secondary', () => moveTextTask(idx, -1), { disabled: idx === 0 }));
+        controls.appendChild(makeTextTaskListButton('▼', 'btn-secondary', () => moveTextTask(idx, 1), { disabled: idx === tasks.length - 1 }));
+        controls.appendChild(makeTextTaskListButton('複製', 'btn-secondary', () => duplicateTextTask(task.id)));
+        controls.appendChild(makeTextTaskListButton('編集', 'btn-primary', () => editTextTask(task.id)));
+        controls.appendChild(makeTextTaskListButton('削除', 'btn-danger', () => deleteTextTask(idx, task.title)));
+        li.appendChild(info);
+        li.appendChild(controls);
         list.appendChild(li);
     });
 }

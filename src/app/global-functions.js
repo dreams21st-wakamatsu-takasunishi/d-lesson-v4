@@ -14,6 +14,7 @@ import {
     closeTextResult,
     confirmStartTextPractice,
     goToTextMenu,
+    setTextTaskFilter,
     submitTextPractice,
     toggleNavi,
     toggleNaviInPrep,
@@ -56,7 +57,7 @@ export function registerAppGlobalHandlers() {
 
         startMinigame, stopMinigame, openExternalTypingSite, openTypingRankingPage, saveTypingRankingNickname,
         toggleRubyInPrep, toggleNaviInPrep, confirmStartTextPractice, closeTextPrepModal,
-        submitTextPractice, closeTextResult, backToMenuFromText,
+        submitTextPractice, closeTextResult, backToMenuFromText, setTextTaskFilter,
 
         retryExam, backToMenu, handleSecretMenuClick,
         showRomajiMenu, renderKeyboardStages, backToKbChapter,
