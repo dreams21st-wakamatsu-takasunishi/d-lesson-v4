@@ -137,48 +137,144 @@ function getTextTaskFilterLabel(filter) {
         easy: 'かんたん',
         normal: 'ふつう',
         hard: 'むずかしい',
+        todo: 'まだ',
         done: 'やったことあり'
     };
     return labels[filter] || labels.all;
 }
 
-function filterTextTasks(tasks) {
-    return tasks.filter(task => {
-        const star = Number(task.star || 3);
-        if (currentTextFilter === 'easy') return star <= 2;
-        if (currentTextFilter === 'normal') return star === 3;
-        if (currentTextFilter === 'hard') return star >= 4;
-        if (currentTextFilter === 'done') return Boolean(users[currentUser]?.textRecords?.[task.id]);
-        return true;
-    });
+function textTaskMatchesFilter(task, filter) {
+    const star = Number(task.star || 3);
+    if (filter === 'easy') return star <= 2;
+    if (filter === 'normal') return star === 3;
+    if (filter === 'hard') return star >= 4;
+    if (filter === 'todo') return !users[currentUser]?.textRecords?.[task.id];
+    if (filter === 'done') return Boolean(users[currentUser]?.textRecords?.[task.id]);
+    return true;
 }
 
-function updateTextTaskFilterButtons() {
+function filterTextTasks(tasks) {
+    return tasks.filter(task => textTaskMatchesFilter(task, currentTextFilter));
+}
+
+function updateTextTaskFilterButtons(tasks = []) {
     document.querySelectorAll('[data-text-task-filter]').forEach(button => {
-        const active = button.dataset.textTaskFilter === currentTextFilter;
+        const filter = button.dataset.textTaskFilter || 'all';
+        const active = filter === currentTextFilter;
+        const count = tasks.filter(task => textTaskMatchesFilter(task, filter)).length;
         button.classList.toggle('active', active);
         button.setAttribute('aria-pressed', active ? 'true' : 'false');
+        button.innerHTML = `${escapeHtml(getTextTaskFilterLabel(filter))}<span class="text-task-filter-count">${escapeHtml(count)}</span>`;
     });
 }
 
 export function setTextTaskFilter(filter = 'all') {
-    const allowed = new Set(['all', 'easy', 'normal', 'hard', 'done']);
+    const allowed = new Set(['all', 'easy', 'normal', 'hard', 'todo', 'done']);
     currentTextFilter = allowed.has(filter) ? filter : 'all';
     currentTextPage = 0;
     renderTextTasks();
+}
+
+function textTaskMatchesCurrentUser(task) {
+    const targetGroup = String(task?.targetGroup || '').trim();
+    if (!targetGroup) return true;
+    const userGroup = String(users[currentUser]?.group || '').trim();
+    return userGroup === targetGroup;
+}
+
+function getTextTaskRecord(task) {
+    return users[currentUser]?.textRecords?.[task.id] || null;
+}
+
+function getTextTaskPlainContent(task) {
+    return String(task?.content || '').replace(/\{([^|]+)\|([^}]+)\}/g, '$1');
+}
+
+function getRecommendedTextTask(tasks) {
+    return tasks.find(task => !getTextTaskRecord(task)) || null;
+}
+
+function renderTextTaskSummary(container, tasks) {
+    const totalCount = tasks.length;
+    if (totalCount === 0) return;
+
+    const doneCount = tasks.filter(task => getTextTaskRecord(task)).length;
+    const remainingCount = Math.max(0, totalCount - doneCount);
+    const progressPercent = Math.round((doneCount / totalCount) * 100);
+    const statusText = remainingCount > 0
+        ? `あと ${remainingCount} こ`
+        : 'ぜんぶ できました';
+
+    const box = document.createElement('div');
+    box.className = 'text-task-summary';
+    box.innerHTML = `
+        <div class="text-task-summary-main">
+            <span class="text-task-summary-label">すすみぐあい</span>
+            <strong>${escapeHtml(doneCount)} / ${escapeHtml(totalCount)}</strong>
+            <span>${escapeHtml(statusText)}</span>
+        </div>
+        <div class="text-task-summary-bar" aria-label="文章課題の進み具合">
+            <span style="width:${escapeHtml(progressPercent)}%;"></span>
+        </div>
+    `;
+    container.appendChild(box);
+}
+
+function renderTextTaskRecommendation(container, tasks) {
+    if (currentTextFilter === 'done') return;
+    const recommendedTask = getRecommendedTextTask(tasks);
+    if (!recommendedTask) return;
+
+    const plainContent = getTextTaskPlainContent(recommendedTask);
+    const box = document.createElement('div');
+    box.className = 'text-task-recommend';
+    box.innerHTML = `
+        <div class="text-task-recommend-copy">
+            <span class="text-task-recommend-label">まずはこれ</span>
+            <strong>${escapeHtml(recommendedTask.title)}</strong>
+            <span>★${escapeHtml(recommendedTask.star || 3)} / ${escapeHtml(recommendedTask.time)}分 / ${escapeHtml(plainContent.length)}文字</span>
+        </div>
+    `;
+    const startButton = document.createElement('button');
+    startButton.className = 'text-task-recommend-btn';
+    startButton.type = 'button';
+    startButton.textContent = 'はじめる';
+    startButton.onclick = () => startTextPractice(recommendedTask.id);
+    box.appendChild(startButton);
+    container.appendChild(box);
 }
 
 function renderTextTasks() {
     const cont = document.getElementById('text-menu-content');
     cont.innerHTML = '';
     const glob = users['__GLOBAL_SETTINGS__'];
-    const tasks = Array.isArray(glob?.textTasks) ? glob.textTasks : [];
-    updateTextTaskFilterButtons();
-    if (tasks.length === 0) {
+    const allTasks = Array.isArray(glob?.textTasks) ? glob.textTasks : [];
+    const visibleTasks = allTasks.filter(task => task.hidden !== true);
+    const tasks = visibleTasks.filter(textTaskMatchesCurrentUser);
+    updateTextTaskFilterButtons(tasks);
+    if (allTasks.length === 0) {
         cont.innerHTML = `
             <div class="text-empty-state">
                 <div class="text-empty-title">まだ文章課題がありません</div>
                 <div class="text-empty-note">先生・管理者画面で課題を作ると、ここに表示されます。</div>
+            </div>
+        `;
+        return;
+    }
+    if (visibleTasks.length === 0) {
+        cont.innerHTML = `
+            <div class="text-empty-state">
+                <div class="text-empty-title">表示中の文章課題がありません</div>
+                <div class="text-empty-note">先生・管理者画面で課題を「表示する」にすると、ここに出ます。</div>
+            </div>
+        `;
+        return;
+    }
+    if (tasks.length === 0) {
+        cont.innerHTML = `
+            <div class="text-empty-state">
+                <div class="text-empty-title">このグループで表示中の文章課題がありません</div>
+                <div class="text-empty-note">先生・管理者画面で、課題の対象グループを確認してください。</div>
             </div>
         `;
         return;
@@ -198,6 +294,9 @@ function renderTextTasks() {
     const totalPages = Math.ceil(filteredTasks.length / TEXT_ITEMS_PER_PAGE);
     if (currentTextPage >= totalPages) currentTextPage = Math.max(0, totalPages - 1);
 
+    renderTextTaskSummary(cont, tasks);
+    renderTextTaskRecommendation(cont, filteredTasks);
+
     const grid = document.createElement('div');
     grid.className = 'text-task-grid';
     
@@ -207,14 +306,19 @@ function renderTextTasks() {
         const btn = document.createElement('button'); btn.className = 'stage-btn unlocked text-task-card';
         
         let recordHtml = '';
-        if (users[currentUser]?.textRecords?.[task.id]) {
-            const r = users[currentUser].textRecords[task.id];
+        const record = getTextTaskRecord(task);
+        const isDone = Boolean(record);
+        if (record) {
+            const r = record;
             recordHtml = `<span class="text-task-record">🏆 最高純字数: ${escapeHtml(r.score)}文字 / ミス${escapeHtml(r.miss)}</span>`;
         }
         let stars = "⭐".repeat(task.star || 3);
-        const plainContent = String(task.content || '').replace(/\{([^|]+)\|([^}]+)\}/g, '$1');
+        const plainContent = getTextTaskPlainContent(task);
         btn.innerHTML = `
-            <span class="text-task-title">${escapeHtml(task.title)}</span>
+            <span class="text-task-card-head">
+                <span class="text-task-title">${escapeHtml(task.title)}</span>
+                <span class="text-task-status ${isDone ? 'done' : 'todo'}">${isDone ? 'やった' : 'まだ'}</span>
+            </span>
             <span class="text-task-meta">
                 <span>難易度: ${escapeHtml(stars)}</span>
                 <span>制限時間: ${escapeHtml(task.time)}分</span>
@@ -372,8 +476,26 @@ function showTextResult() {
 
     if (!users[currentUser].textRecords) users[currentUser].textRecords = {};
     let isNewRecord = false, prev = users[currentUser].textRecords[currentTextTask.id];
-    if (!prev || netCount > prev.score) {
-        if (canSaveResult) users[currentUser].textRecords[currentTextTask.id] = { score: netCount, total: totalCount, miss: missCount };
+    const finishedAt = new Date().toISOString();
+    const prevRecord = prev && typeof prev === 'object' ? prev : null;
+    const shouldSaveBest = !prevRecord || netCount > Number(prevRecord.score || 0);
+    if (canSaveResult) {
+        const nextRecord = {
+            ...(prevRecord || {}),
+            lastCompletedAt: finishedAt,
+            attempts: Number(prevRecord?.attempts || 0) + 1
+        };
+        if (shouldSaveBest) {
+            Object.assign(nextRecord, {
+                score: netCount,
+                total: totalCount,
+                miss: missCount,
+                bestAt: finishedAt
+            });
+        }
+        users[currentUser].textRecords[currentTextTask.id] = nextRecord;
+    }
+    if (shouldSaveBest) {
         isNewRecord = canSaveResult;
     }
     

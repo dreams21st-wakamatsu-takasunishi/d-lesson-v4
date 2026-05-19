@@ -43,6 +43,7 @@
         <div class="title-actions">
             <button id="title-logout-btn" class="btn-secondary title-action-btn title-logout-btn" onclick="handleGlobalLogout()" tabindex="-1">🚪 ログアウト</button>
             <button id="title-teacher-preview-btn" class="btn-secondary title-action-btn" onclick="loginAsMaster()" tabindex="-1" title="先生・管理者アカウントで全ステージを確認します" style="display:none;">🔎 先生用プレビュー</button>
+            <button id="title-teacher-status-btn" class="btn-secondary title-action-btn" onclick="openTeacherStatus()" tabindex="-1" title="担当範囲の児童状況を確認します" style="display:none;">📋 先生用確認</button>
             <button id="title-admin-btn" class="btn-admin title-action-btn" onclick="openAdmin()" tabindex="-1" title="管理者アカウントで設定画面を開きます" style="display:none;">⚙️ 管理者用</button>
         </div>
     </div>
@@ -339,6 +340,16 @@
                                     <option value="5">⭐⭐⭐⭐⭐ 5 (むずかしい)</option>
                                 </select>
                             </div>
+                            <label style="display:flex; align-items:center; gap:10px; background:#f5f7f8; border:2px solid #cfd8dc; border-radius:10px; padding:10px 12px; font-size:16px; font-weight:bold; color:#37474f;">
+                                <input type="checkbox" id="admin-text-visible" checked style="width:22px; height:22px;">
+                                児童の文章入力メニューに表示する
+                            </label>
+                            <label style="display:flex; align-items:center; gap:10px; background:#f5f7f8; border:2px solid #cfd8dc; border-radius:10px; padding:10px 12px; font-size:16px; font-weight:bold; color:#37474f;">
+                                対象グループ
+                                <select id="admin-text-target-group" style="flex:1; min-width:180px; padding:8px; font-size:16px; border-radius:8px; border:2px solid #cfd8dc;">
+                                    <option value="">全員</option>
+                                </select>
+                            </label>
                             <!-- ★修正: テキストエリアを広くする -->
                             <textarea id="admin-text-content" placeholder="ここにお手本の文章を入力してください" style="width:100%; height:300px; font-size:18px; padding:15px; border-radius:10px; border:2px solid #ccc; box-sizing:border-box;"></textarea>
                             <div style="display:flex; gap:10px; align-items:center; background:#e1f5fe; padding:10px; border-radius:10px; border:2px solid #81d4fa;">
@@ -361,7 +372,51 @@
                         </div>
                         <!-- ★修正: リスト部分も高くする -->
                         <div style="flex:1; display:flex; flex-direction:column; background:#f9f9f9; border-radius:10px; border:2px solid #ddd; padding:15px; box-sizing:border-box; height: 75vh;">
-                            <h4 style="margin:0 0 15px 0; color:#555; font-size:18px;">📋 作成済みの課題一覧</h4>
+                            <h4 style="margin:0 0 10px 0; color:#555; font-size:18px;">📋 作成済みの課題一覧 <span id="admin-text-task-list-summary" style="font-size:13px; color:#607d8b; font-weight:bold;"></span></h4>
+                            <div style="display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:8px; margin-bottom:10px;">
+                                <select id="admin-text-list-filter-group" onchange="renderAdminTextTasks()" style="padding:8px; font-size:14px; border-radius:8px; border:2px solid #cfd8dc;">
+                                    <option value="all">すべての対象</option>
+                                </select>
+                                <select id="admin-text-list-filter-visibility" onchange="renderAdminTextTasks()" style="padding:8px; font-size:14px; border-radius:8px; border:2px solid #cfd8dc;">
+                                    <option value="all">表示・非表示すべて</option>
+                                    <option value="visible">表示中のみ</option>
+                                    <option value="hidden">非表示のみ</option>
+                                </select>
+                                <select id="admin-text-list-filter-difficulty" onchange="renderAdminTextTasks()" style="padding:8px; font-size:14px; border-radius:8px; border:2px solid #cfd8dc;">
+                                    <option value="all">すべての難易度</option>
+                                    <option value="easy">★1〜2</option>
+                                    <option value="normal">★3</option>
+                                    <option value="hard">★4〜5</option>
+                                </select>
+                                <select id="admin-text-list-filter-progress" onchange="renderAdminTextTasks()" style="padding:8px; font-size:14px; border-radius:8px; border:2px solid #cfd8dc;">
+                                    <option value="all">実施状況すべて</option>
+                                    <option value="incomplete">未実施あり</option>
+                                    <option value="complete">対象全員が実施済み</option>
+                                    <option value="no-target">対象児童なし</option>
+                                </select>
+                                <select id="admin-text-list-sort" onchange="renderAdminTextTasks()" style="padding:8px; font-size:14px; border-radius:8px; border:2px solid #cfd8dc;">
+                                    <option value="manual">手動順</option>
+                                    <option value="incomplete-desc">未実施が多い順</option>
+                                    <option value="completion-asc">実施率が低い順</option>
+                                    <option value="completed-desc">実施済みが多い順</option>
+                                    <option value="title-asc">タイトル順</option>
+                                </select>
+                                <button class="btn-secondary" type="button" onclick="resetAdminTextTaskFilters()" style="font-size:14px; padding:8px 12px; margin:0;">絞り込み解除</button>
+                            </div>
+                            <input id="admin-text-list-search" type="text" placeholder="タイトル・本文で検索" oninput="renderAdminTextTasks()" style="width:100%; box-sizing:border-box; margin:0 0 10px 0; padding:9px; font-size:14px; border-radius:8px; border:2px solid #cfd8dc;">
+                            <div style="display:grid; grid-template-columns: 1fr auto; gap:8px; margin-bottom:8px; padding:8px; background:#eef7f8; border:2px solid #b2dfdb; border-radius:10px;">
+                                <select id="admin-text-bulk-target-group" style="padding:8px; font-size:14px; border-radius:8px; border:2px solid #80cbc4;">
+                                    <option value="">全員</option>
+                                </select>
+                                <button class="btn-secondary" type="button" onclick="applyAdminTextTaskBulkTargetGroup()" style="font-size:14px; padding:8px 12px; margin:0;">表示中の課題へ対象を適用</button>
+                                <select id="admin-text-bulk-visibility" style="padding:8px; font-size:14px; border-radius:8px; border:2px solid #80cbc4;">
+                                    <option value="visible">表示中にする</option>
+                                    <option value="hidden">非表示にする</option>
+                                </select>
+                                <button class="btn-secondary" type="button" onclick="applyAdminTextTaskBulkVisibility()" style="font-size:14px; padding:8px 12px; margin:0;">表示中の課題へ表示状態を適用</button>
+                                <button class="btn-primary" type="button" onclick="exportVisibleAdminTextTaskProgressCsv()" style="grid-column:1 / -1; font-size:14px; padding:9px 12px; margin:0;">表示中の課題の実施状況CSV</button>
+                                <button class="btn-secondary" type="button" onclick="exportVisibleAdminTextTaskIncompleteCsv()" style="grid-column:1 / -1; font-size:14px; padding:9px 12px; margin:0;">表示中の課題の未実施児童CSV</button>
+                            </div>
                             <ul id="admin-text-task-list" style="list-style:none; padding:0; margin:0; width:100%; text-align:left; overflow-y:auto; flex:1;"></ul>
                         </div>
                     </div>
@@ -677,6 +732,7 @@
             <button class="text-task-filter-btn" data-text-task-filter="easy" onclick="setTextTaskFilter('easy')">かんたん</button>
             <button class="text-task-filter-btn" data-text-task-filter="normal" onclick="setTextTaskFilter('normal')">ふつう</button>
             <button class="text-task-filter-btn" data-text-task-filter="hard" onclick="setTextTaskFilter('hard')">むずかしい</button>
+            <button class="text-task-filter-btn" data-text-task-filter="todo" onclick="setTextTaskFilter('todo')">まだ</button>
             <button class="text-task-filter-btn" data-text-task-filter="done" onclick="setTextTaskFilter('done')">やったことあり</button>
         </div>
         <div id="text-menu-content" style="width: 100%; max-width: 1100px; display: flex; flex-direction: column; align-items: center; gap: 15px; padding-top: 15px;"></div>

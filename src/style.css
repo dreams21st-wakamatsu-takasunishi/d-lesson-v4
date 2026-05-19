@@ -113,6 +113,244 @@ body {
     background-color: #546e7a;
 }
 
+.teacher-status-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2200;
+    align-items: center;
+    justify-content: center;
+    padding: 22px;
+    background: rgba(20, 32, 38, 0.52);
+    box-sizing: border-box;
+}
+
+.teacher-status-dialog {
+    width: min(1120px, 96vw);
+    max-height: min(86vh, 820px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 3px solid #80cbc4;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 18px 48px rgba(0,0,0,0.32);
+}
+
+.teacher-status-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 20px 24px 16px;
+    background: #e0f2f1;
+    border-bottom: 1px solid #b2dfdb;
+}
+
+.teacher-status-header h2 {
+    margin: 0 0 6px;
+    color: #00695c;
+    text-align: left;
+    font-size: 26px;
+}
+
+.teacher-status-header p {
+    margin: 0;
+    color: #455a64;
+    text-align: left;
+    font-size: 15px;
+    line-height: 1.6;
+}
+
+.teacher-status-close {
+    flex: 0 0 auto;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    margin: 0;
+    border-radius: 50%;
+    background: #546e7a;
+    color: #fff;
+    font-size: 28px;
+    line-height: 1;
+}
+
+.teacher-status-body {
+    overflow: auto;
+    padding: 18px 24px 24px;
+}
+
+.teacher-status-controls {
+    display: grid;
+    grid-template-columns: minmax(220px, 1.4fr) minmax(170px, 1fr) minmax(190px, 1fr) repeat(3, auto);
+    gap: 10px;
+    padding: 14px 24px;
+    border-bottom: 1px solid #d9e5e8;
+    background: #fbfefe;
+}
+
+.teacher-status-controls input,
+.teacher-status-controls select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 12px;
+    border: 2px solid #b0bec5;
+    border-radius: 10px;
+    background: #fff;
+    color: #263238;
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.teacher-status-reset {
+    min-width: 82px;
+    padding: 10px 14px;
+    margin: 0;
+    border-radius: 10px;
+    background: #78909c;
+    color: #fff;
+    font-size: 14px;
+    box-shadow: 0 3px 0 rgba(0,0,0,0.22);
+}
+
+.teacher-status-export {
+    min-width: 112px;
+    padding: 10px 14px;
+    margin: 0;
+    border-radius: 10px;
+    background: #2e7d32;
+    color: #fff;
+    font-size: 14px;
+    box-shadow: 0 3px 0 rgba(0,0,0,0.22);
+}
+
+.teacher-status-export.secondary {
+    background: #0277bd;
+}
+
+.teacher-status-summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.teacher-status-summary > div {
+    padding: 14px;
+    border: 1px solid #cfd8dc;
+    border-radius: 10px;
+    background: #f7fafb;
+}
+
+.teacher-status-summary span {
+    display: block;
+    margin-bottom: 5px;
+    color: #607d8b;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.teacher-status-summary strong {
+    display: block;
+    color: #263238;
+    font-size: 22px;
+}
+
+.teacher-status-table-wrap {
+    overflow: auto;
+    border: 1px solid #cfd8dc;
+    border-radius: 10px;
+}
+
+.teacher-status-table {
+    width: 100%;
+    min-width: 940px;
+    border-collapse: collapse;
+    color: #263238;
+    font-size: 14px;
+}
+
+.teacher-status-table th,
+.teacher-status-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #eceff1;
+    text-align: left;
+    vertical-align: top;
+}
+
+.teacher-status-table th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: #f1f8f7;
+    color: #00695c;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.teacher-status-table strong {
+    display: block;
+    color: #263238;
+    font-size: 15px;
+    line-height: 1.45;
+}
+
+.teacher-status-table small {
+    display: block;
+    margin-top: 3px;
+    color: #607d8b;
+    font-size: 11px;
+    line-height: 1.45;
+    word-break: break-all;
+}
+
+.teacher-status-progress {
+    display: block;
+    width: 120px;
+    height: 9px;
+    margin-top: 6px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #eceff1;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.12);
+}
+
+.teacher-status-progress span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: #26a69a;
+}
+
+.teacher-status-empty {
+    padding: 28px;
+    border: 2px dashed #90a4ae;
+    border-radius: 12px;
+    background: #f5f7f8;
+    color: #455a64;
+    text-align: center;
+    font-size: 17px;
+    font-weight: 800;
+    line-height: 1.7;
+}
+
+@media (max-width: 760px) {
+    .teacher-status-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .teacher-status-header {
+        padding: 16px;
+    }
+
+    .teacher-status-controls {
+        grid-template-columns: 1fr;
+        padding: 12px 14px;
+    }
+
+    .teacher-status-body {
+        padding: 14px;
+    }
+}
+
 /* =========================================================
    [CSS] UIパーツ
    ========================================================= */
@@ -1329,6 +1567,10 @@ input[type="text"], input[type="date"], input[type="number"] { padding: 10px; fo
 }
 
 .text-task-filter-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
     min-width: 118px;
     min-height: 44px;
     padding: 8px 14px;
@@ -1342,11 +1584,30 @@ input[type="text"], input[type="date"], input[type="number"] { padding: 10px; fo
     box-shadow: 0 3px 0 #b0bec5;
 }
 
+.text-task-filter-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 24px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: #e3f2fd;
+    color: #0d47a1;
+    font-size: 14px;
+    line-height: 1;
+}
+
 .text-task-filter-btn.active {
     background: #00695c;
     color: #fff;
     border-color: #004d40;
     box-shadow: 0 3px 0 #003d33;
+}
+
+.text-task-filter-btn.active .text-task-filter-count {
+    background: rgba(255,255,255,0.96);
+    color: #00695c;
 }
 
 .text-task-filter-btn:hover {
@@ -1363,6 +1624,122 @@ input[type="text"], input[type="date"], input[type="number"] { padding: 10px; fo
     grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
     gap: 16px;
     width: 100%;
+}
+
+.text-task-summary {
+    display: grid;
+    gap: 10px;
+    width: min(920px, 100%);
+    box-sizing: border-box;
+    padding: 14px 18px;
+    border-radius: 12px;
+    border: 2px solid #80cbc4;
+    background: #f1fbfa;
+    color: #263238;
+}
+
+.text-task-summary-main {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    font-size: 17px;
+    font-weight: 900;
+}
+
+.text-task-summary-label {
+    border-radius: 999px;
+    padding: 5px 10px;
+    background: #00695c;
+    color: #fff;
+    font-size: 14px;
+}
+
+.text-task-summary-main strong {
+    font-size: 24px;
+    color: #00695c;
+}
+
+.text-task-summary-bar {
+    display: block;
+    height: 14px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: #dbe6e8;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.18);
+}
+
+.text-task-summary-bar span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #26a69a, #66bb6a);
+}
+
+.text-task-recommend {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 16px;
+    width: min(920px, 100%);
+    box-sizing: border-box;
+    padding: 16px 18px;
+    border-radius: 12px;
+    border: 3px solid #ffb300;
+    background: #fff8e1;
+    color: #263238;
+    box-shadow: 0 5px 0 rgba(255, 179, 0, 0.45);
+}
+
+.text-task-recommend-copy {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    font-weight: 900;
+    line-height: 1.35;
+}
+
+.text-task-recommend-copy strong {
+    font-size: 20px;
+    color: #bf360c;
+    overflow-wrap: anywhere;
+}
+
+.text-task-recommend-copy span:last-child {
+    color: #546e7a;
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+.text-task-recommend-label {
+    flex: 0 0 auto;
+    border-radius: 999px;
+    padding: 5px 10px;
+    background: #ff6f00;
+    color: #fff;
+    font-size: 14px;
+}
+
+.text-task-recommend-btn {
+    flex: 0 0 auto;
+    min-width: 132px;
+    min-height: 48px;
+    padding: 10px 18px;
+    border: 0;
+    border-radius: 10px;
+    background: #2e7d32;
+    color: #fff;
+    box-shadow: 0 4px 0 #1b5e20;
+    font-size: 18px;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.text-task-recommend-btn:active {
+    transform: translateY(3px);
+    box-shadow: 0 1px 0 #1b5e20;
 }
 
 .stage-btn.text-task-card {
@@ -1382,12 +1759,42 @@ input[type="text"], input[type="date"], input[type="number"] { padding: 10px; fo
     overflow: hidden;
 }
 
+.text-task-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    padding-right: 92px;
+    box-sizing: border-box;
+}
+
 .text-task-title {
     font-size: 22px;
     line-height: 1.25;
     font-weight: 900;
     color: #fff;
     overflow-wrap: anywhere;
+}
+
+.text-task-status {
+    flex: 0 0 auto;
+    border-radius: 999px;
+    padding: 5px 10px;
+    font-size: 14px;
+    line-height: 1;
+    font-weight: 900;
+    border: 2px solid rgba(255,255,255,0.9);
+}
+
+.text-task-status.todo {
+    background: #fffde7;
+    color: #e65100;
+}
+
+.text-task-status.done {
+    background: #e8f5e9;
+    color: #1b5e20;
 }
 
 .text-task-meta {
@@ -1462,6 +1869,58 @@ input[type="text"], input[type="date"], input[type="number"] { padding: 10px; fo
     line-height: 1.7;
 }
 
+.admin-text-progress-line {
+    display: grid;
+    grid-template-columns: minmax(120px, auto) minmax(160px, 1fr);
+    align-items: center;
+    gap: 10px;
+    width: min(520px, 100%);
+    margin: 2px 0 6px;
+    font-size: 12px;
+    font-weight: 900;
+    color: #455a64;
+}
+
+.admin-text-progress-label {
+    white-space: nowrap;
+}
+
+.admin-text-progress-track {
+    display: block;
+    height: 10px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: #eceff1;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.18);
+}
+
+.admin-text-progress-track span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: #42a5f5;
+}
+
+.admin-text-progress-line.attention .admin-text-progress-track span {
+    background: #ff9800;
+}
+
+.admin-text-progress-line.progressing .admin-text-progress-track span {
+    background: #42a5f5;
+}
+
+.admin-text-progress-line.complete .admin-text-progress-track span {
+    background: #2e7d32;
+}
+
+.admin-text-progress-line.empty {
+    color: #78909c;
+}
+
+.admin-text-progress-line.empty .admin-text-progress-track span {
+    background: #b0bec5;
+}
+
 @media (max-width: 760px) {
     .text-task-filter {
         width: 96%;
@@ -1474,6 +1933,18 @@ input[type="text"], input[type="date"], input[type="number"] { padding: 10px; fo
 
     .text-task-grid {
         grid-template-columns: 1fr;
+    }
+
+    .text-task-recommend {
+        grid-template-columns: 1fr;
+    }
+
+    .text-task-recommend-copy {
+        flex-wrap: wrap;
+    }
+
+    .text-task-recommend-btn {
+        width: 100%;
     }
 
     .text-task-reward {
