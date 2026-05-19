@@ -9,6 +9,8 @@ import { createConfetti } from '../ui/reward.js';
 let currentTextTask = null, textTimerInterval = null, textTimeLeft = 0;
 let isRubyOn = true, isNaviOn = true;
 let cancelStartHandler = null;
+let isTextPracticeFinishing = false;
+let isTextResultProcessed = false;
 
 export function getCurrentTextTask() {
     return currentTextTask;
@@ -404,6 +406,8 @@ export function closeTextPrepModal() {
 export function confirmStartTextPractice() {
     closeTextPrepModal();
     showScreen('screen-text-game'); 
+    isTextPracticeFinishing = false;
+    isTextResultProcessed = false;
     document.getElementById('text-result-overlay').style.display = 'none';
     document.getElementById('text-title-display').innerText = currentTextTask.title;
     document.getElementById('btn-submit-text').style.display = 'none'; 
@@ -449,6 +453,8 @@ function updateTextHud() {
 }
 
 export function submitTextPractice() {
+    if (isTextPracticeFinishing || isTextResultProcessed) return;
+    isTextPracticeFinishing = true;
     if (textTimerInterval) { clearInterval(textTimerInterval); textTimerInterval = null; }
     const typeBox = document.getElementById('type-text-box'); typeBox.disabled = true;
     typeBox.oninput = null; 
@@ -465,6 +471,8 @@ export function submitTextPractice() {
 }
 
 function showTextResult() {
+    if (isTextResultProcessed) return;
+    isTextResultProcessed = true;
     const canSaveResult = canWriteCurrentUserRow();
     const originalUserData = users[currentUser] ? JSON.parse(JSON.stringify(users[currentUser])) : null;
     const typeBox = document.getElementById('type-text-box');
@@ -584,6 +592,7 @@ function recordTextPracticeInterrupt() {
 }
 
 export function backToMenuFromText() {
+    if (isTextPracticeFinishing || isTextResultProcessed) return;
     recordTextPracticeInterrupt();
     if (textTimerInterval) { clearInterval(textTimerInterval); textTimerInterval = null; }
     if (cancelStartHandler) { document.removeEventListener('keydown', cancelStartHandler); cancelStartHandler = null; const overlay = document.getElementById('text-start-overlay'); if (overlay) overlay.style.display = 'none'; }

@@ -60,7 +60,7 @@ export let currentLessonAccess = [];
 let authGatePromise = null;
 let authGateResolve = null;
 let authGateAfterLogin = null;
-let studentLoginState = { number: '', passcode: '' };
+let studentLoginState = { number: '', passcode: '', showPasscode: false };
 let pendingStudentLoginNumber = '';
 let studentIdleLogoutTimer = null;
 let studentIdleWatcherStarted = false;
@@ -596,7 +596,7 @@ function isStudentClickLoginEnabled() {
 }
 
 function resetStudentLoginState() {
-    studentLoginState = { number: '', passcode: '' };
+    studentLoginState = { number: '', passcode: '', showPasscode: false };
 }
 
 function padStudentLoginNumber(number) {
@@ -636,7 +636,10 @@ function buildStudentAuthPanelHtml() {
                 </label>
                 <label class="student-login-label">
                     あいことば
-                    <input id="student-login-passcode" class="student-login-input" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="current-password" placeholder="${STUDENT_LOGIN_PASSCODE_MIN_LENGTH}けた以上" required>
+                    <div class="student-login-passcode-row">
+                        <input id="student-login-passcode" class="student-login-input" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="current-password" placeholder="${STUDENT_LOGIN_PASSCODE_MIN_LENGTH}けた以上" required>
+                        <button id="student-login-passcode-toggle" class="student-login-passcode-toggle" type="button" aria-pressed="false">👀 みる</button>
+                    </div>
                 </label>
             </div>
             <button id="student-auth-submit" class="btn-primary student-login-submit" type="submit">ログイン</button>
@@ -701,6 +704,31 @@ function buildAuthGateHtml(isError = false) {
                     font-weight:700;
                     letter-spacing:0;
                 }
+                .student-login-passcode-row {
+                    display:grid;
+                    grid-template-columns:minmax(0, 1fr) 96px;
+                    gap:10px;
+                    align-items:end;
+                    margin-top:7px;
+                }
+                .student-login-passcode-row .student-login-input {
+                    margin-top:0;
+                }
+                .student-login-passcode-toggle {
+                    min-height:54px;
+                    margin:0;
+                    padding:10px 12px;
+                    border:0;
+                    border-radius:8px;
+                    background:#0284c7;
+                    color:#fff;
+                    font-size:16px;
+                    font-weight:900;
+                    box-shadow:0 4px 0 rgba(15,23,42,0.22);
+                }
+                .student-login-passcode-toggle[aria-pressed="true"] {
+                    background:#475569;
+                }
                 .student-login-submit {
                     width:100%;
                     min-height:54px;
@@ -718,9 +746,16 @@ function buildAuthGateHtml(isError = false) {
                     outline:3px solid #93c5fd;
                     outline-offset:2px;
                 }
+                .student-login-passcode-toggle:focus {
+                    outline:3px solid #93c5fd;
+                    outline-offset:2px;
+                }
                 @media (max-width: 760px) {
                     #supabase-auth-card {
                         padding:16px !important;
+                    }
+                    .student-login-passcode-row {
+                        grid-template-columns:1fr;
                     }
                 }
             </style>
@@ -742,6 +777,16 @@ function updateStudentLoginUi() {
     const passcodeInput = document.getElementById('student-login-passcode');
     if (passcodeInput && passcodeInput.value !== studentLoginState.passcode) {
         passcodeInput.value = studentLoginState.passcode;
+    }
+    if (passcodeInput) {
+        passcodeInput.type = studentLoginState.showPasscode ? 'text' : 'password';
+    }
+
+    const passcodeToggle = document.getElementById('student-login-passcode-toggle');
+    if (passcodeToggle) {
+        passcodeToggle.setAttribute('aria-pressed', studentLoginState.showPasscode ? 'true' : 'false');
+        passcodeToggle.innerText = studentLoginState.showPasscode ? '🙈 かくす' : '👀 みる';
+        passcodeToggle.title = studentLoginState.showPasscode ? 'あいことばをかくします' : 'あいことばを表示します';
     }
 
     const submit = document.getElementById('student-auth-submit');
@@ -772,6 +817,15 @@ function bindAuthGateEvents() {
             studentLoginState.passcode = passcodeInput.value.replace(/\D/g, '').slice(0, STUDENT_LOGIN_PASSCODE_MAX_LENGTH);
             setAuthGateMessage('');
             updateStudentLoginUi();
+        };
+    }
+
+    const passcodeToggle = document.getElementById('student-login-passcode-toggle');
+    if (passcodeToggle) {
+        passcodeToggle.onclick = () => {
+            studentLoginState.showPasscode = !studentLoginState.showPasscode;
+            updateStudentLoginUi();
+            passcodeInput?.focus();
         };
     }
 

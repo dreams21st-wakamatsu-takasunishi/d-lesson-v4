@@ -180,7 +180,7 @@ body {
 
 .teacher-status-controls {
     display: grid;
-    grid-template-columns: minmax(220px, 1.4fr) minmax(170px, 1fr) minmax(190px, 1fr) repeat(3, auto);
+    grid-template-columns: minmax(180px, 1.25fr) minmax(140px, 0.9fr) minmax(170px, 1fr) minmax(180px, 1fr) repeat(4, auto);
     gap: 10px;
     padding: 14px 24px;
     border-bottom: 1px solid #d9e5e8;
@@ -226,9 +226,20 @@ body {
     background: #0277bd;
 }
 
+.teacher-status-print {
+    min-width: 82px;
+    padding: 10px 14px;
+    margin: 0;
+    border-radius: 10px;
+    background: #6a1b9a;
+    color: #fff;
+    font-size: 14px;
+    box-shadow: 0 3px 0 rgba(0,0,0,0.22);
+}
+
 .teacher-status-summary {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 12px;
     margin-bottom: 16px;
 }
@@ -262,7 +273,7 @@ body {
 
 .teacher-status-table {
     width: 100%;
-    min-width: 940px;
+    min-width: 1120px;
     border-collapse: collapse;
     color: #263238;
     font-size: 14px;
@@ -320,6 +331,196 @@ body {
     background: #26a69a;
 }
 
+.teacher-status-alerts {
+    display: flex;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 5px;
+    max-width: 170px;
+}
+
+.teacher-status-alert,
+.teacher-status-ok {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 900;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.teacher-status-alert.warning {
+    background: #fff3e0;
+    color: #bf360c;
+    border: 1px solid #ffcc80;
+}
+
+.teacher-status-alert.notice {
+    background: #fce4ec;
+    color: #880e4f;
+    border: 1px solid #f8bbd0;
+}
+
+.teacher-status-alert.info {
+    background: #e3f2fd;
+    color: #0d47a1;
+    border: 1px solid #90caf9;
+}
+
+.teacher-status-alert.more {
+    background: #eceff1;
+    color: #455a64;
+    border: 1px solid #cfd8dc;
+}
+
+.teacher-status-ok {
+    background: #e8f5e9;
+    color: #1b5e20;
+    border: 1px solid #a5d6a7;
+}
+
+.teacher-status-detail-btn,
+.teacher-status-detail-head button {
+    min-width: 70px;
+    padding: 8px 12px;
+    margin: 0;
+    border-radius: 9px;
+    background: #00695c;
+    color: #fff;
+    font-size: 13px;
+    box-shadow: 0 3px 0 rgba(0,0,0,0.2);
+}
+
+.teacher-status-detail {
+    margin-bottom: 16px;
+    border: 2px solid #80cbc4;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #f8fffe;
+}
+
+.teacher-status-detail-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 14px 16px;
+    background: #e0f2f1;
+    border-bottom: 1px solid #b2dfdb;
+}
+
+.teacher-status-detail-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.teacher-status-detail-head span,
+.teacher-status-detail-head small {
+    display: block;
+    color: #607d8b;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.teacher-status-detail-head strong {
+    display: block;
+    margin: 4px 0;
+    color: #004d40;
+    font-size: 22px;
+}
+
+.teacher-status-detail-alerts {
+    margin-top: 8px;
+}
+
+.teacher-status-detail-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 14px;
+    padding: 14px;
+}
+
+.teacher-status-detail h3 {
+    width: auto;
+    margin: 0 0 10px;
+    padding: 0 0 6px;
+    border-bottom: 2px solid #b2dfdb;
+    color: #00695c;
+    font-size: 17px;
+    text-align: left;
+}
+
+.teacher-status-log-list,
+.teacher-status-text-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 8px;
+}
+
+.teacher-status-log-list li,
+.teacher-status-text-list li {
+    padding: 10px 12px;
+    border: 1px solid #cfd8dc;
+    border-radius: 10px;
+    background: #fff;
+}
+
+.teacher-status-log-list strong,
+.teacher-status-text-list strong {
+    display: block;
+    color: #263238;
+    font-size: 14px;
+}
+
+.teacher-status-log-list span,
+.teacher-status-text-list span {
+    display: inline-flex;
+    margin: 5px 0 3px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: #eceff1;
+    color: #455a64;
+    font-size: 12px;
+    font-weight: 900;
+}
+
+.teacher-status-text-list li.done span {
+    background: #e8f5e9;
+    color: #1b5e20;
+}
+
+.teacher-status-text-list li.todo span {
+    background: #fff3e0;
+    color: #e65100;
+}
+
+.teacher-status-log-list small,
+.teacher-status-text-list small {
+    display: block;
+    color: #607d8b;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.teacher-status-detail-empty {
+    margin: 0;
+    padding: 18px;
+    border: 2px dashed #b0bec5;
+    border-radius: 10px;
+    background: #fff;
+    color: #607d8b;
+    font-size: 14px;
+    text-align: center;
+}
+
 .teacher-status-empty {
     padding: 28px;
     border: 2px dashed #90a4ae;
@@ -348,6 +549,10 @@ body {
 
     .teacher-status-body {
         padding: 14px;
+    }
+
+    .teacher-status-detail-grid {
+        grid-template-columns: 1fr;
     }
 }
 
