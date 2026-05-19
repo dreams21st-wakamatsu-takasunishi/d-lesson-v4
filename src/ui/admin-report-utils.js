@@ -41,6 +41,204 @@ export function formatRecordSeconds(value) {
     return typeof value === 'number' ? `${value.toFixed(1)}\u79d2` : '-';
 }
 
+export const VISION_RADAR_GROUPS = [
+    { id: 'find', label: '見つける', stageIds: ['v1', 'v2', 'v5', 'v12', 'v15', 'v18', 'v20'] },
+    { id: 'compare', label: 'くらべる', stageIds: ['v13', 'v14', 'v17'] },
+    { id: 'react', label: '反応する', stageIds: ['v3', 'v6', 'v10'] },
+    { id: 'memory', label: '覚える', stageIds: ['v4', 'v7', 'v9', 'v11', 'v19'] },
+    { id: 'track', label: '目で追う', stageIds: ['v8', 'v16'] }
+];
+
+const VISION_RADAR_DIFFICULTY_SUFFIXES = ['_easy', '', '_hard'];
+const VISION_RADAR_MAX_SCORE = 160;
+const VISION_RADAR_AVERAGE_SCORE = 100;
+
+function average(values) {
+    const valid = values.filter(value => Number.isFinite(value) && value > 0);
+    if (!valid.length) return null;
+    return valid.reduce((sum, value) => sum + value, 0) / valid.length;
+}
+
+function collectVisionTimes(records, stageIds) {
+    if (!records) return [];
+    const times = [];
+    stageIds.forEach(stageId => {
+        VISION_RADAR_DIFFICULTY_SUFFIXES.forEach(suffix => {
+            const value = Number(records[stageId + suffix]);
+            if (Number.isFinite(value) && value > 0) times.push(value);
+        });
+    });
+    return times;
+}
+
+function clampRadarScore(score) {
+    if (!Number.isFinite(score)) return 0;
+    return Math.max(0, Math.min(VISION_RADAR_MAX_SCORE, Math.round(score)));
+}
+
+function isAverageTargetUser(userId, user, isSystemUserId) {
+    if (!userId || !user || user.isMaster) return false;
+    if (String(userId).startsWith('__')) return false;
+    if (typeof isSystemUserId === 'function' && isSystemUserId(userId)) return false;
+    return Boolean(user.examRecords && typeof user.examRecords === 'object');
+}
+
+export function buildVisionRadarData(user, allUsers = {}, visionStages = [], isSystemUserId = null) {
+    const stageIdSet = new Set(visionStages.map(stage => stage.id));
+    const averageUsers = Object.entries(allUsers)
+        .filter(([userId, row]) => isAverageTargetUser(userId, row, isSystemUserId))
+        .map(([, row]) => row);
+
+    const groups = VISION_RADAR_GROUPS.map(group => {
+        const stageIds = group.stageIds.filter(stageId => stageIdSet.size === 0 || stageIdSet.has(stageId));
+        const userTimes = collectVisionTimes(user?.examRecords, stageIds);
+        const classTimes = averageUsers.flatMap(row => collectVisionTimes(row.examRecords, stageIds));
+        const userAverage = average(userTimes);
+        const classAverage = average(classTimes);
+        const rawScore = userAverage && classAverage ? (classAverage / userAverage) * 100 : 0;
+        const score = clampRadarScore(rawScore);
+        const differenceSeconds = userAverage && classAverage ? userAverage - classAverage : null;
+
+        return {
+            ...group,
+            stageIds,
+            score,
+            userAverage,
+            classAverage,
+            differenceSeconds,
+            completionCount: userTimes.length,
+            classRecordCount: classTimes.length,
+            totalRecordSlots: stageIds.length * VISION_RADAR_DIFFICULTY_SUFFIXES.length,
+            hasUserData: userTimes.length > 0,
+            hasClassData: classTimes.length > 0
+        };
+    });
+
+    return {
+        groups,
+        maxScore: VISION_RADAR_MAX_SCORE,
+        averageScore: VISION_RADAR_AVERAGE_SCORE,
+        hasAnyUserData: groups.some(group => group.hasUserData),
+        hasAnyClassData: groups.some(group => group.hasClassData)
+    };
+}
+
+function radarPoint(index, count, score, radius, center) {
+    const angle = -Math.PI / 2 + (Math.PI * 2 * index) / count;
+    const distance = radius * (Math.max(0, Math.min(VISION_RADAR_MAX_SCORE, score)) / VISION_RADAR_MAX_SCORE);
+    return {
+        x: center + Math.cos(angle) * distance,
+        y: center + Math.sin(angle) * distance
+    };
+}
+
+function radarPolygon(groups, scoreGetter, radius, center) {
+    return groups
+        .map((group, index) => {
+            const point = radarPoint(index, groups.length, scoreGetter(group), radius, center);
+            return `${point.x.toFixed(1)},${point.y.toFixed(1)}`;
+        })
+        .join(' ');
+}
+
+function formatVisionAverage(value) {
+    return Number.isFinite(value) ? `${value.toFixed(1)}秒` : '-';
+}
+
+function formatVisionDifference(group) {
+    if (!group.hasUserData) return '記録なし';
+    if (!group.hasClassData) return '平均データ待ち';
+    if (!Number.isFinite(group.differenceSeconds)) return '平均データ待ち';
+    const abs = Math.abs(group.differenceSeconds).toFixed(1);
+    if (Math.abs(group.differenceSeconds) < 0.05) return '平均と同じくらい';
+    return group.differenceSeconds < 0 ? `平均より ${abs}秒 はやい` : `平均より ${abs}秒 ゆっくり`;
+}
+
+function getVisionRadarTone(group) {
+    if (!group.hasUserData || !group.hasClassData) return 'empty';
+    if (group.score >= 108) return 'faster';
+    if (group.score <= 92) return 'slower';
+    return 'average';
+}
+
+export function renderVisionRadarChart(radarData, options = {}) {
+    const groups = radarData?.groups || [];
+    const title = options.title || 'ビジョン平均との差';
+    const compactClass = options.compact ? ' compact' : '';
+    if (!groups.length || !radarData?.hasAnyUserData) {
+        return `
+            <div class="vision-radar-card${compactClass}">
+                <div class="vision-radar-head">
+                    <h4>${escapeHtml(title)}</h4>
+                    <span>平均 100</span>
+                </div>
+                <p class="vision-radar-empty">ビジョントレーニングの記録が増えると、平均との差がレーダーチャートで表示されます。</p>
+            </div>
+        `;
+    }
+
+    const center = 180;
+    const radius = 122;
+    const rings = [50, 100, 150];
+    const axisLines = groups.map((group, index) => {
+        const point = radarPoint(index, groups.length, VISION_RADAR_MAX_SCORE, radius, center);
+        const labelPoint = radarPoint(index, groups.length, VISION_RADAR_MAX_SCORE + 18, radius, center);
+        return `
+            <line x1="${center}" y1="${center}" x2="${point.x.toFixed(1)}" y2="${point.y.toFixed(1)}" />
+            <text x="${labelPoint.x.toFixed(1)}" y="${labelPoint.y.toFixed(1)}">${escapeHtml(group.label)}</text>
+        `;
+    }).join('');
+    const ringPolygons = rings.map(value => `<polygon points="${radarPolygon(groups, () => value, radius, center)}" />`).join('');
+    const averagePolygon = radarPolygon(groups, () => VISION_RADAR_AVERAGE_SCORE, radius, center);
+    const userPolygon = radarPolygon(groups, group => group.score, radius, center);
+    const summaryRows = groups.map(group => {
+        const tone = getVisionRadarTone(group);
+        return `
+            <div class="vision-radar-row ${tone}">
+                <div>
+                    <b>${escapeHtml(group.label)}</b>
+                    <span>${group.completionCount}/${group.totalRecordSlots} 記録</span>
+                    <span>本人 ${formatVisionAverage(group.userAverage)} / 平均 ${formatVisionAverage(group.classAverage)}</span>
+                </div>
+                <div>
+                    <strong>${group.hasUserData ? group.score : '-'}</strong>
+                    <span>${escapeHtml(formatVisionDifference(group))}</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    return `
+        <div class="vision-radar-card${compactClass}">
+            <div class="vision-radar-head">
+                <h4>${escapeHtml(title)}</h4>
+                <span>平均 100</span>
+            </div>
+            <div class="vision-radar-layout">
+                <div class="vision-radar-figure">
+                    <svg class="vision-radar-chart" viewBox="0 0 360 360" role="img" aria-label="${escapeHtml(title)}">
+                        <g class="vision-radar-rings">${ringPolygons}</g>
+                        <g class="vision-radar-axis">${axisLines}</g>
+                        <polygon class="vision-radar-average" points="${averagePolygon}" />
+                        <polygon class="vision-radar-user" points="${userPolygon}" />
+                        <circle cx="${center}" cy="${center}" r="3" class="vision-radar-center" />
+                    </svg>
+                    <div class="vision-radar-legend">
+                        <span><i class="vision-radar-legend-user"></i>本人</span>
+                        <span><i class="vision-radar-legend-average"></i>平均</span>
+                    </div>
+                </div>
+                <div class="vision-radar-summary">
+                    ${summaryRows}
+                </div>
+            </div>
+            <div class="vision-radar-note">
+                タイムが短いほど外側に伸びます。表示できる児童の平均タイムと比較しています。
+            </div>
+        </div>
+    `;
+}
+
 const SPECIAL_KEY_LABELS = {
     ' ': 'スペースキー',
     '　': 'スペースキー',

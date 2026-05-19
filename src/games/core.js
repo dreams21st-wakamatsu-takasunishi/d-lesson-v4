@@ -41,6 +41,7 @@ let typedRomajiStr = "";
 let romajiMode = '';
 let romajiTotalCells = 0;
 let romajiCorrectCells = 0;
+let isClearProcessing = false;
 
 export let visionScore = 0;
 export let visionTarget = 0;
@@ -161,6 +162,7 @@ function recordPracticeInterrupt(shouldRecord) {
 
 export function startGame(sid, mode) {
     SoundManager.init(); currentStage = sid; gameMode = mode; isProcessing = false;
+    isClearProcessing = false;
     mainQueue =[]; currentCount = 0; totalCount = 1; pendingHome = null; isHomeReturn = false;
     mistakeCount = 0; mistakeStats = {}; currRomajiIdx = 0; activeRomajiList =[]; currHiraObj = null; totalKeysTyped = 0; missKeysTyped = 0;
     typedRomajiStr = ""; 
@@ -580,6 +582,9 @@ function completeTask(delay) {
 }
 
 export function markClear() {
+    if (isClearProcessing) return;
+    isClearProcessing = true;
+    isProcessing = true;
     try {
         if (timerInterval) clearInterval(timerInterval);
         if (visionInterval) clearInterval(visionInterval);

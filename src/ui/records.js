@@ -9,11 +9,13 @@ import {
 import {
     users,
     currentUser,
-    canWriteCurrentUserRow
+    canWriteCurrentUserRow,
+    isSystemUserId
 } from '../api/user.js';
 import { renderCertificateSection } from './certificates.js';
 import { renderPracticeHistorySection } from './practice-history.js';
 import { getValidMistakeEntries, normalizeMistakeCount } from '../utils/weak-mistakes.js';
+import { buildVisionRadarData, renderVisionRadarChart } from './admin-report-utils.js';
 
 const ACHIEVEMENTS = [
     { id: 'login_3', title: '三日坊主じゃない！', desc: 'ログインスタンプを 3こ あつめる', icon: '📅', check: u => u.loginStamps && u.loginStamps.length >= 3 },
@@ -152,26 +154,23 @@ export function renderRecords() {
     const graphCont = document.getElementById('rec-graph');
     graphCont.innerHTML = '';
     const gWrap = document.createElement('div');
-    gWrap.style.display = 'flex';
-    gWrap.style.gap = '20px';
-    gWrap.style.justifyContent = 'center';
-    gWrap.style.width = '100%';
+    gWrap.className = 'record-graph-grid';
 
     const vPct = Math.min(100, Math.floor(((u.visionCleared ? u.visionCleared.length : 0) / (VISION_STAGES.length * 3)) * 100));
-    gWrap.innerHTML += `<div style="flex:1; background:#fff; padding:20px; border-radius:12px; border:1px solid #ccc; box-shadow:0 4px 6px rgba(0,0,0,0.05);">
+    gWrap.innerHTML += `<div class="record-graph-card">
         <h4 style="margin-top:0; color:#555; border-bottom:2px solid #eee; padding-bottom:10px;">🎮 全体の達成度</h4>
         <div style="margin-bottom:15px;"><div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>🖱️ マウス</span><span>${Math.floor((mLv / 7) * 100)}%</span></div><div style="width:100%; height:20px; background:#eee; border-radius:10px; overflow:hidden;"><div style="width:${Math.floor((mLv / 7) * 100)}%; height:100%; background:#2196F3;"></div></div></div>
         <div style="margin-bottom:15px;"><div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>⌨️ キーボード</span><span>${Math.floor((kSeq / STAGE_ORDER.length) * 100)}%</span></div><div style="width:100%; height:20px; background:#eee; border-radius:10px; overflow:hidden;"><div style="width:${Math.floor((kSeq / STAGE_ORDER.length) * 100)}%; height:100%; background:#FF9800;"></div></div></div>
         <div style="margin-bottom:15px;"><div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>👁️ ビジョン</span><span>${vPct}%</span></div><div style="width:100%; height:20px; background:#eee; border-radius:10px; overflow:hidden;"><div style="width:${vPct}%; height:100%; background:#9C27B0;"></div></div></div>
     </div>`;
 
+    const radarDiv = document.createElement('div');
+    const radarData = buildVisionRadarData(u, users, VISION_STAGES, isSystemUserId);
+    radarDiv.innerHTML = renderVisionRadarChart(radarData, { title: '👁️ ビジョン平均との差' });
+    gWrap.appendChild(radarDiv.firstElementChild);
+
     const weakDiv = document.createElement('div');
-    weakDiv.style.flex = '1';
-    weakDiv.style.background = '#fff';
-    weakDiv.style.padding = '20px';
-    weakDiv.style.borderRadius = '12px';
-    weakDiv.style.border = '1px solid #ccc';
-    weakDiv.style.boxShadow = '0 4px 6px rgba(0,0,0,0.05)';
+    weakDiv.className = 'record-graph-card';
     weakDiv.innerHTML = `<h4 style="margin-top:0; color:#555; border-bottom:2px solid #eee; padding-bottom:10px;">⚠️ あなたの苦手なキー</h4>`;
     let mistakes = u.globalMistakes || {};
     let sorted = getValidMistakeEntries(mistakes);

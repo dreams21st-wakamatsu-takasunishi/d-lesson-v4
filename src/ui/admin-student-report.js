@@ -3,7 +3,8 @@ import {
     GLOBAL_SETTINGS_ID,
     getUserDisplayName,
     getPracticeLogs,
-    formatPracticeActivity
+    formatPracticeActivity,
+    isSystemUserId
 } from '../api/user.js';
 import { STAGE_ORDER, VISION_STAGES, WORD_DATA } from '../data/constants.js';
 import { calculateGrade } from '../utils/helpers.js';
@@ -12,8 +13,10 @@ import { showCustomAlert } from './modal.js';
 import { recordAdminAudit } from './admin-audit.js';
 import {
     escapeHtml,
+    buildVisionRadarData,
     formatRecordSeconds,
     getTopMistakeDetails,
+    renderVisionRadarChart,
     reportBar,
     reportSection
 } from './admin-report-utils.js';
@@ -93,6 +96,10 @@ function buildStudentReportHtml(userId) {
             <tbody>${visionRows.join('')}</tbody>
         </table>`
         : '<p style="color:#777; margin:0;">ビジョンのタイム記録はまだありません。</p>';
+    const visionRadarHtml = renderVisionRadarChart(
+        buildVisionRadarData(user, users, VISION_STAGES, isSystemUserId),
+        { title: 'ビジョン平均との差', compact: true }
+    );
 
     const mistakeList = getTopMistakeDetails(user);
     const mistakeHtml = mistakeList.length
@@ -144,6 +151,7 @@ function buildStudentReportHtml(userId) {
 
             <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:12px;">
                 ${reportSection('文章練習', textHtml)}
+                ${reportSection('ビジョン平均との差', visionRadarHtml)}
                 ${reportSection('ビジョントレーニング', visionHtml)}
                 ${reportSection('直近の取り組み', practiceLogHtml)}
             </div>
@@ -170,6 +178,33 @@ export function closeStudentReportPanel() {
     if (modal) modal.style.display = 'none';
 }
 
+function getReportPrintStyles() {
+    return `
+        @page{margin:14mm;}
+        body{background:#fff;margin:0;padding:0;font-family:system-ui,sans-serif;color:#263238;}
+        section{break-inside:avoid;}
+        button{display:none;}
+        .vision-radar-card{border:1px solid #cfd8dc;border-radius:10px;padding:10px;background:#fff;}
+        .vision-radar-head{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid #eceff1;padding-bottom:6px;margin-bottom:8px;}
+        .vision-radar-head h4{margin:0;color:#37474f;font-size:16px;}
+        .vision-radar-head span{color:#455a64;font-weight:bold;font-size:12px;}
+        .vision-radar-layout{display:grid;grid-template-columns:1fr;gap:8px;}
+        .vision-radar-figure{text-align:center;}
+        .vision-radar-chart{width:260px;max-width:100%;height:auto;}
+        .vision-radar-rings polygon{fill:none;stroke:#d8e2ea;stroke-width:1.5;}
+        .vision-radar-axis line{stroke:#e0e7ee;stroke-width:1.4;}
+        .vision-radar-axis text{fill:#37474f;font-size:15px;font-weight:800;text-anchor:middle;dominant-baseline:middle;paint-order:stroke;stroke:#fff;stroke-width:5px;stroke-linejoin:round;}
+        .vision-radar-average{fill:rgba(96,125,139,.12);stroke:#607d8b;stroke-width:3;stroke-dasharray:8 7;}
+        .vision-radar-user{fill:rgba(33,150,243,.28);stroke:#1565c0;stroke-width:4;}
+        .vision-radar-center{fill:#1565c0;}
+        .vision-radar-legend,.vision-radar-note{font-size:11px;color:#607d8b;font-weight:bold;}
+        .vision-radar-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;}
+        .vision-radar-row{border:1px solid #dce5ec;border-left:5px solid #90a4ae;border-radius:8px;padding:6px;background:#f8fafc;display:flex;justify-content:space-between;gap:8px;}
+        .vision-radar-row b,.vision-radar-row strong{color:#263238;}
+        .vision-radar-row span{display:block;color:#607d8b;font-size:10px;font-weight:bold;}
+    `;
+}
+
 export function printStudentReportPanel() {
     const content = document.getElementById('student-report-content');
     if (!content || !content.innerHTML.trim()) return;
@@ -177,7 +212,7 @@ export function printStudentReportPanel() {
     const title = userId && users[userId] ? `${getUserDisplayName(userId)} さんのレポート` : '児童レポート';
     const printWindow = window.open('', '_blank', 'width=900,height=700');
     if (!printWindow) return showCustomAlert('印刷画面を開けませんでした。ポップアップ設定を確認してください。');
-    printWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>@page{margin:14mm;}body{background:#fff;margin:0;padding:0;}section{break-inside:avoid;}button{display:none;}</style></head><body>${content.innerHTML}</body></html>`);
+    printWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>${getReportPrintStyles()}</style></head><body>${content.innerHTML}</body></html>`);
     printWindow.document.close();
     printWindow.focus();
     recordAdminAudit('児童レポート印刷', { user: title, userDataId: userId || '' });

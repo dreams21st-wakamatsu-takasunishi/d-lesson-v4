@@ -3,11 +3,13 @@ import assert from 'node:assert/strict';
 
 import {
   escapeHtml,
+  buildVisionRadarData,
   getTopMistakeDetails,
   formatWeakKeyLabel,
   formatRecordSeconds,
   getTopMistakes,
   progressPercent,
+  renderVisionRadarChart,
   reportBar,
   reportSection
 } from '../src/ui/admin-report-utils.js';
@@ -55,5 +57,52 @@ assert.match(barHtml, /width:42%/);
 const sectionHtml = reportSection('<title>', '<p>body</p>');
 assert.match(sectionHtml, /&lt;title&gt;/);
 assert.match(sectionHtml, /<p>body<\/p>/);
+
+const visionStages = [
+  { id: 'v1' }, { id: 'v2' }, { id: 'v3' }, { id: 'v4' }, { id: 'v6' },
+  { id: 'v8' }, { id: 'v13' }, { id: 'v14' }, { id: 'v17' }
+];
+const visionUsers = {
+  student_a: {
+    examRecords: {
+      v1: 10,
+      v2_easy: 14,
+      v3: 8,
+      v4_hard: 12,
+      v8: 20,
+      v13: 16,
+      v14: 18
+    }
+  },
+  student_b: {
+    examRecords: {
+      v1: 20,
+      v2_easy: 28,
+      v3: 16,
+      v4_hard: 24,
+      v8: 40,
+      v13: 32,
+      v14: 36
+    }
+  },
+  __GLOBAL_SETTINGS__: { examRecords: { v1: 1 } },
+  Master_Debug: { isMaster: true, examRecords: { v1: 1 } }
+};
+const radarData = buildVisionRadarData(
+  visionUsers.student_a,
+  visionUsers,
+  visionStages,
+  userId => userId === '__GLOBAL_SETTINGS__' || userId === 'Master_Debug'
+);
+assert.equal(radarData.groups.length, 5);
+assert.equal(radarData.hasAnyUserData, true);
+assert.equal(radarData.hasAnyClassData, true);
+assert.ok(radarData.groups.find(group => group.id === 'find').score > 100);
+assert.equal(radarData.groups.find(group => group.id === 'find').completionCount, 2);
+const radarHtml = renderVisionRadarChart(radarData, { title: '<vision>' });
+assert.match(radarHtml, /vision-radar-card/);
+assert.match(radarHtml, /&lt;vision&gt;/);
+assert.match(radarHtml, /本人/);
+assert.match(radarHtml, /平均 100/);
 
 console.log('Admin report utility check passed.');
