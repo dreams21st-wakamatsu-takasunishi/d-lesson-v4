@@ -37,6 +37,20 @@ let memoryInputIdx = 0;
 
 const WIDE_SCAN_TARGET_SIZE = 78;
 const WIDE_SCAN_TARGET_GAP = 16;
+const FIND_DIFF_QUESTIONS = Object.freeze([
+    { base: 'め', diff: 'ぬ' },
+    { base: 'わ', diff: 'れ' },
+    { base: 'は', diff: 'ほ' },
+    { base: 'シ', diff: 'ツ' },
+    { base: 'O', diff: 'Q' },
+    { base: '大', diff: '犬' },
+    { base: 'ソ', diff: 'ン' },
+    { base: 'E', diff: 'F' },
+    { base: 'あ', diff: 'お' },
+    { base: 'ね', diff: 'れ' },
+    { base: 'b', diff: 'd' }
+]);
+let lastSideCompareQuestionKey = '';
 const VISION_MENU_GROUPS = [
     {
         title: '見つける・くらべる',
@@ -486,8 +500,7 @@ function getNonOverlappingPosition(areaSize, itemSize, placed, gap = 14) {
 
 function nextVisionV2() {
     els.playArea.innerHTML = '';
-    const qList =[ {base:'め', diff:'ぬ'}, {base:'わ', diff:'れ'}, {base:'大', diff:'犬'}, {base:'ソ', diff:'ン'}, {base:'O', diff:'Q'}, {base:'土', diff:'士'}, {base:'は', diff:'ほ'}, {base:'シ', diff:'ツ'}, {base:'E', diff:'F'}, {base:'あ', diff:'お'}, {base:'ね', diff:'れ'}, {base:'b', diff:'d'} ];
-    const q = qList[Math.floor(Math.random() * qList.length)];
+    const q = FIND_DIFF_QUESTIONS[getVisionScore() % FIND_DIFF_QUESTIONS.length];
     
     const grid = document.createElement('div'); grid.className = 'find-diff-grid';
     const totalChars = getVisionHardMode() ? 100 : (getVisionEasyMode() ? 20 : 50); 
@@ -1219,15 +1232,8 @@ function nextVisionV14() {
     const colors = ['#e53935', '#1e88e5', '#43a047', '#fb8c00', '#8e24aa', '#00897b'];
     const numbers = getVisionHardMode() ? [1, 2, 3, 4, 5, 6, 7, 8, 9] : [1, 2, 3, 4, 5, 6];
     const featureMode = getVisionEasyMode() ? 'shape' : (getVisionHardMode() ? 'all' : 'numberShape');
-
-    const left = createSideCompareItem(featureMode, numbers, shapes, colors);
-    const shouldMatch = Math.random() < 0.5;
-    let right = { ...left };
-    if (!shouldMatch) {
-        do {
-            right = createSideCompareItem(featureMode, numbers, shapes, colors);
-        } while (isSameSideCompareItem(left, right, featureMode));
-    }
+    const question = createSideCompareQuestion(featureMode, numbers, shapes, colors);
+    const { left, right, shouldMatch } = question;
 
     const stage = document.createElement('div');
     stage.className = 'side-compare-stage';
@@ -1266,6 +1272,37 @@ function nextVisionV14() {
     stage.appendChild(answers);
 
     els.playArea.appendChild(stage);
+}
+
+function createSideCompareQuestion(featureMode, numbers, shapes, colors) {
+    let question = null;
+    let key = '';
+
+    for (let attempt = 0; attempt < 24; attempt++) {
+        const left = createSideCompareItem(featureMode, numbers, shapes, colors);
+        const shouldMatch = Math.random() < 0.5;
+        let right = { ...left };
+        if (!shouldMatch) {
+            do {
+                right = createSideCompareItem(featureMode, numbers, shapes, colors);
+            } while (isSameSideCompareItem(left, right, featureMode));
+        }
+
+        question = { left, right, shouldMatch };
+        key = getSideCompareQuestionKey(question, featureMode);
+        if (key !== lastSideCompareQuestionKey) break;
+    }
+
+    lastSideCompareQuestionKey = key;
+    return question;
+}
+
+function getSideCompareQuestionKey(question, featureMode) {
+    const compact = (item) => {
+        const color = featureMode === 'all' ? item.color : '';
+        return `${item.number}|${item.shape}|${color}`;
+    };
+    return `${featureMode}|${compact(question.left)}|${compact(question.right)}|${question.shouldMatch ? 'same' : 'different'}`;
 }
 
 function createSideCompareItem(featureMode, numbers, shapes, colors) {
