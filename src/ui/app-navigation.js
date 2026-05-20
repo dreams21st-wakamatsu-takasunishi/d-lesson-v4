@@ -19,6 +19,10 @@ export function goToMinigameMenu() {
     showScreen('screen-minigame-menu');
 }
 
+export function goToFreeTimeMenu() {
+    showScreen('screen-free-time-menu');
+}
+
 export function goToRecords() {
     loadCustomGlobalSettings();
     renderRecords();

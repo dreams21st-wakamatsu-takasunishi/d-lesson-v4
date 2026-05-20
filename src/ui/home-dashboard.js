@@ -67,8 +67,11 @@ export function updateHomeDashboard() {
 
     const btn = document.getElementById('btn-recommend');
     if (!btn) return;
+    btn.style.animation = 'pulse 2s infinite';
+    btn.style.backgroundColor = '';
+    btn.style.color = '';
     if (mLv < 7) {
-        btn.innerHTML = `🖱️ マウスのれんしゅう<br><span style="font-size:14px;">(M-${mLv + 1} へ)</span>`;
+        btn.innerHTML = `<span class="recommend-main">🖱️ マウスのれんしゅう</span><span class="recommend-sub">M-${mLv + 1} へすすむ</span>`;
         btn.onclick = () => {
             homeUiHandlers.openMouseMenu();
             startGame(mLv + 1, 'mouse');
@@ -76,13 +79,13 @@ export function updateHomeDashboard() {
     } else if (kSeq < maxKb) {
         const nextId = STAGE_ORDER[kSeq];
         const stageName = getStageName(nextId).replace(/\[ID:\d+\]\s*/, '');
-        btn.innerHTML = `⌨️ キーボードれんしゅう<br><span style="font-size:14px;">(${stageName} へ)</span>`;
+        btn.innerHTML = `<span class="recommend-main">⌨️ キーボードれんしゅう</span><span class="recommend-sub">${stageName} へすすむ</span>`;
         btn.onclick = () => {
             showScreen('screen-keyboard-menu');
             startGame(nextId, 'keyboard');
         };
     } else {
-        btn.innerHTML = `🏆 すべてクリア！<br><span style="font-size:14px;">(にがてとっくん や ガチャであそぼう)</span>`;
+        btn.innerHTML = `<span class="recommend-main">🏆 すべてクリア！</span><span class="recommend-sub">にがてとっくん や ガチャであそぼう</span>`;
         btn.onclick = () => homeUiHandlers.openRecords();
         btn.style.animation = 'none';
         btn.style.backgroundColor = '#FFD700';

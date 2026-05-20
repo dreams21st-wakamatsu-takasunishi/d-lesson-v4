@@ -211,6 +211,37 @@ export function applyTheme(themeId = 'default') {
         }
         .stage-btn.unlocked span, .exam-btn.unlocked span { color: ${theme.btnText} !important; }
         .stage-btn.cleared, .exam-btn.cleared { opacity: 0.7 !important; }
+        #screen-text-menu #text-menu-content .stage-btn.text-task-card {
+            background: linear-gradient(180deg, #fffef8 0%, #fff8e7 100%) !important;
+            border-color: #f59e0b !important;
+            color: #263238 !important;
+            box-shadow: 0 5px 0 #d97706 !important;
+            opacity: 1 !important;
+        }
+        #screen-text-menu #text-menu-content .stage-btn.text-task-card span {
+            color: #455a64 !important;
+            text-shadow: none !important;
+        }
+        #screen-text-menu #text-menu-content .stage-btn.text-task-card .text-task-title {
+            color: #263238 !important;
+        }
+        #screen-text-menu #text-menu-content .stage-btn.text-task-card .text-task-status.todo {
+            background: #fff7ed !important;
+            color: #c2410c !important;
+            border-color: #fed7aa !important;
+        }
+        #screen-text-menu #text-menu-content .stage-btn.text-task-card .text-task-status.done {
+            background: #e8f5e9 !important;
+            color: #1b5e20 !important;
+            border-color: #a5d6a7 !important;
+        }
+        #screen-text-menu #text-menu-content .stage-btn.text-task-card .text-task-record {
+            color: #00695c !important;
+        }
+        #screen-text-menu #text-menu-content .stage-btn.text-task-card .text-task-reward {
+            background: #f5f0e6 !important;
+            color: #5d4037 !important;
+        }
         .reward-badge, .reward-badge-text,
         button span.reward-badge, button span.reward-badge-text {
             background-color: #FF9800 !important;

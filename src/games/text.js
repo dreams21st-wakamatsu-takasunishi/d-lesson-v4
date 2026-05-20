@@ -192,6 +192,30 @@ function getTextTaskPlainContent(task) {
     return String(task?.content || '').replace(/\{([^|]+)\|([^}]+)\}/g, '$1');
 }
 
+function getTextCoinReward(netCount) {
+    const score = Number(netCount || 0);
+    if (score >= 2001) return 15000;
+    if (score >= 1501) return 10000;
+    if (score >= 1001) return 8500;
+    if (score >= 801) return 5000;
+    if (score >= 601) return 2500;
+    if (score >= 451) return 1000;
+    if (score >= 351) return 500;
+    if (score >= 251) return 100;
+    if (score >= 101) return 50;
+    if (score >= 51) return 30;
+    if (score >= 1) return 20;
+    return 0;
+}
+
+function getTextTaskMaxCoins(task) {
+    return getTextCoinReward(getTextTaskPlainContent(task).replace(/\r\n/g, '\n').length);
+}
+
+function formatCoins(amount) {
+    return Number(amount || 0).toLocaleString('ja-JP');
+}
+
 function getRecommendedTextTask(tasks) {
     return tasks.find(task => !getTextTaskRecord(task)) || null;
 }
@@ -234,7 +258,7 @@ function renderTextTaskRecommendation(container, tasks) {
         <div class="text-task-recommend-copy">
             <span class="text-task-recommend-label">まずはこれ</span>
             <strong>${escapeHtml(recommendedTask.title)}</strong>
-            <span>★${escapeHtml(recommendedTask.star || 3)} / ${escapeHtml(recommendedTask.time)}分 / ${escapeHtml(plainContent.length)}文字</span>
+            <span>★${escapeHtml(recommendedTask.star || 3)} / ${escapeHtml(recommendedTask.time)}分 / ${escapeHtml(plainContent.length)}文字 / 💰最高${escapeHtml(formatCoins(getTextTaskMaxCoins(recommendedTask)))}</span>
         </div>
     `;
     const startButton = document.createElement('button');
@@ -316,6 +340,7 @@ function renderTextTasks() {
         }
         let stars = "⭐".repeat(task.star || 3);
         const plainContent = getTextTaskPlainContent(task);
+        const maxCoins = getTextTaskMaxCoins(task);
         btn.innerHTML = `
             <span class="text-task-card-head">
                 <span class="text-task-title">${escapeHtml(task.title)}</span>
@@ -327,7 +352,7 @@ function renderTextTasks() {
                 <span>${escapeHtml(plainContent.length)}文字</span>
             </span>
             ${recordHtml}
-            <span class="text-task-reward">💰最高15000</span>
+            <span class="text-task-reward">💰最高${escapeHtml(formatCoins(maxCoins))}</span>
         `;
         btn.onclick = () => startTextPractice(task.id); grid.appendChild(btn);
     });
@@ -507,18 +532,7 @@ function showTextResult() {
         isNewRecord = canSaveResult;
     }
     
-    let coinGain = 0;
-    if (netCount >= 2001) coinGain = 15000;
-    else if (netCount >= 1501) coinGain = 10000;
-    else if (netCount >= 1001) coinGain = 8500;
-    else if (netCount >= 801) coinGain = 5000;
-    else if (netCount >= 601) coinGain = 2500;
-    else if (netCount >= 451) coinGain = 1000;
-    else if (netCount >= 351) coinGain = 500;
-    else if (netCount >= 251) coinGain = 100;
-    else if (netCount >= 101) coinGain = 50;
-    else if (netCount >= 51) coinGain = 30;
-    else if (netCount >= 1) coinGain = 20;
+    let coinGain = getTextCoinReward(netCount);
 
     if (canSaveResult) {
         users[currentUser].coins = (users[currentUser].coins || 0) + coinGain;

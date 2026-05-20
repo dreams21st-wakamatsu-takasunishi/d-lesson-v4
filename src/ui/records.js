@@ -27,6 +27,18 @@ const ACHIEVEMENTS = [
     { id: 'gacha_10', title: 'ガチャマニア', desc: 'アイテム を 10こ以上 あつめる', icon: '🎁', check: u => u.items && u.items.length >= 10 }
 ];
 
+function countCurrentVisionClears(user) {
+    const validIds = new Set(VISION_STAGES.flatMap(stage => [
+        stage.id,
+        `${stage.id}_easy`,
+        `${stage.id}_hard`
+    ]));
+    return new Set((Array.isArray(user?.visionCleared) ? user.visionCleared : [])
+        .map(id => String(id))
+        .filter(id => validIds.has(id)))
+        .size;
+}
+
 export function showRecordSection(secId) {
     document.getElementById('records-main-menu').style.display = 'none';
     document.getElementById('records-panel-content').style.display = 'flex';
@@ -156,7 +168,7 @@ export function renderRecords() {
     const gWrap = document.createElement('div');
     gWrap.className = 'record-graph-grid';
 
-    const vPct = Math.min(100, Math.floor(((u.visionCleared ? u.visionCleared.length : 0) / (VISION_STAGES.length * 3)) * 100));
+    const vPct = Math.min(100, Math.floor((countCurrentVisionClears(u) / (VISION_STAGES.length * 3)) * 100));
     gWrap.innerHTML += `<div class="record-graph-card">
         <h4 style="margin-top:0; color:#555; border-bottom:2px solid #eee; padding-bottom:10px;">🎮 全体の達成度</h4>
         <div style="margin-bottom:15px;"><div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>🖱️ マウス</span><span>${Math.floor((mLv / 7) * 100)}%</span></div><div style="width:100%; height:20px; background:#eee; border-radius:10px; overflow:hidden;"><div style="width:${Math.floor((mLv / 7) * 100)}%; height:100%; background:#2196F3;"></div></div></div>

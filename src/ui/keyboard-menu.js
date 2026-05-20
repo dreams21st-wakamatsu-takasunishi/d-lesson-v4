@@ -506,6 +506,17 @@ export function renderKeyboardStages(chap) {
         }
         examsCont.appendChild(b);
     }
+
+    requestAnimationFrame(() => {
+        const screen = document.getElementById('screen-keyboard-menu');
+        const stageContainer = document.getElementById('kb-stage-container');
+        if (screen && typeof screen.scrollTo === 'function') {
+            screen.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        if (stageContainer && typeof stageContainer.scrollIntoView === 'function') {
+            stageContainer.scrollIntoView({ block: 'start', behavior: 'smooth' });
+        }
+    });
 }
 
 export function backToKbChapter() {

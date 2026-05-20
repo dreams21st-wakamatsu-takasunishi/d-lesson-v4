@@ -547,13 +547,13 @@
             <h2 id="welcome-msg">ようこそ</h2>
             <div id="readonly-mode-notice" style="display:none; width:90%; max-width:800px; margin:0 0 12px; padding:10px 14px; border:2px solid #00796b; border-radius:8px; background:#e0f2f1; color:#004d40; font-weight:bold; text-align:center;">先生確認モード：練習結果・コイン・進捗は保存されません</div>
             
-            <div id="home-dashboard" style="display:flex; gap: 20px; background:#fff; padding:15px; border-radius:15px; border:3px solid #ccc; margin-bottom: 20px; width: 90%; max-width: 800px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
-                <div style="flex:1; display:flex; flex-direction:column; justify-content:center; gap:10px;">
+            <div id="home-dashboard" style="display:flex; gap: 20px; background:#fff; padding:15px; border-radius:15px; border:3px solid #ccc; margin-bottom: 20px; width: 90%; max-width: 1040px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+                <div class="home-progress-panel" style="flex:1; display:flex; flex-direction:column; justify-content:center; gap:10px;">
                     <div style="font-weight:bold; color:#333;">🖱️ マウス: <span id="home-mouse-lv" style="color:#2196F3;">Lv.0</span> <div class="mini-bar"><div id="home-mouse-bar" class="mini-bar-fill" style="background:#2196F3;"></div></div></div>
                     <div style="font-weight:bold; color:#333;">⌨️ キーボード: <span id="home-kb-pct" style="color:#FF9800;">0%</span> <div class="mini-bar"><div id="home-kb-bar" class="mini-bar-fill" style="background:#FF9800;"></div></div></div>
                 </div>
-                <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; border-left: 2px dashed #ccc; padding-left: 15px;">
-                    <div style="font-size:14px; color:#555; margin-bottom:5px; font-weight:bold;">✨ つぎのおすすめ ✨</div>
+                <div class="home-recommend-panel" style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; border-left: 2px dashed #ccc; padding-left: 15px;">
+                    <div class="home-recommend-label" style="font-size:14px; color:#555; margin-bottom:5px; font-weight:bold;">✨ つぎのおすすめ ✨</div>
                     <button id="btn-recommend" class="btn-primary" style="width:100%; height:70px; font-size:18px; line-height:1.2; animation: pulse 2s infinite;" onclick="startRecommendedStage()">おすすめを<br>プレイ</button>
                 </div>
             </div>
@@ -564,7 +564,7 @@
             <div style="color: #FF9800; font-weight:bold; margin-bottom: 20px;">
                 ※ キーボードの「F」と「J」でえらんで、「Enter」でけっていできるよ！
             </div>
-            <div style="display:flex; flex-wrap: wrap; gap: 20px; justify-content: center; max-width: 800px; margin: 0 auto;">
+            <div style="display:flex; flex-wrap: wrap; gap: 20px; justify-content: center; max-width: 1040px; margin: 0 auto;">
                 <button class="btn-primary category-btn" id="cat-mouse" onclick="goToMouseMenu()">
                     <span style="font-size:60px;">🖱️</span><span>マウスの<br>れんしゅう</span>
                 </button>
@@ -582,6 +582,9 @@
                 </button>
                 <button class="btn-primary category-btn" id="cat-word" onclick="goToWordMenu()" style="background-color: #1976D2;">
                     <span style="font-size:60px;">📘</span><span>Word<br>れんしゅう</span>
+                </button>
+                <button class="btn-primary category-btn" id="cat-free-time" onclick="goToFreeTimeMenu()" style="background-color: #00897B;">
+                    <span style="font-size:60px;">🌐</span><span>じゆう<br>じかん</span>
                 </button>
             </div>
             <div class="home-actions" style="display:flex; gap:20px; margin-top:30px;">
@@ -684,6 +687,27 @@
             <div id="typing-ranking-page-board" class="typing-ranking-page-board"></div>
         </div>
         <button class="btn-secondary bottom-back-btn" onclick="showScreen('screen-minigame-menu')" tabindex="0">もどる</button>
+    </div>
+
+    <!-- 4.0. じゆうじかん -->
+    <div id="screen-free-time-menu" class="screen">
+        <div class="screen-content free-time-page">
+            <h2>じゆうじかん</h2>
+            <p>外部サイトを開いた時間と閉じた時間を記録します。</p>
+            <div class="free-time-menu-layout">
+                <button class="free-time-site-button" onclick="openFreeTimeSite('youtube')">
+                    <span class="minigame-sub-icon">▶</span>
+                    <span class="minigame-sub-main">YouTube</span>
+                    <span class="minigame-sub-note">開始・終了を記録</span>
+                </button>
+                <button class="free-time-site-button" onclick="openFreeTimeSite('poki')">
+                    <span class="minigame-sub-icon">P</span>
+                    <span class="minigame-sub-main">Poki</span>
+                    <span class="minigame-sub-note">開始・終了を記録</span>
+                </button>
+            </div>
+        </div>
+        <button class="btn-secondary bottom-back-btn" onclick="showScreen('screen-category')" tabindex="0">もどる</button>
     </div>
 
     <!-- 4. マウスメニュー -->
@@ -808,6 +832,7 @@
             <div id="feedback-text">せいかい！</div>
             <div id="feedback-time">タイム: 0.0秒 (🥇 金メダル)</div>
             <div id="feedback-stats"></div>
+            <div id="feedback-actions"></div>
         </div>
         <div id="fail-overlay">
             <div class="fail-msg">しっぱい...</div>

@@ -3,6 +3,7 @@ import { backToMenu, handleSecretMenuClick, retryExam, startRecommendedStage } f
 import { changeEffect, changeTheme, drawGacha, useTicket } from '../games/gacha.js';
 import {
     openExternalTypingSite,
+    openFreeTimeSite,
     openTypingRankingPage,
     saveTypingRankingNickname,
     startMinigame,
@@ -25,7 +26,7 @@ import { showVisionCompare } from '../games/vision.js';
 import { confirmWordClear, goToWordMenu, openWordText, processWordClear, suspendWordTask } from '../games/word.js';
 import { toggleBGM, toggleSFX } from '../utils/sound.js';
 import * as Admin from '../ui/admin.js';
-import { goToMinigameMenu, goToRecords, goToVisionMenu, goToWeakTraining, loginAsMaster } from '../ui/app-navigation.js';
+import { goToFreeTimeMenu, goToMinigameMenu, goToRecords, goToVisionMenu, goToWeakTraining, loginAsMaster } from '../ui/app-navigation.js';
 import { loadCustomGlobalSettings } from '../ui/custom-settings.js';
 import { exportDashboardCSV } from '../ui/dashboard-export.js';
 import { registerGlobalFunctions, registerModuleFunctions, validateInlineEventHandlers } from '../ui/global-handlers.js';
@@ -50,14 +51,14 @@ export function registerAppGlobalHandlers() {
     const globalFunctions = [
         toggleSFX, toggleBGM, toggleFullScreen, goToGradeSelect, loginAsMaster, showScreen, showCustomAlert,
 
-        goToMouseMenu, goToKeyboardCategory, goToKeyboardMenu, goToWeakTraining, goToTextMenu, goToMinigameMenu, goToVisionMenu,
+        goToMouseMenu, goToKeyboardCategory, goToKeyboardMenu, goToWeakTraining, goToTextMenu, goToMinigameMenu, goToFreeTimeMenu, goToVisionMenu,
         goToWordMenu, goToRecords,
 
         handleGlobalBack, handleGlobalHome, handleGlobalLogout,
         closeStampOverlay, closeRewardOverlay,
         openTeacherStatus, closeTeacherStatus,
 
-        startMinigame, stopMinigame, openExternalTypingSite, openTypingRankingPage, saveTypingRankingNickname,
+        startMinigame, stopMinigame, openExternalTypingSite, openFreeTimeSite, openTypingRankingPage, saveTypingRankingNickname,
         toggleRubyInPrep, toggleNaviInPrep, confirmStartTextPractice, closeTextPrepModal,
         submitTextPractice, closeTextResult, backToMenuFromText, setTextTaskFilter,
 

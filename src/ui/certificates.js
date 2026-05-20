@@ -1,4 +1,4 @@
-import { STAGE_ORDER, VISION_STAGES } from '../data/constants.js';
+import { STAGE_ORDER, VISION_STAGES, WORD_STAGES } from '../data/constants.js';
 import { currentUser, getUserDisplayName, users } from '../api/user.js';
 import { showCustomAlert } from './modal.js';
 
@@ -21,19 +21,36 @@ function getTextHighScore(user) {
 }
 
 function getWordClearCount(user) {
-    return Object.values(user?.wordProgress || {})
-        .filter(progress => progress === 'cleared' || progress?.status === 'cleared')
+    const validWordIds = new Set(WORD_STAGES.map(stage => String(stage.id)));
+    return Object.entries(user?.wordProgress || {})
+        .filter(([stageId, progress]) => validWordIds.has(String(stageId)) && (progress === 'cleared' || progress?.status === 'cleared'))
         .length;
+}
+
+function getVisionClearCount(user) {
+    const validVisionIds = new Set(VISION_STAGES.flatMap(stage => [
+        stage.id,
+        `${stage.id}_easy`,
+        `${stage.id}_hard`
+    ]));
+    return new Set((Array.isArray(user?.visionCleared) ? user.visionCleared : [])
+        .map(id => String(id))
+        .filter(id => validVisionIds.has(id)))
+        .size;
 }
 
 function buildCertificateDefinitions(user) {
     const mouseLevel = Number(user?.mouseLevel || 0);
     const keyboardSequence = Number(user?.keyboardSequence || 0);
-    const visionCount = Array.isArray(user?.visionCleared) ? user.visionCleared.length : 0;
+    const visionCount = getVisionClearCount(user);
     const textHighScore = getTextHighScore(user);
     const wordClearCount = getWordClearCount(user);
     const keyboardTotal = STAGE_ORDER.length;
     const visionTotal = VISION_STAGES.length * 3;
+    const keyboard25Target = Math.ceil(keyboardTotal * 0.25);
+    const keyboard50Target = Math.ceil(keyboardTotal * 0.5);
+    const visionBasicTarget = VISION_STAGES.length;
+    const wordBasicTarget = 3;
 
     return [
         {
@@ -58,18 +75,18 @@ function buildCertificateDefinitions(user) {
             id: 'keyboard-25',
             title: 'キーボード 努力賞',
             requirement: 'キーボード全体の 25% クリア',
-            progressText: `${Math.min(keyboardSequence, keyboardTotal)} / ${keyboardTotal}`,
-            percent: clampPercent(keyboardSequence, keyboardTotal),
-            earned: keyboardSequence >= Math.ceil(keyboardTotal * 0.25),
+            progressText: `${Math.min(keyboardSequence, keyboard25Target)} / ${keyboard25Target}`,
+            percent: clampPercent(keyboardSequence, keyboard25Target),
+            earned: keyboardSequence >= keyboard25Target,
             message: 'ホームポジションを意識して、練習を積み重ねる力が育っています。'
         },
         {
             id: 'keyboard-50',
             title: 'キーボード 上達賞',
             requirement: 'キーボード全体の 50% クリア',
-            progressText: `${Math.min(keyboardSequence, keyboardTotal)} / ${keyboardTotal}`,
-            percent: clampPercent(keyboardSequence, keyboardTotal),
-            earned: keyboardSequence >= Math.ceil(keyboardTotal * 0.5),
+            progressText: `${Math.min(keyboardSequence, keyboard50Target)} / ${keyboard50Target}`,
+            percent: clampPercent(keyboardSequence, keyboard50Target),
+            earned: keyboardSequence >= keyboard50Target,
             message: '指の使い方が安定し、入力の正確さと速さが伸びてきました。'
         },
         {
@@ -84,10 +101,10 @@ function buildCertificateDefinitions(user) {
         {
             id: 'vision-basic',
             title: 'ビジョントレーニング チャレンジ賞',
-            requirement: 'ビジョン課題を 9 個以上クリア',
-            progressText: `${Math.min(visionCount, visionTotal)} / ${visionTotal}`,
-            percent: clampPercent(visionCount, visionTotal),
-            earned: visionCount >= VISION_STAGES.length,
+            requirement: `ビジョン課題を ${VISION_STAGES.length} 個以上クリア`,
+            progressText: `${Math.min(visionCount, visionBasicTarget)} / ${visionBasicTarget}`,
+            percent: clampPercent(visionCount, visionBasicTarget),
+            earned: visionCount >= visionBasicTarget,
             message: '見る力、探す力、覚える力を使って、集中して取り組みました。'
         },
         {
@@ -121,18 +138,18 @@ function buildCertificateDefinitions(user) {
             id: 'word-basic',
             title: 'Wordれんしゅう 完成賞',
             requirement: 'Word課題を 3 個以上クリア',
-            progressText: `${wordClearCount} 個`,
-            percent: clampPercent(wordClearCount, 3),
-            earned: wordClearCount >= 3,
+            progressText: `${Math.min(wordClearCount, wordBasicTarget)} / ${wordBasicTarget}`,
+            percent: clampPercent(wordClearCount, wordBasicTarget),
+            earned: wordClearCount >= wordBasicTarget,
             message: '作品づくりに取り組み、文書作成の力を伸ばしました。'
         },
         {
             id: 'd-lesson-total',
             title: 'Dレッスン 総合がんばり賞',
             requirement: 'マウスLv.7 と キーボード50%以上を達成',
-            progressText: `マウス Lv.${Math.min(mouseLevel, 7)} / キーボード ${clampPercent(keyboardSequence, keyboardTotal)}%`,
-            percent: Math.min(100, Math.floor((clampPercent(mouseLevel, 7) + clampPercent(keyboardSequence, keyboardTotal)) / 2)),
-            earned: mouseLevel >= 7 && keyboardSequence >= Math.ceil(keyboardTotal * 0.5),
+            progressText: `マウス Lv.${Math.min(mouseLevel, 7)} / 7 ・ キーボード ${Math.min(keyboardSequence, keyboard50Target)} / ${keyboard50Target}`,
+            percent: Math.min(100, Math.floor((clampPercent(mouseLevel, 7) + clampPercent(keyboardSequence, keyboard50Target)) / 2)),
+            earned: mouseLevel >= 7 && keyboardSequence >= keyboard50Target,
             message: 'いろいろな練習にこつこつ取り組み、自分の力を伸ばし続けました。'
         }
     ];

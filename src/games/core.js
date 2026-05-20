@@ -98,6 +98,7 @@ export const els = {
     fbOverlay: document.getElementById('feedback-overlay'), 
     fbText: document.getElementById('feedback-text'),
     fbTime: document.getElementById('feedback-time'), 
+    fbActions: document.getElementById('feedback-actions'),
     failOverlay: document.getElementById('fail-overlay'),
     advice: document.getElementById('fail-advice'), 
     ctxMenu: document.getElementById('fake-context-menu'),
@@ -127,6 +128,81 @@ function getPracticeAmount(elapsed) {
     const total = totalKeysTyped + missKeysTyped;
     const acc = total > 0 ? Math.floor((totalKeysTyped / total) * 100) : 0;
     return `打鍵 ${totalKeysTyped}回 / ミス ${missKeysTyped}回 / 正確率 ${acc}%`;
+}
+
+function clearFeedbackActions() {
+    const actions = els.fbActions || document.getElementById('feedback-actions');
+    if (!actions) return;
+    actions.innerHTML = '';
+    actions.style.display = 'none';
+}
+
+function getNextStageAfterClear() {
+    if (gameMode === 'mouse') {
+        const nextStage = Number(currentStage || 0) + 1;
+        if (nextStage <= 7) {
+            return {
+                label: 'つぎのステージへすすむ',
+                detail: `M-${nextStage}`,
+                run: () => startGame(nextStage, 'mouse')
+            };
+        }
+        return null;
+    }
+
+    if (gameMode === 'keyboard' && currentStage !== 9888) {
+        const idx = STAGE_ORDER.indexOf(currentStage);
+        const nextStage = idx !== -1 ? STAGE_ORDER[idx + 1] : null;
+        if (nextStage) {
+            return {
+                label: 'つぎのステージへすすむ',
+                detail: getStageName(nextStage).replace(/\[ID:[^\]]+\]\s*/, ''),
+                run: () => startGame(nextStage, 'keyboard')
+            };
+        }
+        return null;
+    }
+
+    if (gameMode === 'vision') {
+        const stageKey = String(currentStage || '');
+        const suffix = stageKey.endsWith('_hard') ? '_hard' : (stageKey.endsWith('_easy') ? '_easy' : '');
+        const baseId = stageKey.replace('_hard', '').replace('_easy', '');
+        const idx = VISION_STAGES.findIndex(stage => stage.id === baseId);
+        const nextStage = idx !== -1 ? VISION_STAGES[idx + 1] : null;
+        if (nextStage) {
+            return {
+                label: 'つぎのステージへすすむ',
+                detail: `${nextStage.title}${suffix === '_hard' ? ' ハード' : (suffix === '_easy' ? ' イージー' : '')}`,
+                run: () => startGame(`${nextStage.id}${suffix}`, 'vision')
+            };
+        }
+    }
+
+    return null;
+}
+
+function renderFeedbackActions() {
+    const actions = els.fbActions || document.getElementById('feedback-actions');
+    if (!actions) return;
+    actions.innerHTML = '';
+
+    const nextStage = getNextStageAfterClear();
+    if (nextStage) {
+        const nextButton = document.createElement('button');
+        nextButton.className = 'btn-primary feedback-next-button';
+        nextButton.type = 'button';
+        nextButton.innerHTML = `${nextStage.label}<small>${nextStage.detail}</small>`;
+        nextButton.onclick = nextStage.run;
+        actions.appendChild(nextButton);
+    }
+
+    const menuButton = document.createElement('button');
+    menuButton.className = 'btn-secondary feedback-menu-button';
+    menuButton.type = 'button';
+    menuButton.textContent = 'メニューへもどる';
+    menuButton.onclick = () => backToMenu();
+    actions.appendChild(menuButton);
+    actions.style.display = 'flex';
 }
 
 function getPracticeInterruptAmount(elapsed) {
@@ -184,6 +260,7 @@ export function startGame(sid, mode) {
 
     if (document.activeElement) document.activeElement.blur();
     els.playArea.innerHTML = ''; els.fbOverlay.style.display = 'none'; els.fbTime.style.display = 'none'; els.failOverlay.style.display = 'none'; els.ctxMenu.style.display = 'none';
+    clearFeedbackActions();
     els.playArea.classList.toggle('vision-play-area', mode === 'vision');
     let statDiv = document.getElementById('feedback-stats'); if(statDiv) statDiv.style.display = 'none';
     document.removeEventListener('keydown', handleKeyDown);
@@ -277,6 +354,7 @@ export function backToMenu(recordInterrupt = false) {
         document.getElementById('start-overlay').style.display = 'none';
         document.getElementById('feedback-overlay').style.display = 'none';
         document.getElementById('fail-overlay').style.display = 'none';
+        clearFeedbackActions();
 
         document.removeEventListener('keydown', handleKeyDown);
         
@@ -726,6 +804,8 @@ export function markClear() {
         if (!statDiv) { statDiv = document.createElement('div'); statDiv.id = 'feedback-stats'; els.fbOverlay.appendChild(statDiv); }
         statDiv.innerHTML = statsMsg; statDiv.style.display = statsMsg ? 'block' : 'none';
         
+        if (earnedTicket) clearFeedbackActions();
+        else renderFeedbackActions();
         els.fbOverlay.style.display = 'flex'; document.getElementById('progress-bar-fill').style.width = '100%';
         createConfetti();
 
@@ -734,7 +814,7 @@ export function markClear() {
                 els.fbOverlay.style.display = 'none';
                 showRewardOverlay("🎉 チケット ゲット！ 🎉", earnedTicket.name, earnedTicket.icon, () => { backToMenu(); });
             }, 3000);
-        } else { setTimeout(backToMenu, 4000); }
+        }
     } catch(err) {
         console.error("markClearエラー:", err);
         setTimeout(backToMenu, 2000); 

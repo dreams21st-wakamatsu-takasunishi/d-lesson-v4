@@ -49,6 +49,17 @@ const EXTERNAL_TYPING_SITES = {
     }
 };
 
+const FREE_TIME_SITES = {
+    youtube: {
+        title: 'YouTube',
+        url: 'https://www.youtube.com/'
+    },
+    poki: {
+        title: 'Poki',
+        url: 'https://poki.com/'
+    }
+};
+
 function formatLogTime(date) {
     return date.toLocaleTimeString('ja-JP', {
         hour: '2-digit',
@@ -56,16 +67,39 @@ function formatLogTime(date) {
     });
 }
 
-function recordExternalTypingLog(site, detail, amount) {
+function recordExternalLog(site, options, detail, amount) {
     if (!canWriteCurrentUserRow()) return;
     recordPracticeActivity({
-        category: 'external-typing',
-        title: `外部タイピング ${site.title}`,
+        category: options.category,
+        title: `${options.titlePrefix} ${site.title}`,
         detail,
         amount,
         coins: 0
     });
     saveUsers(false);
+}
+
+function openTrackedExternalSite(site, options) {
+    if (!site) return;
+
+    const openedAt = new Date();
+    const popup = window.open('about:blank', '_blank');
+    if (!popup) {
+        alert('外部サイトを開けませんでした。ブラウザのポップアップ許可を確認してください。');
+        return;
+    }
+
+    popup.opener = null;
+    popup.location.href = site.url;
+    recordExternalLog(site, options, '開始', `開始 ${formatLogTime(openedAt)}`);
+
+    const closeCheck = setInterval(() => {
+        if (!popup.closed) return;
+        clearInterval(closeCheck);
+        const closedAt = new Date();
+        const elapsedMinutes = Math.max(0, Math.round((closedAt.getTime() - openedAt.getTime()) / 60000));
+        recordExternalLog(site, options, '終了', `開始 ${formatLogTime(openedAt)} / 終了 ${formatLogTime(closedAt)} / 約${elapsedMinutes}分`);
+    }, 2000);
 }
 
 function getCurrentMinigameModeKey() {
@@ -487,26 +521,18 @@ export async function saveTypingRankingNickname(modeKey = 'meteor', context = 'p
 
 export function openExternalTypingSite(siteId) {
     const site = EXTERNAL_TYPING_SITES[siteId];
-    if (!site) return;
+    openTrackedExternalSite(site, {
+        category: 'external-typing',
+        titlePrefix: '外部タイピング'
+    });
+}
 
-    const openedAt = new Date();
-    const popup = window.open('about:blank', '_blank');
-    if (!popup) {
-        alert('外部サイトを開けませんでした。ブラウザのポップアップ許可を確認してください。');
-        return;
-    }
-
-    popup.opener = null;
-    popup.location.href = site.url;
-    recordExternalTypingLog(site, '開始', `開始 ${formatLogTime(openedAt)}`);
-
-    const closeCheck = setInterval(() => {
-        if (!popup.closed) return;
-        clearInterval(closeCheck);
-        const closedAt = new Date();
-        const elapsedMinutes = Math.max(0, Math.round((closedAt.getTime() - openedAt.getTime()) / 60000));
-        recordExternalTypingLog(site, '終了', `開始 ${formatLogTime(openedAt)} / 終了 ${formatLogTime(closedAt)} / 約${elapsedMinutes}分`);
-    }, 2000);
+export function openFreeTimeSite(siteId) {
+    const site = FREE_TIME_SITES[siteId];
+    openTrackedExternalSite(site, {
+        category: 'free-time',
+        titlePrefix: 'じゆうじかん'
+    });
 }
 
 function initDChallengeWords() {
