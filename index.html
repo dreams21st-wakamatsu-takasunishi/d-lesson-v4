@@ -500,6 +500,34 @@
                         <p style="margin:10px 0 0; color:#546e7a; font-size:13px; line-height:1.6;">0分で無効。未設定時は公開環境の初期値を使います。共有端末では20分前後を目安にしてください。</p>
                     </div>
                     <div style="width:min(1000px, 96%); background:#fff; border:1px solid #ddd; border-radius:8px; padding:15px; box-sizing:border-box;">
+                        <h4 style="margin:0 0 10px; color:#37474f;">今日のミッション設定</h4>
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:12px; align-items:end;">
+                            <label style="display:flex; align-items:center; gap:8px; font-weight:bold; color:#263238;">
+                                <input id="daily-mission-enabled" type="checkbox" style="width:20px; height:20px;">
+                                表示する
+                            </label>
+                            <label style="display:flex; flex-direction:column; gap:6px; font-weight:bold; color:#263238;">
+                                1日の課題数
+                                <span style="display:flex; gap:8px; align-items:center;">
+                                    <input id="daily-mission-count" type="number" min="3" max="5" step="1" inputmode="numeric" style="width:90px; padding:9px; border:1px solid #b0bec5; border-radius:6px; font-size:18px; text-align:right;">
+                                    <span>こ</span>
+                                </span>
+                            </label>
+                            <label style="display:flex; flex-direction:column; gap:6px; font-weight:bold; color:#263238;">
+                                全部達成ボーナス
+                                <span style="display:flex; gap:8px; align-items:center;">
+                                    <input id="daily-mission-reward" type="number" min="0" max="9999" step="10" inputmode="numeric" style="width:110px; padding:9px; border:1px solid #b0bec5; border-radius:6px; font-size:18px; text-align:right;">
+                                    <span>コイン</span>
+                                </span>
+                            </label>
+                            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                                <button class="btn-primary" onclick="saveDailyMissionSettings()" style="font-size:15px; padding:10px 18px;">保存</button>
+                                <span id="daily-mission-settings-status" style="color:#546e7a; font-size:13px;"></span>
+                            </div>
+                        </div>
+                        <p style="margin:10px 0 0; color:#546e7a; font-size:13px; line-height:1.6;">課題数は3〜5こ。児童ごとにその日の進み具合から自動で選ばれます。</p>
+                    </div>
+                    <div style="width:min(1000px, 96%); background:#fff; border:1px solid #ddd; border-radius:8px; padding:15px; box-sizing:border-box;">
                         <h4 style="margin:0 0 10px; color:#37474f;">タイピングランキング NGワード</h4>
                         <p style="margin:0 0 10px; color:#546e7a; font-size:13px; line-height:1.6;">ランキング上位者が登録するニックネームで使えない言葉を追加できます。標準のNGワードは常に有効です。</p>
                         <textarea id="typing-ranking-ng-words" placeholder="1行に1つ入力&#10;例: からかい言葉&#10;例: 教室名" style="width:100%; min-height:120px; box-sizing:border-box; padding:10px; border:1px solid #b0bec5; border-radius:6px; font-size:15px; line-height:1.5;"></textarea>
@@ -558,13 +586,15 @@
                 </div>
             </div>
 
+            <div id="daily-mission-card" style="width:90%; max-width:1040px; margin:0 0 16px;"></div>
+
             <div id="last-practice-card" style="width:90%; max-width:800px; box-sizing:border-box; background:#e0f2f1; border:2px solid #80cbc4; border-radius:8px; padding:12px 16px; margin:0 0 16px; text-align:left;"></div>
 
             <p>なにを れんしゅうする？</p>
             <div style="color: #FF9800; font-weight:bold; margin-bottom: 20px;">
                 ※ キーボードの「F」と「J」でえらんで、「Enter」でけっていできるよ！
             </div>
-            <div style="display:flex; flex-wrap: wrap; gap: 20px; justify-content: center; max-width: 1040px; margin: 0 auto;">
+            <div id="home-category-grid" style="display:flex; flex-wrap: wrap; gap: 20px; justify-content: center; max-width: 1040px; margin: 0 auto;">
                 <button class="btn-primary category-btn" id="cat-mouse" onclick="goToMouseMenu()">
                     <span style="font-size:60px;">🖱️</span><span>マウスの<br>れんしゅう</span>
                 </button>
@@ -599,7 +629,7 @@
         <div class="screen-content">
             <h2>キーボードのれんしゅう</h2>
             <p>どのれんしゅうをする？</p>
-            <div style="display:flex; flex-wrap: wrap; gap: 20px; justify-content: center; max-width: 800px;">
+            <div id="keyboard-category-choice-grid" style="display:flex; flex-wrap: wrap; gap: 20px; justify-content: center; max-width: 800px;">
                 <button class="btn-primary category-btn" onclick="goToKeyboardMenu('basic')" style="width: 320px; height: 130px;">
                     <span style="font-size:40px;">① 🅰️</span>
                     <span style="font-size:22px;">きほんれんしゅう</span>
@@ -940,9 +970,6 @@
                 <button class="category-btn" onclick="showRecordSection('rec-certificate')" style="background-color:#B45309; width:220px; height:120px;">
                     <span style="font-size:40px;">賞</span><span style="font-size:18px; font-weight:bold; margin-top:5px;">賞状印刷</span>
                 </button>
-                <button class="category-btn" onclick="showRecordSection('rec-title')" style="background-color:#00BCD4; width:220px; height:120px;">
-                    <span style="font-size:40px;">🎖️</span><span style="font-size:18px; font-weight:bold; margin-top:5px;">あつめた称号</span>
-                </button>
             </div>
 
             <div id="records-panel-content" style="display:none; width:100%; flex-direction:column; align-items:center; flex:1; min-height:0;">
@@ -957,7 +984,6 @@
                 <div id="rec-graph" class="record-section-content" style="display:none; width:100%;"></div>
                 <div id="rec-practice" class="record-section-content" style="display:none; width:100%; max-height:560px; overflow-y:auto; padding-right:10px;"></div>
                 <div id="rec-certificate" class="record-section-content" style="display:none; width:100%; max-height:560px; overflow-y:auto; padding-right:10px;"></div>
-                <div id="rec-title" class="record-section-content" style="display:none; width:100%; max-height:500px; overflow-y:auto; padding-right:10px;"></div>
             </div>
         </div>
         <button id="records-bottom-back-btn" class="btn-secondary bottom-back-btn" onclick="handleGlobalHome()" tabindex="0">ホームに戻る</button>

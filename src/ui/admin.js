@@ -64,6 +64,7 @@ import {
 } from './admin-tickets.js';
 import {
     saveStudentIdleLogoutSetting,
+    saveDailyMissionSettings,
     renderOpsGuideAdmin,
     copyInternalIdCheckGuide,
     copyDeviceHandoffChecklist,
@@ -111,6 +112,7 @@ export {
     renderTicketAdmin,
     saveTicketSettings,
     saveStudentIdleLogoutSetting,
+    saveDailyMissionSettings,
     renderOpsGuideAdmin,
     renderTypingRankingSettingsAdmin,
     saveTypingRankingNicknameBlockWords,

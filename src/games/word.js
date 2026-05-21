@@ -14,6 +14,7 @@ import { showScreen } from '../ui/screen.js';
 import { createConfetti } from '../ui/reward.js';
 
 let currentWordStageId = null;
+const WORD_TEXT_WINDOW_FEATURES = 'popup=yes,width=1180,height=820,menubar=no,toolbar=no,location=yes,status=no,scrollbars=yes,resizable=yes';
 
 function getActiveUserOrTitle() {
     const u = currentUser ? users[currentUser] : null;
@@ -105,7 +106,10 @@ function startWordStage(sid) {
 
 export function openWordText() {
     const st = WORD_STAGES.find(s => s.id === currentWordStageId);
-    if (st && st.pdf && st.pdf !== '') window.open(st.pdf, '_blank');
+    if (st && st.pdf && st.pdf !== '') {
+        const popup = window.open(st.pdf, '_blank', WORD_TEXT_WINDOW_FEATURES);
+        if (popup) popup.opener = null;
+    }
     else showCustomAlert('テキストのURLが設定されていません。\n（先生へ：script.js 内の WORD_STAGES にPDFのURLを入れてください）');
 }
 

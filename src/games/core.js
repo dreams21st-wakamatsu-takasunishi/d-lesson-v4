@@ -27,6 +27,8 @@ import { convertNameToRomaji, shuffle } from '../utils/helpers.js';
 import { getValidMistakeEntries, normalizeMistakeCount } from '../utils/weak-mistakes.js';
 import { createConfetti, showRewardOverlay } from '../ui/reward.js';
 import { getCurrentKeyboardChapter } from '../ui/keyboard-state.js';
+import { renderRecords, showRecordSection } from '../ui/records.js';
+import { markDailyMissionComplete } from '../ui/daily-missions.js';
 import { startVisionGame, renderVisionMenu } from './vision.js';
 export { getStageName } from '../utils/stages.js';
 
@@ -42,6 +44,7 @@ let romajiMode = '';
 let romajiTotalCells = 0;
 let romajiCorrectCells = 0;
 let isClearProcessing = false;
+let pendingCertificateAward = null;
 
 export let visionScore = 0;
 export let visionTarget = 0;
@@ -186,6 +189,15 @@ function renderFeedbackActions() {
     if (!actions) return;
     actions.innerHTML = '';
 
+    if (pendingCertificateAward) {
+        const certificateButton = document.createElement('button');
+        certificateButton.className = 'btn-primary feedback-certificate-button';
+        certificateButton.type = 'button';
+        certificateButton.innerHTML = `賞状ゲットを見る<small>${pendingCertificateAward.title}</small>`;
+        certificateButton.onclick = () => showCertificateAwardOverlay(pendingCertificateAward);
+        actions.appendChild(certificateButton);
+    }
+
     const nextStage = getNextStageAfterClear();
     if (nextStage) {
         const nextButton = document.createElement('button');
@@ -203,6 +215,34 @@ function renderFeedbackActions() {
     menuButton.onclick = () => backToMenu();
     actions.appendChild(menuButton);
     actions.style.display = 'flex';
+}
+
+function openCertificateSectionFromFeedback() {
+    els.fbOverlay.style.display = 'none';
+    clearFeedbackActions();
+    renderRecords();
+    showScreen('screen-records');
+    requestAnimationFrame(() => showRecordSection('rec-certificate'));
+}
+
+function showCertificateAwardOverlay(award) {
+    els.fbOverlay.style.display = 'none';
+    clearFeedbackActions();
+    if (!award) {
+        backToMenu();
+        return;
+    }
+    showRewardOverlay('🏆 賞状ゲット！ 🏆', `${award.title}\n印刷画面へすすみます`, '📜', openCertificateSectionFromFeedback);
+}
+
+function getKeyboardCertificateAward(previousSequence, nextSequence) {
+    const total = STAGE_ORDER.length;
+    const awards = [
+        { threshold: Math.ceil(total * 0.25), title: 'キーボード 努力賞' },
+        { threshold: Math.ceil(total * 0.5), title: 'キーボード 上達賞' },
+        { threshold: total, title: 'キーボード 達成賞' }
+    ];
+    return awards.find(award => previousSequence < award.threshold && nextSequence >= award.threshold) || null;
 }
 
 function getPracticeInterruptAmount(elapsed) {
@@ -239,6 +279,7 @@ function recordPracticeInterrupt(shouldRecord) {
 export function startGame(sid, mode) {
     SoundManager.init(); currentStage = sid; gameMode = mode; isProcessing = false;
     isClearProcessing = false;
+    pendingCertificateAward = null;
     mainQueue =[]; currentCount = 0; totalCount = 1; pendingHome = null; isHomeReturn = false;
     mistakeCount = 0; mistakeStats = {}; currRomajiIdx = 0; activeRomajiList =[]; currHiraObj = null; totalKeysTyped = 0; missKeysTyped = 0;
     typedRomajiStr = ""; 
@@ -260,6 +301,7 @@ export function startGame(sid, mode) {
 
     if (document.activeElement) document.activeElement.blur();
     els.playArea.innerHTML = ''; els.fbOverlay.style.display = 'none'; els.fbTime.style.display = 'none'; els.failOverlay.style.display = 'none'; els.ctxMenu.style.display = 'none';
+    els.fbOverlay.classList.remove('certificate-earned-feedback');
     clearFeedbackActions();
     els.playArea.classList.toggle('vision-play-area', mode === 'vision');
     let statDiv = document.getElementById('feedback-stats'); if(statDiv) statDiv.style.display = 'none';
@@ -360,6 +402,11 @@ export function backToMenu(recordInterrupt = false) {
         
         document.oncontextmenu = null; 
         els.playArea.oncontextmenu = null;
+        els.playArea.onclick = null;
+        els.playArea.onmousemove = null;
+        els.playArea.onmouseup = null;
+        els.playArea.onmouseleave = null;
+        els.playArea.onwheel = null;
         
         isProcessing = false;
         
@@ -624,6 +671,11 @@ function setupKeyboard(s) {
 function nextTask() {
     if (gameMode === 'mouse') {
         els.playArea.innerHTML = ''; els.ctxMenu.style.display = 'none'; 
+        els.playArea.onclick = null;
+        els.playArea.onmousemove = null;
+        els.playArea.onmouseup = null;
+        els.playArea.onmouseleave = null;
+        els.playArea.onwheel = null;
         els.playArea.oncontextmenu = (e) => { e.preventDefault(); }; 
         els.playArea.style.overflowY = 'hidden'; els.playArea.style.display = 'flex'; isProcessing = false;
         const task = mainQueue.shift(); if (!task) return;
@@ -678,6 +730,9 @@ export function markClear() {
             let isFirst = users[currentUser] && users[currentUser].mouseLevel < currentStage;
             coinGain = isFirst ? 50 : 1; 
             if (isFirst) users[currentUser].mouseLevel = currentStage;
+            if (canSaveResult && isFirst && Number(currentStage) === 7) {
+                pendingCertificateAward = { id: 'mouse-master', title: 'マウスれんしゅう 免許皆伝' };
+            }
         } else if (gameMode === 'vision') {
             if (!users[currentUser].visionCleared) users[currentUser].visionCleared =[];
             let isFirst = !users[currentUser].visionCleared.includes(currentStage);
@@ -724,7 +779,11 @@ export function markClear() {
             if (currentStage !== 9888) {
                 const idx = STAGE_ORDER.indexOf(currentStage);
                 if (idx !== -1 && users[currentUser] && users[currentUser].keyboardSequence <= idx) {
+                    const previousSequence = Number(users[currentUser].keyboardSequence || 0);
                     users[currentUser].keyboardSequence = idx + 1; isFirst = true;
+                    if (canSaveResult) {
+                        pendingCertificateAward = getKeyboardCertificateAward(previousSequence, users[currentUser].keyboardSequence);
+                    }
                 }
             }
             
@@ -791,7 +850,17 @@ export function markClear() {
                 amount: getPracticeAmount(elapsed),
                 coins: coinGain
             });
+            const dailyMissionResult = markDailyMissionComplete({
+                type: gameMode || 'practice',
+                stage: currentStage
+            });
             clearMsg += `<br><span style="font-size:24px; color:#FFD700;">💰 +${coinGain} コインゲット！</span>`;
+            if (dailyMissionResult?.task) {
+                clearMsg += `<br><span style="font-size:20px; color:#00c853;">今日のミッション達成！ ${dailyMissionResult.doneCount}/${dailyMissionResult.total}</span>`;
+                if (dailyMissionResult.reward) {
+                    clearMsg += `<br><span style="font-size:26px; color:#ff9800;">ミッションボーナス +${dailyMissionResult.reward} コイン！</span>`;
+                }
+            }
             saveUsers(false);
         } else {
             if (originalUserData) users[currentUser] = originalUserData;
@@ -800,6 +869,7 @@ export function markClear() {
         
         SoundManager.playClear();
         els.fbText.innerHTML = clearMsg; els.fbTime.innerHTML = timeMsg; els.fbTime.style.display = timeMsg ? 'block' : 'none';
+        els.fbOverlay.classList.remove('certificate-earned-feedback');
         let statDiv = document.getElementById('feedback-stats');
         if (!statDiv) { statDiv = document.createElement('div'); statDiv.id = 'feedback-stats'; els.fbOverlay.appendChild(statDiv); }
         statDiv.innerHTML = statsMsg; statDiv.style.display = statsMsg ? 'block' : 'none';
@@ -812,7 +882,10 @@ export function markClear() {
         if (earnedTicket) {
             setTimeout(() => {
                 els.fbOverlay.style.display = 'none';
-                showRewardOverlay("🎉 チケット ゲット！ 🎉", earnedTicket.name, earnedTicket.icon, () => { backToMenu(); });
+                showRewardOverlay("🎉 チケット ゲット！ 🎉", earnedTicket.name, earnedTicket.icon, () => {
+                    if (pendingCertificateAward) showCertificateAwardOverlay(pendingCertificateAward);
+                    else backToMenu();
+                });
             }, 3000);
         }
     } catch(err) {
@@ -869,7 +942,14 @@ function updRomaji() { let h = ''; let target = activeRomajiList[0]; for (let i 
 
 function mkEl(c, h) { const d = document.createElement('div'); d.className = c; d.innerHTML = h; return d; }
 
-function rndPos(e) { const r = els.playArea.getBoundingClientRect(); e.style.left = (Math.random() * (r.width - 150) + 50) + 'px'; e.style.top = (Math.random() * (r.height - 150) + 50) + 'px'; }
+function rndPos(e, safeWidth = 150, safeHeight = 150) {
+    const r = els.playArea.getBoundingClientRect();
+    const pad = 40;
+    const maxLeft = Math.max(pad, r.width - safeWidth - pad);
+    const maxTop = Math.max(pad, r.height - safeHeight - pad);
+    e.style.left = (Math.random() * Math.max(1, maxLeft - pad) + pad) + 'px';
+    e.style.top = (Math.random() * Math.max(1, maxTop - pad) + pad) + 'px';
+}
 
 function m_move() { els.instText.innerText="★に マウスの やじるし を あわせてね"; const s=mkEl('target star','★'); s.style.color='#FFC107'; rndPos(s); s.onmouseenter=()=>{if(isProcessing)return; isProcessing=true; SoundManager.playHover(); s.innerText='😊'; s.style.transform='scale(1.3)'; setTimeout(()=>{s.remove(); completeTask(300);},500);}; els.playArea.appendChild(s); }
 
@@ -877,7 +957,7 @@ function m_click() { els.instText.innerText="「トン」！ １かい クリッ
 
 function m_dbl() {
         els.instText.innerText="「トントン」！ ２かい はやく クリックしてね";
-const f=mkEl('target folder','📁<span class="folder-text">ひみつ</span>'); f.style.color='#FFCA28'; rndPos(f); f.ondblclick=()=>{if(isProcessing)return; isProcessing=true; SoundManager.playClick(); f.innerHTML='📂<span class="folder-text">あいた！</span>'; setTimeout(()=>{f.remove(); completeTask(300);},500);}; els.playArea.appendChild(f); }
+const f=mkEl('target folder','<span class="folder-icon">📁</span><span class="folder-text">ひみつ</span>'); f.style.color='#FFCA28'; rndPos(f, 150, 150); f.ondblclick=()=>{if(isProcessing)return; isProcessing=true; SoundManager.playClick(); f.innerHTML='<span class="folder-icon">📂</span><span class="folder-text">あいた！</span>'; setTimeout(()=>{f.remove(); completeTask(300);},500);}; els.playArea.appendChild(f); }
 
 function m_menu() { 
     els.instText.innerText="マウスの みぎがわ を「トン」と おして「★ひみつのメニュー★」を えらんでね";
@@ -910,39 +990,57 @@ export function handleSecretMenuClick() {
 
 function m_scroll() { 
     els.instText.innerText="コロコロ（ホイール）を まわして、一番下の ボタンを おしてね"; 
-    els.playArea.style.display='block'; 
-    els.playArea.style.overflowY='auto'; 
-    els.playArea.scrollTop = 0; 
-    
+    els.playArea.style.display='flex'; 
+    els.playArea.style.overflow='hidden'; 
+
     const sc=document.createElement('div'); 
-    sc.style.height='2000px'; 
-    sc.style.width='100%'; 
-    sc.style.position='relative'; 
-    sc.style.background='linear-gradient(to bottom, #e1f5fe, #81d4fa, #29b6f6)'; 
-    const btn=document.createElement('div'); 
-    btn.className='stage-btn unlocked'; 
-    btn.innerText='✨ ここを クリック！ ✨'; 
-    btn.style.position='absolute'; 
-    btn.style.bottom='20px'; 
-    btn.style.left='50%'; 
-    btn.style.transform='translateX(-50%)'; 
-    btn.style.width='300px'; 
-    btn.style.fontSize='24px'; 
-    btn.style.backgroundColor='#FFC107'; 
+    sc.className = 'mouse-scroll-practice';
+    sc.innerHTML = `
+        <div class="mouse-scroll-road">
+            <div class="mouse-scroll-cloud top">ホイールを 下に コロコロ</div>
+            <div class="mouse-scroll-arrow">↓</div>
+            <div class="mouse-scroll-cloud middle">あと すこし</div>
+            <button type="button" class="mouse-scroll-finish is-locked">ゴールまで コロコロ</button>
+        </div>
+    `;
+    const road = sc.querySelector('.mouse-scroll-road');
+    const btn = sc.querySelector('.mouse-scroll-finish');
+    let virtualScroll = 0;
+
     btn.onclick=()=>{
-        if(isProcessing)return; 
+        if(isProcessing || !btn.classList.contains('is-ready')) return; 
         isProcessing=true; 
         SoundManager.playClick(); 
-        btn.innerText='⭕️'; 
+        btn.innerText='⭕️ できた！'; 
         setTimeout(()=>{
-            els.playArea.style.overflowY='hidden'; 
+            els.playArea.onwheel = null;
+            els.playArea.style.overflow='hidden'; 
             els.playArea.style.display='flex'; 
             sc.remove(); 
             completeTask(300);
         },500);
-    }; 
-    sc.appendChild(btn); 
+    };
     els.playArea.appendChild(sc); 
+
+    const getMaxScroll = () => Math.max(0, road.offsetHeight - sc.clientHeight);
+    const updateScrollPractice = () => {
+        const maxScroll = getMaxScroll();
+        virtualScroll = Math.max(0, Math.min(maxScroll, virtualScroll));
+        road.style.transform = `translateY(${-virtualScroll}px)`;
+        if (maxScroll > 0 && virtualScroll >= maxScroll - 8) {
+            btn.classList.remove('is-locked');
+            btn.classList.add('is-ready');
+            btn.innerText = '✨ ここを クリック！ ✨';
+        }
+    };
+
+    els.playArea.onwheel = (event) => {
+        event.preventDefault();
+        if (isProcessing) return;
+        virtualScroll += Math.max(0, event.deltaY);
+        updateScrollPractice();
+    };
+    updateScrollPractice();
 }
 
 function m_drag() { 
@@ -977,11 +1075,9 @@ function m_drag() {
                 if(!isProcessing){
                     isProcessing=true; b.style.display='none'; SoundManager.playTrash(); 
                     t.classList.add('active'); 
-                    const ok=mkEl('ok-mark','⭕️'); 
-                    ok.style.left='50%'; ok.style.top='50%'; 
-                    ok.style.transform='translate(-50%, -50%)'; ok.style.bottom='auto';
-                    els.playArea.appendChild(ok); 
-                    setTimeout(()=>{t.classList.remove('active'); ok.remove(); completeTask(300);},1000);
+                    const burst=mkEl('drag-success-burst','<span>できた！</span><small>じょうずに はこべたね</small>');
+                    els.playArea.appendChild(burst);
+                    setTimeout(()=>{t.classList.remove('active'); burst.remove(); completeTask(300);},1200);
                 }
             }
         }

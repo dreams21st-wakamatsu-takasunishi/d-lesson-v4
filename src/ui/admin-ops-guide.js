@@ -17,6 +17,7 @@ import {
 } from '../api/user.js';
 import { showCustomAlert } from './modal.js';
 import { recordAdminAudit } from './admin-audit.js';
+import { getDailyMissionSettings } from './daily-missions.js';
 
 function escapeHtml(value) {
     return String(value ?? '')
@@ -65,6 +66,18 @@ function renderStudentIdleLogoutSetting() {
     input.value = String(getStudentIdleLogoutMinutes());
 }
 
+function renderDailyMissionSetting() {
+    const enabledInput = document.getElementById('daily-mission-enabled');
+    const countInput = document.getElementById('daily-mission-count');
+    const rewardInput = document.getElementById('daily-mission-reward');
+    if (!enabledInput || !countInput || !rewardInput) return;
+
+    const settings = getDailyMissionSettings(ensureGlobalSettings());
+    enabledInput.checked = settings.enabled;
+    countInput.value = String(settings.count);
+    rewardInput.value = String(settings.reward);
+}
+
 export async function saveStudentIdleLogoutSetting() {
     const input = document.getElementById('student-idle-logout-minutes');
     const rawValue = input?.value ?? '';
@@ -98,6 +111,54 @@ export async function saveStudentIdleLogoutSetting() {
         ? `児童の自動ログアウトを ${minutes}分 に設定しました。`
         : '児童の自動ログアウトを無効にしました。'
     );
+}
+
+export async function saveDailyMissionSettings() {
+    const enabledInput = document.getElementById('daily-mission-enabled');
+    const countInput = document.getElementById('daily-mission-count');
+    const rewardInput = document.getElementById('daily-mission-reward');
+    const status = document.getElementById('daily-mission-settings-status');
+
+    const count = Number.parseInt(countInput?.value ?? '', 10);
+    const reward = Number.parseInt(rewardInput?.value ?? '', 10);
+
+    if (!Number.isFinite(count) || count < 3 || count > 5) {
+        showCustomAlert('1日の課題数は3〜5この範囲で入力してください。');
+        renderDailyMissionSetting();
+        return;
+    }
+
+    if (!Number.isFinite(reward) || reward < 0 || reward > 9999) {
+        showCustomAlert('ボーナスコインは0〜9999の範囲で入力してください。');
+        renderDailyMissionSetting();
+        return;
+    }
+
+    const before = getDailyMissionSettings(ensureGlobalSettings());
+    const settings = ensureGlobalSettings();
+    settings.dailyMissionSettings = {
+        enabled: Boolean(enabledInput?.checked),
+        count,
+        reward
+    };
+
+    recordAdminAudit('デイリーミッション設定変更', {
+        before: `${before.enabled ? '表示' : '非表示'} / ${before.count}こ / ${before.reward}コイン`,
+        after: `${settings.dailyMissionSettings.enabled ? '表示' : '非表示'} / ${count}こ / ${reward}コイン`
+    });
+
+    const saved = await saveUsers(true);
+    renderOpsGuideAdmin();
+    window.updateHomeDashboard?.();
+
+    if (status) status.textContent = saved ? '保存しました' : '保存しました（同期未完了）';
+
+    if (!saved) {
+        showCustomAlert('設定を保存しましたが、クラウド同期が完了していません。通信状態を確認してください。');
+        return;
+    }
+
+    showCustomAlert('今日のミッション設定を保存しました。');
 }
   
   function getStudentUserIds() {
@@ -213,6 +274,7 @@ export function renderOpsGuideAdmin() {
 
     renderOpsUserIdDetails(grid, legacyStudentIdRows, userDataIdMismatchRows);
     renderStudentIdleLogoutSetting();
+    renderDailyMissionSetting();
 }
 
 export function copyInternalIdCheckGuide() {

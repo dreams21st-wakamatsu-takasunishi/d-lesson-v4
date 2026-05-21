@@ -37,6 +37,7 @@ const TYPING_RANKING_TABLE = 'lesson_typing_rankings';
 const TYPING_RANKING_TOP_LIMIT = 5;
 const NICKNAME_MAX_LENGTH = 10;
 const EXTRA_TYPING_PROMPTS = getExtraTypingPrompts();
+const EXTERNAL_WINDOW_FEATURES = 'popup=yes,width=1180,height=820,menubar=no,toolbar=no,location=yes,status=no,scrollbars=yes,resizable=yes';
 
 const EXTERNAL_TYPING_SITES = {
     sushida: {
@@ -83,7 +84,7 @@ function openTrackedExternalSite(site, options) {
     if (!site) return;
 
     const openedAt = new Date();
-    const popup = window.open('about:blank', '_blank');
+    const popup = window.open('about:blank', '_blank', EXTERNAL_WINDOW_FEATURES);
     if (!popup) {
         alert('外部サイトを開けませんでした。ブラウザのポップアップ許可を確認してください。');
         return;

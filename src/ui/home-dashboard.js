@@ -8,6 +8,7 @@ import { getStageName } from '../utils/stages.js';
 import { renderLastPracticeCard } from './practice-history.js';
 import { showScreen } from './screen.js';
 import { startGame } from '../games/core.js';
+import { renderDailyMissionPanel } from './daily-missions.js';
 
 const homeUiHandlers = {
     openMouseMenu: () => showScreen('screen-mouse-menu'),
@@ -47,6 +48,25 @@ export function updateHomeDashboard() {
     const lastPracticeCard = document.getElementById('last-practice-card');
     if (lastPracticeCard) {
         renderLastPracticeCard(lastPracticeCard, currentUser);
+    }
+
+    const dailyMissionCard = document.getElementById('daily-mission-card');
+    if (dailyMissionCard) {
+        renderDailyMissionPanel(dailyMissionCard, {
+            startMission: (task) => {
+                if (!task) return;
+                if (task.type === 'mouse') {
+                    homeUiHandlers.openMouseMenu();
+                    startGame(Number(task.stage), 'mouse');
+                } else if (task.type === 'keyboard') {
+                    showScreen('screen-keyboard-menu');
+                    startGame(Number(task.stage), 'keyboard');
+                } else if (task.type === 'vision') {
+                    showScreen('screen-vision-menu');
+                    startGame(String(task.stage), 'vision');
+                }
+            }
+        });
     }
 
     const maxMouse = 7;

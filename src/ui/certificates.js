@@ -2,6 +2,8 @@ import { STAGE_ORDER, VISION_STAGES, WORD_STAGES } from '../data/constants.js';
 import { currentUser, getUserDisplayName, users } from '../api/user.js';
 import { showCustomAlert } from './modal.js';
 
+const CERTIFICATE_PRINT_WINDOW_FEATURES = 'popup=yes,width=1180,height=840,menubar=no,toolbar=no,location=no,status=no,scrollbars=yes,resizable=yes';
+
 function escapeHtml(value) {
     return String(value ?? '')
         .replace(/&/g, '&amp;')
@@ -328,7 +330,7 @@ function buildPrintableHtml(certificates, studentName) {
 }
 
 function openCertificatePrintWindow(certificates, studentName) {
-    const popup = window.open('', '_blank');
+    const popup = window.open('', '_blank', CERTIFICATE_PRINT_WINDOW_FEATURES);
     if (!popup) {
         showCustomAlert('印刷画面を開けませんでした。ブラウザのポップアップ許可を確認してください。');
         return;

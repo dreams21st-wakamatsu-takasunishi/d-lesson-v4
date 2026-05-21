@@ -17,6 +17,7 @@ import { showCustomAlert } from './modal.js';
 const TEACHER_STATUS_STALE_DAYS = 14;
 const TEACHER_STATUS_LOW_KEYBOARD_PERCENT = 40;
 const TEACHER_STATUS_LOW_MOUSE_LEVEL = 3;
+const TEACHER_STATUS_PRINT_WINDOW_FEATURES = 'popup=yes,width=1180,height=840,menubar=no,toolbar=no,location=no,status=no,scrollbars=yes,resizable=yes';
 
 const teacherStatusFilters = {
     search: '',
@@ -417,7 +418,7 @@ function printTeacherStatus() {
         return;
     }
 
-    const printWindow = window.open('', '_blank');
+    const printWindow = window.open('', '_blank', TEACHER_STATUS_PRINT_WINDOW_FEATURES);
     if (!printWindow) {
         showCustomAlert('印刷画面を開けませんでした。ブラウザのポップアップ設定を確認してください。');
         return;
@@ -528,7 +529,7 @@ function printTeacherStudentDetail(userId) {
         return;
     }
 
-    const printWindow = window.open('', '_blank');
+    const printWindow = window.open('', '_blank', TEACHER_STATUS_PRINT_WINDOW_FEATURES);
     if (!printWindow) {
         showCustomAlert('印刷画面を開けませんでした。ブラウザのポップアップ設定を確認してください。');
         return;

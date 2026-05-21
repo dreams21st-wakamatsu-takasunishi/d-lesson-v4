@@ -250,6 +250,42 @@ export function applyTheme(themeId = 'default') {
             text-shadow: 1px 1px 2px rgba(0,0,0,0.8) !important;
             box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
         }
+        #daily-mission-card {
+            background: linear-gradient(135deg, #f8fbff 0%, #fff7e0 100%) !important;
+            color: #263238 !important;
+            border-color: #f6b91a !important;
+        }
+        #daily-mission-card button.daily-mission-task {
+            background: #ffffff !important;
+            color: #263238 !important;
+            border-color: #b3d5ef !important;
+            opacity: 1 !important;
+        }
+        #daily-mission-card button.daily-mission-task.is-done {
+            background: #f1f8e9 !important;
+            border-color: #81c784 !important;
+        }
+        #daily-mission-card button.daily-mission-task span,
+        #daily-mission-card .daily-mission-head,
+        #daily-mission-card .daily-mission-copy strong {
+            color: #263238 !important;
+        }
+        #daily-mission-card .daily-mission-copy small {
+            color: #607d8b !important;
+        }
+        #daily-mission-card .daily-mission-kicker,
+        #daily-mission-card .daily-mission-check {
+            background: #ffb300 !important;
+            color: #263238 !important;
+        }
+        #daily-mission-card .daily-mission-task.is-done .daily-mission-check {
+            background: #4caf50 !important;
+            color: #ffffff !important;
+        }
+        #daily-mission-card .daily-mission-reward {
+            background: #263238 !important;
+            color: #ffd54f !important;
+        }
         #screen-vision-menu .vision-stage-section-header h3,
         #screen-vision-menu .vision-stage-title {
             color: #263238 !important;

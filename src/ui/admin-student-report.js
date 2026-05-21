@@ -21,6 +21,8 @@ import {
     reportSection
 } from './admin-report-utils.js';
 
+const STUDENT_REPORT_PRINT_WINDOW_FEATURES = 'popup=yes,width=980,height=760,menubar=no,toolbar=no,location=no,status=no,scrollbars=yes,resizable=yes';
+
 function buildPracticeLogReportHtml(userId) {
     const logs = getPracticeLogs(userId).slice(0, 12);
     if (!logs.length) {
@@ -210,7 +212,7 @@ export function printStudentReportPanel() {
     if (!content || !content.innerHTML.trim()) return;
     const userId = content.dataset.userId;
     const title = userId && users[userId] ? `${getUserDisplayName(userId)} さんのレポート` : '児童レポート';
-    const printWindow = window.open('', '_blank', 'width=900,height=700');
+    const printWindow = window.open('', '_blank', STUDENT_REPORT_PRINT_WINDOW_FEATURES);
     if (!printWindow) return showCustomAlert('印刷画面を開けませんでした。ポップアップ設定を確認してください。');
     printWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>${getReportPrintStyles()}</style></head><body>${content.innerHTML}</body></html>`);
     printWindow.document.close();

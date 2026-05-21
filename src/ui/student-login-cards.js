@@ -1,6 +1,7 @@
 import { showCustomAlert } from './modal.js';
 
 const DEFAULT_TITLE = 'Dレッスン ログインカード';
+const LOGIN_CARD_PRINT_WINDOW_FEATURES = 'popup=yes,width=1180,height=840,menubar=no,toolbar=no,location=no,status=no,scrollbars=yes,resizable=yes';
 const cardState = {
     rows: [],
     fileName: ''
@@ -350,7 +351,7 @@ function openPrintWindow() {
         return;
     }
 
-    const popup = window.open('', '_blank');
+    const popup = window.open('', '_blank', LOGIN_CARD_PRINT_WINDOW_FEATURES);
     if (!popup) {
         showCustomAlert('印刷画面を開けませんでした。ブラウザのポップアップ許可を確認してください。');
         return;

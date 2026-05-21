@@ -17,16 +17,6 @@ import { renderPracticeHistorySection } from './practice-history.js';
 import { getValidMistakeEntries, normalizeMistakeCount } from '../utils/weak-mistakes.js';
 import { buildVisionRadarData, renderVisionRadarChart } from './admin-report-utils.js';
 
-const ACHIEVEMENTS = [
-    { id: 'login_3', title: '三日坊主じゃない！', desc: 'ログインスタンプを 3こ あつめる', icon: '📅', check: u => u.loginStamps && u.loginStamps.length >= 3 },
-    { id: 'login_10', title: 'けいぞくは 力なり', desc: 'ログインスタンプを 10こ あつめる', icon: '🔥', check: u => u.loginStamps && u.loginStamps.length >= 10 },
-    { id: 'type_1000', title: 'タイピング ビギナー', desc: 'キーを るいけい 1000回 タイプする', icon: '⌨️', check: u => (u.totalKeysTyped || 0) >= 1000 },
-    { id: 'type_10000', title: 'タイピング マスター', desc: 'キーを るいけい 10000回 タイプする', icon: '✨', check: u => (u.totalKeysTyped || 0) >= 10000 },
-    { id: 'nomiss', title: 'パーフェクト！', desc: 'しけん を ミス0 で クリアする', icon: '🎯', check: u => u.hasPerfectClear },
-    { id: 'mouse_master', title: 'マウスの達人', desc: 'マウスれんしゅう を Lv.7まで クリア', icon: '🖱️', check: u => (u.mouseLevel || 0) >= 7 },
-    { id: 'gacha_10', title: 'ガチャマニア', desc: 'アイテム を 10こ以上 あつめる', icon: '🎁', check: u => u.items && u.items.length >= 10 }
-];
-
 function countCurrentVisionClears(user) {
     const validIds = new Set(VISION_STAGES.flatMap(stage => [
         stage.id,
@@ -209,23 +199,4 @@ export function renderRecords() {
     gWrap.appendChild(weakDiv);
     graphCont.appendChild(gWrap);
 
-    const titleCont = document.getElementById('rec-title');
-    titleCont.innerHTML = '';
-    const titleHeader = document.createElement('h3');
-    titleHeader.innerText = '🎖️ あつめた称号';
-    titleCont.appendChild(titleHeader);
-    const titleGrid = document.createElement('div');
-    titleGrid.style.display = 'flex';
-    titleGrid.style.flexWrap = 'wrap';
-    titleGrid.style.gap = '15px';
-    titleGrid.style.justifyContent = 'center';
-
-    ACHIEVEMENTS.forEach(ac => {
-        let isEarned = ac.check(u) || u.isMaster;
-        const b = document.createElement('div');
-        b.className = 'title-badge' + (isEarned ? ' earned' : '');
-        b.innerHTML = `<div class="title-icon">${ac.icon}</div><div class="title-info"><div class="title-name">${ac.title}</div><div class="title-desc">${ac.desc}</div></div>`;
-        titleGrid.appendChild(b);
-    });
-    titleCont.appendChild(titleGrid);
 }

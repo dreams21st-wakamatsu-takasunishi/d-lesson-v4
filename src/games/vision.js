@@ -1595,9 +1595,26 @@ function nextVisionV17() {
                 if (pattern.join('|') === target.join('|')) {
                     advanceVisionRound(nextVisionV17, 350);
                 } else {
+                    setProcessing(true);
                     SoundManager.playError();
                     btn.classList.add('miss');
-                    setTimeout(() => btn.classList.remove('miss'), 250);
+                    preview.style.display = 'none';
+                    cover.classList.add('is-message');
+                    cover.textContent = 'もういちど おぼえよう';
+                    cover.style.display = 'flex';
+                    choicesWrap.style.display = 'none';
+                    setVisionTimeout(setTimeout(() => {
+                        cover.classList.remove('is-message');
+                        cover.textContent = '？';
+                        cover.style.display = 'none';
+                        preview.style.display = 'grid';
+                        setVisionTimeout(setTimeout(() => {
+                            preview.style.display = 'none';
+                            cover.style.display = 'flex';
+                            choicesWrap.style.display = 'grid';
+                            setProcessing(false);
+                        }, Math.max(1000, displayMs)));
+                    }, 900));
                 }
             };
             choicesWrap.appendChild(btn);
