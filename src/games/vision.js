@@ -68,6 +68,27 @@ const VISION_MENU_GROUPS = [
         stageIds: ['v7', 'v8', 'v9', 'v11', 'v13', 'v16', 'v17', 'v19']
     }
 ];
+let activeVisionMenuGroupIndex = null;
+
+function getVisionStageClearCount(user, stageId) {
+    return (user.visionCleared.includes(stageId + '_easy') ? 1 : 0)
+        + (user.visionCleared.includes(stageId) ? 1 : 0)
+        + (user.visionCleared.includes(stageId + '_hard') ? 1 : 0);
+}
+
+function getVisionGroupProgress(user, group) {
+    const total = group.stageIds.length * 3;
+    const cleared = group.stageIds.reduce((count, stageId) => count + getVisionStageClearCount(user, stageId), 0);
+    return { cleared, total };
+}
+
+function getPreferredVisionGroupIndex(user) {
+    const firstIncomplete = VISION_MENU_GROUPS.findIndex((group) => {
+        const progress = getVisionGroupProgress(user, group);
+        return progress.cleared < progress.total;
+    });
+    return firstIncomplete === -1 ? 0 : firstIncomplete;
+}
 
 export function showVisionCompare() {
     let sumNormal = {}, countNormal = {}, sumHard = {}, countHard = {}, sumEasy = {}, countEasy = {};
@@ -191,46 +212,82 @@ export function renderVisionMenu() {
     }
     if (!Array.isArray(u.visionCleared)) u.visionCleared = [];
 
-    VISION_MENU_GROUPS.forEach((group) => {
-        const section = document.createElement('section');
-        section.className = 'vision-stage-section';
+    if (activeVisionMenuGroupIndex === null || !VISION_MENU_GROUPS[activeVisionMenuGroupIndex]) {
+        activeVisionMenuGroupIndex = getPreferredVisionGroupIndex(u);
+    }
 
-        const header = document.createElement('div');
-        header.className = 'vision-stage-section-header';
+    const totalProgress = VISION_MENU_GROUPS.reduce((acc, group) => {
+        const progress = getVisionGroupProgress(u, group);
+        acc.cleared += progress.cleared;
+        acc.total += progress.total;
+        return acc;
+    }, { cleared: 0, total: 0 });
 
-        const copy = document.createElement('div');
-        const title = document.createElement('h3');
-        title.textContent = group.title;
-        const desc = document.createElement('p');
-        desc.textContent = group.description;
-        copy.appendChild(title);
-        copy.appendChild(desc);
+    const overview = document.createElement('div');
+    overview.className = 'vision-menu-overview';
+    overview.innerHTML = `
+        <div>
+            <span class="vision-menu-kicker">分野をえらぶ</span>
+            <strong>1つの分野だけ表示します</strong>
+        </div>
+        <span class="vision-menu-total">${totalProgress.cleared}/${totalProgress.total}</span>
+    `;
+    cont.appendChild(overview);
 
-        const clearedCount = group.stageIds.reduce((count, id) => {
-            return count
-                + (u.visionCleared.includes(id + '_easy') ? 1 : 0)
-                + (u.visionCleared.includes(id) ? 1 : 0)
-                + (u.visionCleared.includes(id + '_hard') ? 1 : 0);
-        }, 0);
-        const progress = document.createElement('span');
-        progress.className = 'vision-section-progress';
-        progress.textContent = `${clearedCount}/${group.stageIds.length * 3}`;
-
-        header.appendChild(copy);
-        header.appendChild(progress);
-        section.appendChild(header);
-
-        const grid = document.createElement('div');
-        grid.className = 'vision-stage-grid';
-
-        group.stageIds.forEach((stageId) => {
-            const st = VISION_STAGES.find((stage) => stage.id === stageId);
-            if (st) grid.appendChild(createVisionStageCard(st, u));
+    const tabs = document.createElement('div');
+    tabs.className = 'vision-group-tabs';
+    VISION_MENU_GROUPS.forEach((group, index) => {
+        const progress = getVisionGroupProgress(u, group);
+        const tab = document.createElement('button');
+        tab.type = 'button';
+        tab.className = 'vision-group-tab' + (index === activeVisionMenuGroupIndex ? ' is-active' : '');
+        tab.innerHTML = `
+            <span class="vision-group-title">${group.title}</span>
+            <span class="vision-group-desc">${group.description}</span>
+            <span class="vision-group-progress">${progress.cleared}/${progress.total}</span>
+        `;
+        createBtn(tab, () => {
+            activeVisionMenuGroupIndex = index;
+            renderVisionMenu();
         });
-
-        section.appendChild(grid);
-        cont.appendChild(section);
+        tabs.appendChild(tab);
     });
+    cont.appendChild(tabs);
+
+    const group = VISION_MENU_GROUPS[activeVisionMenuGroupIndex];
+    const section = document.createElement('section');
+    section.className = 'vision-stage-section vision-stage-section-current';
+
+    const header = document.createElement('div');
+    header.className = 'vision-stage-section-header';
+
+    const copy = document.createElement('div');
+    const title = document.createElement('h3');
+    title.textContent = group.title;
+    const desc = document.createElement('p');
+    desc.textContent = group.description;
+    copy.appendChild(title);
+    copy.appendChild(desc);
+
+    const groupProgress = getVisionGroupProgress(u, group);
+    const progress = document.createElement('span');
+    progress.className = 'vision-section-progress';
+    progress.textContent = `${groupProgress.cleared}/${groupProgress.total}`;
+
+    header.appendChild(copy);
+    header.appendChild(progress);
+    section.appendChild(header);
+
+    const grid = document.createElement('div');
+    grid.className = 'vision-stage-grid';
+
+    group.stageIds.forEach((stageId) => {
+        const st = VISION_STAGES.find((stage) => stage.id === stageId);
+        if (st) grid.appendChild(createVisionStageCard(st, u));
+    });
+
+    section.appendChild(grid);
+    cont.appendChild(section);
 }
 
 function createVisionStageCard(st, user) {
@@ -259,10 +316,26 @@ function createVisionStageCard(st, user) {
     const reward = document.createElement('span');
     reward.className = 'reward-badge vision-stage-reward';
     reward.textContent = getRewardText('vision', st.id);
+    const clearStatus = document.createElement('span');
+    clearStatus.className = 'vision-stage-clear-status';
+    [
+        { label: 'イージー', key: `${st.id}_easy`, locked: false },
+        { label: 'ノーマル', key: st.id, locked: false },
+        { label: 'ハード', key: `${st.id}_hard`, locked: !user.visionCleared.includes(st.id) && !user.isMaster }
+    ].forEach((difficulty) => {
+        const chip = document.createElement('span');
+        const cleared = user.visionCleared.includes(difficulty.key);
+        chip.className = 'vision-stage-clear-chip'
+            + (cleared ? ' is-cleared' : '')
+            + (difficulty.locked ? ' is-locked' : '');
+        chip.textContent = cleared ? `✓ ${difficulty.label}` : (difficulty.locked ? `🔒 ${difficulty.label}` : `□ ${difficulty.label}`);
+        clearStatus.appendChild(chip);
+    });
 
     main.appendChild(icon);
     main.appendChild(text);
     main.appendChild(reward);
+    main.appendChild(clearStatus);
     card.appendChild(main);
 
     return card;

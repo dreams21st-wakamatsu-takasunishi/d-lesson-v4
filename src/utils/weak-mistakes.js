@@ -1,3 +1,9 @@
+import {
+    FINGER_MAP,
+    HIRAGANA_DATA,
+    WORD_DATA
+} from '../data/constants.js';
+
 export const MAX_REASONABLE_MISTAKE_COUNT = 100000;
 
 const RESERVED_GLOBAL_MISTAKE_KEYS = new Set([
@@ -35,9 +41,43 @@ export function hasValidMistakes(mistakes) {
     return getValidMistakeEntries(mistakes, 1).length > 0;
 }
 
+const trainableTextKeys = new Set([
+    ...HIRAGANA_DATA.flatMap(group => group.chars.map(char => char.h)),
+    ...WORD_DATA.flatMap(group => group.chars.map(char => char.h))
+]);
+
+export function normalizeTrainableMistakeKey(key) {
+    const text = String(key ?? '').trim();
+    if (!isValidMistakeKey(text)) return '';
+
+    const upperKey = text.toUpperCase();
+    if (FINGER_MAP[upperKey]) return upperKey;
+    if (trainableTextKeys.has(text)) return text;
+
+    return '';
+}
+
+export function getTrainableMistakeEntries(mistakes, limit = Infinity) {
+    const merged = new Map();
+    getValidMistakeEntries(mistakes).forEach(item => {
+        const key = normalizeTrainableMistakeKey(item.key);
+        if (!key) return;
+        merged.set(key, (merged.get(key) || 0) + item.count);
+    });
+
+    return Array.from(merged.entries())
+        .map(([key, count]) => ({ key, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, limit);
+}
+
+export function hasTrainableMistakes(mistakes) {
+    return getTrainableMistakeEntries(mistakes, 1).length > 0;
+}
+
 export function sanitizeGlobalMistakes(mistakes) {
     const sanitized = {};
-    getValidMistakeEntries(mistakes).forEach(item => {
+    getTrainableMistakeEntries(mistakes).forEach(item => {
         sanitized[item.key] = item.count;
     });
     return sanitized;

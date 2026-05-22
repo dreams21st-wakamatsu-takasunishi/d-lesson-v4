@@ -17,6 +17,9 @@ export const DAILY_MISSION_DEFAULTS = Object.freeze({
     reward: 500
 });
 
+const DAILY_MISSION_LOGIC_VERSION = 2;
+const MOUSE_STAGE_COUNT = 7;
+
 function clampInteger(value, fallback, min, max) {
     const parsed = Number.parseInt(value, 10);
     if (!Number.isFinite(parsed)) return fallback;
@@ -53,57 +56,67 @@ function cleanStageName(stageId) {
     return getStageName(stageId).replace(/\[ID:[^\]]+\]\s*/, '');
 }
 
-function getKeyboardStageByOffset(offset) {
-    if (!STAGE_ORDER.length) return null;
-    return STAGE_ORDER[(hashText(`${currentUser}:keyboard:${getTodayKey()}`) + offset) % STAGE_ORDER.length];
+function getMouseLevel(user) {
+    return clampInteger(user?.mouseLevel, 0, 0, MOUSE_STAGE_COUNT);
 }
 
-function getVisionStageByOffset(offset) {
-    if (!VISION_STAGES.length) return null;
-    return VISION_STAGES[(hashText(`${currentUser}:vision:${getTodayKey()}`) + offset) % VISION_STAGES.length];
+function getKeyboardSequence(user) {
+    return clampInteger(user?.keyboardSequence, 0, 0, STAGE_ORDER.length);
+}
+
+function getNormalVisionClearedSet(user) {
+    return new Set((Array.isArray(user?.visionCleared) ? user.visionCleared : [])
+        .map(String)
+        .filter(stageId => VISION_STAGES.some(stage => stage.id === stageId)));
 }
 
 function makeMouseMission(user, offset = 0) {
-    const level = Math.max(0, Number(user?.mouseLevel || 0));
-    const stage = offset === 0 && level < 7
+    const level = getMouseLevel(user);
+    if (level >= MOUSE_STAGE_COUNT) return null;
+    const stage = offset === 0
         ? level + 1
-        : (((hashText(`${currentUser}:mouse:${getTodayKey()}`) + offset) % 7) + 1);
+        : (level > 0 ? (((hashText(`${currentUser}:mouse:${getTodayKey()}`) + offset) % level) + 1) : null);
+    if (!stage) return null;
     return {
         id: `mouse:${stage}`,
         type: 'mouse',
         stage,
         title: `マウス M-${stage}`,
-        note: offset === 0 && level < 7 ? 'つぎのマウス練習' : 'マウスの復習'
+        note: offset === 0 ? 'つぎのマウス練習' : 'マウスの復習'
     };
 }
 
 function makeKeyboardMission(user, offset = 0) {
-    const sequence = Math.max(0, Number(user?.keyboardSequence || 0));
-    const stage = offset === 0 && sequence < STAGE_ORDER.length
+    const sequence = getKeyboardSequence(user);
+    if (sequence >= STAGE_ORDER.length) return null;
+    const stage = offset === 0
         ? STAGE_ORDER[sequence]
-        : getKeyboardStageByOffset(offset);
+        : (sequence > 0 ? STAGE_ORDER[(hashText(`${currentUser}:keyboard:${getTodayKey()}`) + offset) % sequence] : null);
     if (!stage) return null;
     return {
         id: `keyboard:${stage}`,
         type: 'keyboard',
         stage,
         title: cleanStageName(stage),
-        note: offset === 0 && sequence < STAGE_ORDER.length ? 'つぎのキーボード練習' : 'キーボードの復習'
+        note: offset === 0 ? 'つぎのキーボード練習' : 'キーボードの復習'
     };
 }
 
 function makeVisionMission(user, offset = 0) {
-    const cleared = new Set(Array.isArray(user?.visionCleared) ? user.visionCleared.map(String) : []);
+    const cleared = getNormalVisionClearedSet(user);
+    const clearedStages = VISION_STAGES.filter(stage => cleared.has(stage.id));
     const nextStage = offset === 0
-        ? (VISION_STAGES.find(stage => !cleared.has(stage.id)) || getVisionStageByOffset(0))
-        : getVisionStageByOffset(offset);
+        ? VISION_STAGES.find(stage => !cleared.has(stage.id))
+        : (clearedStages.length > 0 && cleared.size < VISION_STAGES.length
+            ? clearedStages[(hashText(`${currentUser}:vision:${getTodayKey()}`) + offset) % clearedStages.length]
+            : null);
     if (!nextStage) return null;
     return {
         id: `vision:${nextStage.id}`,
         type: 'vision',
         stage: nextStage.id,
         title: nextStage.title,
-        note: cleared.has(nextStage.id) || offset > 0 ? 'ビジョンの復習' : 'まだのビジョン練習'
+        note: offset > 0 ? 'ビジョンの復習' : 'まだのビジョン練習'
     };
 }
 
@@ -131,17 +144,55 @@ function buildDailyMissionTasks(user) {
     return tasks;
 }
 
+function isMissionTaskStillEligible(task, user) {
+    if (!task || typeof task !== 'object') return false;
+    if (task.doneAt) return true;
+
+    if (task.type === 'mouse') {
+        const level = getMouseLevel(user);
+        const stage = Number(task.stage);
+        return Number.isInteger(stage)
+            && stage >= 1
+            && stage <= MOUSE_STAGE_COUNT
+            && level < MOUSE_STAGE_COUNT
+            && (stage === level + 1 || stage <= level);
+    }
+
+    if (task.type === 'keyboard') {
+        const sequence = getKeyboardSequence(user);
+        const stage = Number(task.stage);
+        const index = STAGE_ORDER.indexOf(stage);
+        return sequence < STAGE_ORDER.length && index !== -1 && index <= sequence;
+    }
+
+    if (task.type === 'vision') {
+        const cleared = getNormalVisionClearedSet(user);
+        const stageId = String(task.stage || '').replace('_easy', '').replace('_hard', '');
+        const exists = VISION_STAGES.some(stage => stage.id === stageId);
+        const nextStage = VISION_STAGES.find(stage => !cleared.has(stage.id));
+        return exists && cleared.size < VISION_STAGES.length && (cleared.has(stageId) || nextStage?.id === stageId);
+    }
+
+    return false;
+}
+
+function createDailyMission(user) {
+    return {
+        date: getTodayKey(),
+        version: DAILY_MISSION_LOGIC_VERSION,
+        rewardClaimed: false,
+        tasks: buildDailyMissionTasks(user)
+    };
+}
+
 function normalizeDailyMission(mission, user) {
     const count = getDailyMissionSettings().count;
     const today = getTodayKey();
     if (!mission || mission.date !== today || !Array.isArray(mission.tasks)) {
-        return {
-            date: today,
-            rewardClaimed: false,
-            tasks: buildDailyMissionTasks(user)
-        };
+        return createDailyMission(user);
     }
 
+    const keepOnlyCompletedOldTasks = mission.version !== DAILY_MISSION_LOGIC_VERSION;
     mission.tasks = mission.tasks
         .filter(task => task && typeof task === 'object')
         .map(task => ({
@@ -152,6 +203,10 @@ function normalizeDailyMission(mission, user) {
             note: String(task.note || ''),
             doneAt: task.doneAt || null
         }))
+        .filter(task => {
+            if (keepOnlyCompletedOldTasks && !task.doneAt) return false;
+            return isMissionTaskStillEligible(task, user);
+        })
         .slice(0, count);
 
     if (mission.tasks.length < count) {
@@ -164,6 +219,7 @@ function normalizeDailyMission(mission, user) {
     }
 
     mission.rewardClaimed = Boolean(mission.rewardClaimed);
+    mission.version = DAILY_MISSION_LOGIC_VERSION;
     return mission;
 }
 
@@ -238,6 +294,20 @@ export function renderDailyMissionPanel(container, handlers = {}) {
     const mission = ensureDailyMission();
     if (!mission) {
         container.style.display = 'none';
+        return;
+    }
+
+    if (!mission.tasks.length) {
+        container.style.display = 'block';
+        container.innerHTML = `
+            <div class="daily-mission-head">
+                <div>
+                    <span class="daily-mission-kicker">今日のミッション</span>
+                    <strong>なし</strong>
+                </div>
+            </div>
+            <div class="daily-mission-empty">今の進捗では、新しくおすすめできる未達成課題がありません。</div>
+        `;
         return;
     }
 

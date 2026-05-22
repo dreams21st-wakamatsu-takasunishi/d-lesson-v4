@@ -24,7 +24,7 @@ import { showScreen, showImeWarning } from '../ui/screen.js';
 import { showCustomAlert } from '../ui/modal.js';
 import { getStageName } from '../utils/stages.js';
 import { convertNameToRomaji, shuffle } from '../utils/helpers.js';
-import { getValidMistakeEntries, normalizeMistakeCount } from '../utils/weak-mistakes.js';
+import { getTrainableMistakeEntries, getValidMistakeEntries, hasTrainableMistakes, normalizeMistakeCount } from '../utils/weak-mistakes.js';
 import { createConfetti, showRewardOverlay } from '../ui/reward.js';
 import { getCurrentKeyboardChapter } from '../ui/keyboard-state.js';
 import { renderRecords, showRecordSection } from '../ui/records.js';
@@ -277,6 +277,12 @@ function recordPracticeInterrupt(shouldRecord) {
 }
 
 export function startGame(sid, mode) {
+    if (mode === 'keyboard' && sid === 9888 && !hasTrainableMistakes(users[currentUser]?.globalMistakes)) {
+        showCustomAlert('ミスのデータがないか、すべて克服しました！\nいろいろな練習をしてからまた挑戦してみてね！');
+        showScreen('screen-keyboard-category');
+        return;
+    }
+
     SoundManager.init(); currentStage = sid; gameMode = mode; isProcessing = false;
     isClearProcessing = false;
     pendingCertificateAward = null;
@@ -435,6 +441,10 @@ export function backToMenu(recordInterrupt = false) {
 
 export function retryExam() { startGame(currentStage, gameMode); }
 
+function isTextInputQuestion() {
+    return Boolean(currHiraObj) && (isHiragana || isWord || currentStage === 9888);
+}
+
 function handleKeyDown(e) {
     if (typeof e.key !== 'string') return;
     if (isProcessing ||['Enter', 'Shift', 'Control', 'Alt', 'Meta', 'Tab', 'CapsLock', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
@@ -444,8 +454,10 @@ function handleKeyDown(e) {
         return;
     }
     
+    const textInputQuestion = isTextInputQuestion();
+    
     if (e.key === 'Backspace') {
-        if ((isHiragana || isWord) && currRomajiIdx > 0) {
+        if (textInputQuestion && currRomajiIdx > 0) {
             SoundManager.playHover();
             currRomajiIdx--;
             typedRomajiStr = typedRomajiStr.slice(0, -1);
@@ -467,7 +479,7 @@ function handleKeyDown(e) {
 
     let isCorrect = false;
     let inputChar = (k === ' ') ? ' ' : upper; 
-    if (isHiragana || isWord) {
+    if (textInputQuestion) {
         const validPatterns = activeRomajiList.filter(r => r[currRomajiIdx] === inputChar);
         if (validPatterns.length > 0) { isCorrect = true; activeRomajiList = validPatterns; }
     } else { isCorrect = (targetKey === 'SPACE' ? k === ' ' : upper === targetKey); }
@@ -479,7 +491,7 @@ function handleKeyDown(e) {
             mainQueue.shift(); currentCount++; updateProgress(); pendingHome = null; isProcessing = true; 
             setTimeout(() => { if (mainQueue.length === 0) markClear(); else nextKeyQ(); }, 200); return; 
         }
-        if (isHiragana || isWord) {
+        if (textInputQuestion) {
             typedRomajiStr += inputChar; 
             currRomajiIdx++;
             if (activeRomajiList.some(r => currRomajiIdx >= r.length)) finishItemSuccess();
@@ -499,14 +511,14 @@ function handleKeyDown(e) {
     } else {
         missKeysTyped++; SoundManager.playError(); if (el) { el.classList.add('error-flash'); setTimeout(() => el.classList.remove('error-flash'), 300); }
         if (gameMode === 'keyboard' && currentStage !== 9888) { 
-            let sk = (isHiragana || isWord) ? currHiraObj.h : targetKey; 
+            let sk = textInputQuestion ? currHiraObj.h : targetKey; 
             if (users[currentUser]) {
                 if (!users[currentUser].globalMistakes) users[currentUser].globalMistakes = {};
                 users[currentUser].globalMistakes[sk] = normalizeMistakeCount(users[currentUser].globalMistakes[sk]) + 1;
             }
         }
         if (hasMissLimit) {
-            let sk = (isHiragana || isWord) ? currHiraObj.h : targetKey; 
+            let sk = textInputQuestion ? currHiraObj.h : targetKey; 
             mistakeStats[sk] = (mistakeStats[sk] || 0) + 1; mistakeCount++; els.missCounter.innerText = `ミス：${mistakeCount} / ${maxMistakes}`;
             if (mistakeCount >= maxMistakes) { els.missCounter.classList.add('status-danger'); isProcessing = true; setTimeout(failExam, 500); }
         }
@@ -625,7 +637,7 @@ function setupKeyboard(s) {
     renderKeyboard(); let pool =[];
     if (s === 9888) { 
         let mistakes = users[currentUser].globalMistakes || {};
-        let sortedKeys = getValidMistakeEntries(mistakes, 8).map(item => item.key);
+        let sortedKeys = getTrainableMistakeEntries(mistakes, 8).map(item => item.key);
         let raw =[];
         sortedKeys.forEach(k => { 
             if (/[ぁ-ん]/.test(k) || WORD_DATA.some(d => d.chars.some(c=>c.h===k))) { 
@@ -637,8 +649,7 @@ function setupKeyboard(s) {
                 for(let i=0; i<3; i++) raw.push(k); 
             } 
         }); 
-        pool = shuffle(raw); 
-        if(pool.length === 0) pool =['F', 'J', 'SPACE']; 
+        pool = shuffle(raw);
         
         users[currentUser].currentWeakKeys = sortedKeys;
 
@@ -688,7 +699,8 @@ function nextKeyQ() {
     let item = mainQueue[0], isBlindItem = false;
     if (typeof item === 'object') { if (item.key) { targetKey = item.key; isBlindItem = !!item.blind; isHomeReturn = !!item.ret; currHiraObj = null; } else if (item.h) { currHiraObj = item; isBlindItem = !!item.blind; isHomeReturn = false; } } else { targetKey = item; isHomeReturn = false; currHiraObj = null; }
     const wrap = document.getElementById('keyboard-wrapper'); if (isBlindItem) { wrap.classList.add('blind-active'); els.instText.innerText = 'みないで うってみよう！'; } else { wrap.classList.remove('blind-active'); }
-    if (isHiragana || isWord || currentStage === 9888) {
+    const isTextInputItem = Boolean(currHiraObj) && (isHiragana || isWord || currentStage === 9888);
+    if (isTextInputItem) {
         if (currentStage === 9888) els.instText.innerText = 'にがて とっくん！'; else els.instText.innerText = isWord ? 'ローマじで ことばを うとう！' : 'したのローマじを みて おそう！';
         
         if (currRomajiIdx === 0 || activeRomajiList.length === 0) { 

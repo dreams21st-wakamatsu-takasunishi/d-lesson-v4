@@ -72,12 +72,15 @@ export function renderRecords() {
     </div>`;
     if (u.tickets && u.tickets.length > 0) {
         gCont.innerHTML += `<h3 style="color:#FF5722;">🎟️ もっている ひきかえけん</h3>`;
+        gCont.innerHTML += `<p class="ticket-use-note">いいねポイントを使うときは、先生に画面を見せてからボタンを押してください。</p>`;
         u.tickets.forEach((t, idx) => {
             const ticketButton = canSaveResult
-                ? `<button class="ticket-btn" onclick="useTicket(${idx})">先生につかってもらう</button>`
+                ? `<button class="ticket-btn" onclick="useTicket(${idx})">この場でつかう</button>`
                 : '<button class="ticket-btn" disabled style="opacity:0.5; cursor:not-allowed;">確認専用</button>';
             gCont.innerHTML += `<div class="ticket-card"><div><div class="ticket-name">${t.name}</div><div style="font-size:12px; color:#555;">ゲットした日: ${t.date}</div></div>${ticketButton}</div>`;
         });
+    } else {
+        gCont.innerHTML += `<div class="ticket-empty-card">いま使えるいいねポイントはありません。</div>`;
     }
 
     const tCont = document.getElementById('rec-theme');

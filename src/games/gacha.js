@@ -1,4 +1,4 @@
-import { users, currentUser, saveUsers, hasLessonRole, canWriteCurrentUserRow } from '../api/user.js'
+import { users, currentUser, saveUsers, canWriteCurrentUserRow } from '../api/user.js'
 import { GACHA_ITEMS } from '../data/gacha-items.js'
 import { SoundManager } from '../utils/sound.js'
 import { showCustomAlert, showCustomConfirm } from '../ui/modal.js'
@@ -77,8 +77,12 @@ export function drawGacha(times = 1, isRareGuaranteed = false) {
 
 export function useTicket(idx) {
     const u = users[currentUser], t = u.tickets[idx];
+    if (!u || !t) {
+        showCustomAlert('使えるいいねポイントが見つかりません。画面を開きなおしてください。');
+        return;
+    }
     if (!canWriteCurrentUserRow()) {
-        showCustomAlert('先生確認モードでは、チケット使用は保存されません。管理者アカウントで操作してください。');
+        showCustomAlert('先生確認モードでは、いいねポイント使用は保存されません。児童本人の画面で操作してください。');
         return;
     }
 
@@ -91,16 +95,14 @@ export function useTicket(idx) {
 
         saveUsers(false);
         SoundManager.playClear();
-        showCustomAlert(`✅ 交換しました！\n\n${t.name} を渡してあげてください。`); // ★修正
+        showCustomAlert(`✅ つかいました！\n\n${t.name}\n\n先生からポイントやごほうびを受け取ってください。`);
         refreshRecords();
     };
 
-    if (hasLessonRole('teacher', 'admin')) {
-        consumeTicket();
-        return;
-    }
-
-    showCustomAlert('先生または管理者アカウントでログインして確認してください。');
+    showCustomConfirm(
+        `${t.name} をつかいますか？\n\n先生に見せてから「OK」を押してください。`,
+        consumeTicket
+    );
 }
 
 export function changeTheme(themeId) { applyTheme(themeId); if (users[currentUser] && canWriteCurrentUserRow()) { users[currentUser].theme = themeId; saveUsers(false); } refreshRecords(); }

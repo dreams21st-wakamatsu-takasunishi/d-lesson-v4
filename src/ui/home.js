@@ -34,6 +34,46 @@ export function applyTheme(themeId = 'default') {
         button span, .btn-primary span, .btn-secondary span, .btn-danger span, .btn-gacha span, .btn-retry span, .category-btn span {
             color: ${theme.btnText} !important;
         }
+        #screen-keyboard-category .keyboard-category-hero,
+        #screen-keyboard-category .keyboard-category-card {
+            color: #263238 !important;
+        }
+        #screen-keyboard-category .keyboard-category-hero {
+            background: #ffffff !important;
+            border-color: #d9e6ee !important;
+        }
+        #screen-keyboard-category .keyboard-card-basic { background: linear-gradient(135deg, #ffffff 0%, #e3f2fd 100%) !important; border-color: #42a5f5 !important; }
+        #screen-keyboard-category .keyboard-card-blind { background: linear-gradient(135deg, #ffffff 0%, #f3e5f5 100%) !important; border-color: #8e24aa !important; }
+        #screen-keyboard-category .keyboard-card-hiragana { background: linear-gradient(135deg, #ffffff 0%, #fce4ec 100%) !important; border-color: #ec407a !important; }
+        #screen-keyboard-category .keyboard-card-word { background: linear-gradient(135deg, #ffffff 0%, #e0f2f1 100%) !important; border-color: #00897b !important; }
+        #screen-keyboard-category .keyboard-card-weak { background: linear-gradient(135deg, #fff8e1 0%, #ffebee 100%) !important; border-color: #ef5350 !important; }
+        #screen-keyboard-category .keyboard-category-hero h2,
+        #screen-keyboard-category .keyboard-category-hero p,
+        #screen-keyboard-category .keyboard-category-card strong,
+        #screen-keyboard-category .keyboard-category-card small,
+        #screen-keyboard-category .keyboard-category-card em {
+            color: #263238 !important;
+        }
+        #screen-keyboard-category .keyboard-category-card em,
+        #screen-keyboard-category .keyboard-category-hero p {
+            color: #607d8b !important;
+        }
+        #screen-keyboard-category .keyboard-category-icon {
+            background: #eef7ff !important;
+            color: #1565c0 !important;
+        }
+        #screen-keyboard-category .keyboard-card-weak .keyboard-category-icon {
+            background: #ffebee !important;
+            color: #c62828 !important;
+        }
+        #screen-keyboard-category .keyboard-category-step {
+            background: #263238 !important;
+            color: #ffffff !important;
+        }
+        #screen-keyboard-category .keyboard-card-weak .keyboard-category-step {
+            background: #c62828 !important;
+            color: #ffffff !important;
+        }
         .minigame-ranking-button .minigame-sub-icon,
         .minigame-ranking-button .minigame-sub-main {
             color: #0d47a1 !important;

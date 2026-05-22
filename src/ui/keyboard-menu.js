@@ -11,6 +11,7 @@ import {
 import { users, currentUser } from '../api/user.js';
 import { createBtn } from '../utils/dom.js';
 import { getRewardText } from '../utils/rewards.js';
+import { hasTrainableMistakes } from '../utils/weak-mistakes.js';
 import { showCustomAlert } from './modal.js';
 import { showScreen } from './screen.js';
 import { setCurrentKeyboardChapter } from './keyboard-state.js';
@@ -107,6 +108,18 @@ function getActiveUserOrTitle() {
 
 export function goToKeyboardCategory() {
     showScreen('screen-keyboard-category');
+    updateWeakTrainingEntryVisibility();
+}
+
+function updateWeakTrainingEntryVisibility() {
+    const card = document.getElementById('keyboard-weak-training-card');
+    const grid = document.getElementById('keyboard-category-choice-grid');
+    if (!card || !grid) return;
+
+    const u = currentUser ? users[currentUser] : null;
+    const hasWeakTraining = Boolean(u && hasTrainableMistakes(u.globalMistakes));
+    card.style.display = hasWeakTraining ? 'grid' : 'none';
+    grid.classList.toggle('no-weak-training', !hasWeakTraining);
 }
 
 export function goToKeyboardMenu(type) {

@@ -569,97 +569,171 @@
         <button id="admin-bottom-back-btn" class="btn-secondary bottom-back-btn" onclick="showScreen('screen-title')">タイトルへもどる</button>
     </div>
 
-    <!-- 3. カテゴリ選択 -->
+    <!-- 3. ホーム -->
     <div id="screen-category" class="screen">
-        <div class="screen-content">
+        <div class="screen-content home-screen-content">
             <h2 id="welcome-msg">ようこそ</h2>
             <div id="readonly-mode-notice" style="display:none; width:90%; max-width:800px; margin:0 0 12px; padding:10px 14px; border:2px solid #00796b; border-radius:8px; background:#e0f2f1; color:#004d40; font-weight:bold; text-align:center;">先生確認モード：練習結果・コイン・進捗は保存されません</div>
-            
-            <div id="home-dashboard" style="display:flex; gap: 20px; background:#fff; padding:15px; border-radius:15px; border:3px solid #ccc; margin-bottom: 20px; width: 90%; max-width: 1040px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
-                <div class="home-progress-panel" style="flex:1; display:flex; flex-direction:column; justify-content:center; gap:10px;">
-                    <div style="font-weight:bold; color:#333;">🖱️ マウス: <span id="home-mouse-lv" style="color:#2196F3;">Lv.0</span> <div class="mini-bar"><div id="home-mouse-bar" class="mini-bar-fill" style="background:#2196F3;"></div></div></div>
-                    <div style="font-weight:bold; color:#333;">⌨️ キーボード: <span id="home-kb-pct" style="color:#FF9800;">0%</span> <div class="mini-bar"><div id="home-kb-bar" class="mini-bar-fill" style="background:#FF9800;"></div></div></div>
-                </div>
-                <div class="home-recommend-panel" style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; border-left: 2px dashed #ccc; padding-left: 15px;">
-                    <div class="home-recommend-label" style="font-size:14px; color:#555; margin-bottom:5px; font-weight:bold;">✨ つぎのおすすめ ✨</div>
-                    <button id="btn-recommend" class="btn-primary" style="width:100%; height:70px; font-size:18px; line-height:1.2; animation: pulse 2s infinite;" onclick="startRecommendedStage()">おすすめを<br>プレイ</button>
-                </div>
-            </div>
 
-            <div id="daily-mission-card" style="width:90%; max-width:1040px; margin:0 0 16px;"></div>
+            <div class="home-layout-grid">
+                <section id="home-dashboard" class="home-panel home-progress-panel">
+                    <div class="home-panel-head">
+                        <span>進捗状況</span>
+                    </div>
+                    <div class="home-progress-row">
+                        <div class="home-progress-label">
+                            <span>マウス</span>
+                            <strong id="home-mouse-lv">Lv.0</strong>
+                        </div>
+                        <div class="mini-bar"><div id="home-mouse-bar" class="mini-bar-fill home-mouse-fill"></div></div>
+                    </div>
+                    <div class="home-progress-row">
+                        <div class="home-progress-label">
+                            <span>キーボード</span>
+                            <strong id="home-kb-pct">0%</strong>
+                        </div>
+                        <div class="mini-bar"><div id="home-kb-bar" class="mini-bar-fill home-keyboard-fill"></div></div>
+                    </div>
+                </section>
 
-            <div id="last-practice-card" style="width:90%; max-width:800px; box-sizing:border-box; background:#e0f2f1; border:2px solid #80cbc4; border-radius:8px; padding:12px 16px; margin:0 0 16px; text-align:left;"></div>
+                <section class="home-panel home-recommend-panel">
+                    <div class="home-panel-head">
+                        <span>つぎのおすすめ</span>
+                    </div>
+                    <button id="btn-recommend" class="btn-primary home-recommend-button" onclick="startRecommendedStage()">おすすめを<br>プレイ</button>
+                </section>
 
-            <p>なにを れんしゅうする？</p>
-            <div style="color: #FF9800; font-weight:bold; margin-bottom: 20px;">
-                ※ キーボードの「F」と「J」でえらんで、「Enter」でけっていできるよ！
-            </div>
-            <div id="home-category-grid" style="display:flex; flex-wrap: wrap; gap: 20px; justify-content: center; max-width: 1040px; margin: 0 auto;">
-                <button class="btn-primary category-btn" id="cat-mouse" onclick="goToMouseMenu()">
-                    <span style="font-size:60px;">🖱️</span><span>マウスの<br>れんしゅう</span>
-                </button>
-                <button class="btn-primary category-btn" id="cat-keyboard" onclick="goToKeyboardCategory()">
-                    <span style="font-size:60px;">⌨️</span><span>キーボード<br>れんしゅう</span>
-                </button>
-                <button class="btn-primary category-btn" id="cat-text" onclick="goToTextMenu()" style="background-color: #607d8b;">
-                    <span style="font-size:60px;">📝</span><span>文章入力<br>れんしゅう</span>
-                </button>
-                <button class="btn-primary category-btn" id="cat-minigame" onclick="goToMinigameMenu()" style="background-color: #f57c00;">
-                    <span style="font-size:60px;">🎮</span><span>タイピング<br>ゲーム</span>
-                </button>
-                <button class="btn-primary category-btn" id="cat-vision" onclick="goToVisionMenu()" style="background-color: #9C27B0;">
-                    <span style="font-size:60px;">👁️</span><span>ビジョン<br>トレーニング</span>
-                </button>
-                <button class="btn-primary category-btn" id="cat-word" onclick="goToWordMenu()" style="background-color: #1976D2;">
-                    <span style="font-size:60px;">📘</span><span>Word<br>れんしゅう</span>
-                </button>
-                <button class="btn-primary category-btn" id="cat-free-time" onclick="goToFreeTimeMenu()" style="background-color: #00897B;">
-                    <span style="font-size:60px;">🌐</span><span>じゆう<br>じかん</span>
-                </button>
-            </div>
-            <div class="home-actions" style="display:flex; gap:20px; margin-top:30px;">
-                <button class="btn-primary" onclick="goToRecords()" tabindex="0" style="background-color: #FF9800;">🏆 マイページ</button>
-                <button class="btn-secondary home-logout-btn" onclick="handleGlobalLogout()" tabindex="0">🚪 ログアウト</button>
+                <section id="daily-mission-card" class="daily-mission-card home-panel home-mission-panel"></section>
+
+                <nav class="home-main-actions" aria-label="ホームメニュー">
+                    <button class="home-main-action home-action-practice" onclick="showScreen('screen-practice-menu')" tabindex="0">
+                        <span class="home-action-icon">📚</span>
+                        <span class="home-action-title">れんしゅう</span>
+                        <small>マウス・キーボードなどをえらぶ</small>
+                    </button>
+                    <button class="home-main-action home-action-free" onclick="goToFreeTimeMenu()" tabindex="0">
+                        <span class="home-action-icon">🌐</span>
+                        <span class="home-action-title">自由時間</span>
+                        <small>YouTube・Pokiをひらく</small>
+                    </button>
+                    <button class="home-main-action home-action-mypage" onclick="goToRecords()" tabindex="0">
+                        <span class="home-action-icon">🏆</span>
+                        <span class="home-action-title">マイページ</span>
+                        <small>記録・賞状をみる</small>
+                    </button>
+                    <button class="home-main-action home-action-logout" onclick="handleGlobalLogout()" tabindex="0">
+                        <span class="home-action-icon">🚪</span>
+                        <span class="home-action-title">ログアウト</span>
+                        <small>ログイン画面にもどる</small>
+                    </button>
+                </nav>
             </div>
         </div>
     </div>
 
-    <!-- 3.5. キーボードカテゴリ選択 -->
-    <div id="screen-keyboard-category" class="screen">
-        <div class="screen-content">
-            <h2>キーボードのれんしゅう</h2>
-            <p>どのれんしゅうをする？</p>
-            <div id="keyboard-category-choice-grid" style="display:flex; flex-wrap: wrap; gap: 20px; justify-content: center; max-width: 800px;">
-                <button class="btn-primary category-btn" onclick="goToKeyboardMenu('basic')" style="width: 320px; height: 130px;">
-                    <span style="font-size:40px;">① 🅰️</span>
-                    <span style="font-size:22px;">きほんれんしゅう</span>
-                    <span style="font-size:14px; margin-top:5px; font-weight:normal;">(アルファベット・すうじ)</span>
+    <!-- 3.2. れんしゅう選択 -->
+    <div id="screen-practice-menu" class="screen">
+        <div class="screen-content practice-menu-screen">
+            <div class="practice-menu-hero">
+                <div>
+                    <span class="practice-menu-kicker">れんしゅう</span>
+                    <h2>どのれんしゅうをする？</h2>
+                    <p>取り組みたい内容をえらんで、ステージへ進みます。</p>
+                </div>
+                <button class="btn-secondary practice-menu-home-btn" onclick="showScreen('screen-category')" tabindex="0">ホームへ</button>
+            </div>
+
+            <div id="practice-category-grid" class="practice-category-grid">
+                <button class="practice-category-card practice-card-mouse" id="cat-mouse" onclick="goToMouseMenu()">
+                    <span class="practice-category-icon">🖱️</span>
+                    <strong>マウスれんしゅう</strong>
+                    <small>クリック・ドラッグ・スクロール</small>
                 </button>
-                <button class="btn-primary category-btn" onclick="goToKeyboardMenu('blind')" style="background-color: #9C27B0; width: 320px; height: 130px;">
-                    <span style="font-size:40px;">② 🙈</span>
-                    <span style="font-size:22px;">タッチタイピング</span>
-                    <span style="font-size:14px; margin-top:5px; font-weight:normal;">(みないでうつ)</span>
+                <button class="practice-category-card practice-card-keyboard" id="cat-keyboard" onclick="goToKeyboardCategory()">
+                    <span class="practice-category-icon">⌨️</span>
+                    <strong>キーボードれんしゅう</strong>
+                    <small>キーの位置・文字入力・苦手特訓</small>
                 </button>
-                <button class="btn-primary category-btn" onclick="goToKeyboardMenu('hiragana')" style="background-color: #E91E63; width: 320px; height: 130px;">
-                    <span style="font-size:40px;">③ あ</span>
-                    <span style="font-size:22px;">ひらがなれんしゅう</span>
-                    <span style="font-size:14px; margin-top:5px; font-weight:normal;">(ローマじ入力)</span>
+                <button class="practice-category-card practice-card-text" id="cat-text" onclick="goToTextMenu()">
+                    <span class="practice-category-icon">📝</span>
+                    <strong>文章入力れんしゅう</strong>
+                    <small>文章を読んで、正しく入力</small>
                 </button>
-                <button class="btn-primary category-btn" onclick="goToKeyboardMenu('word')" style="background-color: #009688; width: 320px; height: 130px;">
-                    <span style="font-size:40px;">④ 🍎</span>
-                    <span style="font-size:22px;">ことばのれんしゅう</span>
-                    <span style="font-size:14px; margin-top:5px; font-weight:normal;">(単語をうつ)</span>
+                <button class="practice-category-card practice-card-minigame" id="cat-minigame" onclick="goToMinigameMenu()">
+                    <span class="practice-category-icon">🎮</span>
+                    <strong>タイピングゲーム</strong>
+                    <small>スコア・ランキングに挑戦</small>
                 </button>
-                <button class="btn-primary category-btn" onclick="goToWeakTraining()" style="background-color: #f44336; width: 660px; height: 100px; border: 4px solid #fff; flex-direction: row; gap: 20px;">
-                    <span style="font-size:40px;">🔥</span>
-                    <div style="display:flex; flex-direction:column; align-items:flex-start;">
-                        <span style="font-size:26px; font-weight:bold;">⑤ にがて とっくん</span>
-                        <span style="font-size:16px; margin-top:5px; font-weight:normal;">(あなたがよくまちがえるキーをれんしゅうするよ)</span>
-                    </div>
+                <button class="practice-category-card practice-card-vision" id="cat-vision" onclick="goToVisionMenu()">
+                    <span class="practice-category-icon">👁️</span>
+                    <strong>ビジョントレーニング</strong>
+                    <small>見る・覚える・反応する</small>
+                </button>
+                <button class="practice-category-card practice-card-word" id="cat-word" onclick="goToWordMenu()">
+                    <span class="practice-category-icon">📘</span>
+                    <strong>Wordれんしゅう</strong>
+                    <small>教材PDFとWord操作</small>
                 </button>
             </div>
         </div>
         <button class="btn-secondary bottom-back-btn" onclick="showScreen('screen-category')" tabindex="0">もどる</button>
+    </div>
+
+    <!-- 3.5. キーボードカテゴリ選択 -->
+    <div id="screen-keyboard-category" class="screen">
+        <div class="screen-content keyboard-category-screen">
+            <div class="keyboard-category-hero">
+                <div>
+                    <span class="keyboard-category-kicker">キーボード</span>
+                    <h2>キーボードのれんしゅう</h2>
+                    <p>今の力に合わせて、練習の入口をえらぼう。</p>
+                </div>
+                <div class="keyboard-category-guide">
+                    <span>おすすめ</span>
+                    <strong>① → ② → ③ → ④</strong>
+                </div>
+            </div>
+            <div id="keyboard-category-choice-grid" class="keyboard-category-layout">
+                <div class="keyboard-category-main">
+                    <button class="keyboard-category-card keyboard-card-basic" onclick="goToKeyboardMenu('basic')">
+                        <span class="keyboard-category-step">①</span>
+                        <span class="keyboard-category-icon">🅰️</span>
+                        <strong>きほんれんしゅう</strong>
+                        <small>キーの場所を覚える</small>
+                        <em>ホームポジションから数字まで</em>
+                    </button>
+                    <button class="keyboard-category-card keyboard-card-blind" onclick="goToKeyboardMenu('blind')">
+                        <span class="keyboard-category-step">②</span>
+                        <span class="keyboard-category-icon">🙈</span>
+                        <strong>タッチタイピング</strong>
+                        <small>見ないでうつ</small>
+                        <em>手の位置だけで入力する練習</em>
+                    </button>
+                    <button class="keyboard-category-card keyboard-card-hiragana" onclick="goToKeyboardMenu('hiragana')">
+                        <span class="keyboard-category-step">③</span>
+                        <span class="keyboard-category-icon">あ</span>
+                        <strong>ひらがなれんしゅう</strong>
+                        <small>ローマ字でかなをうつ</small>
+                        <em>かな入力へつなげる練習</em>
+                    </button>
+                    <button class="keyboard-category-card keyboard-card-word" onclick="goToKeyboardMenu('word')">
+                        <span class="keyboard-category-step">④</span>
+                        <span class="keyboard-category-icon">📝</span>
+                        <strong>ことばのれんしゅう</strong>
+                        <small>単語や短文をうつ</small>
+                        <em>文章入力の前のステップ</em>
+                    </button>
+                </div>
+                <button id="keyboard-weak-training-card" class="keyboard-category-card keyboard-card-weak" onclick="goToWeakTraining()">
+                    <span class="keyboard-category-step">⑤</span>
+                    <span class="keyboard-category-icon">🔥</span>
+                    <strong>にがて とっくん</strong>
+                    <small>よくまちがえるキーを練習</small>
+                    <em>記録から自動で選びます</em>
+                </button>
+            </div>
+        </div>
+        <button class="btn-secondary bottom-back-btn" onclick="showScreen('screen-practice-menu')" tabindex="0">もどる</button>
     </div>
 
     <!-- ミニゲームメニュー画面 -->
@@ -701,7 +775,7 @@
                 </div>
             </div>
         </div>
-        <button class="btn-secondary bottom-back-btn" onclick="showScreen('screen-category')" tabindex="0">もどる</button>
+        <button class="btn-secondary bottom-back-btn" onclick="showScreen('screen-practice-menu')" tabindex="0">もどる</button>
     </div>
 
     <!-- タイピングランキング確認画面 -->
@@ -755,7 +829,7 @@
                 <div class="stage-btn" id="btn-m7" style="border-color: #E91E63;"><span class="stage-title">M-7</span><span class="stage-name" style="color:#E91E63">まとめ</span></div>
             </div>
         </div>
-        <button class="btn-secondary bottom-back-btn" onclick="showScreen('screen-category')" tabindex="0">もどる</button>
+        <button class="btn-secondary bottom-back-btn" onclick="showScreen('screen-practice-menu')" tabindex="0">もどる</button>
     </div>
 
     <!-- 5. キーボードメニュー -->
@@ -790,7 +864,7 @@
             <button class="text-task-filter-btn" data-text-task-filter="done" onclick="setTextTaskFilter('done')">やったことあり</button>
         </div>
         <div id="text-menu-content" style="width: 100%; max-width: 1100px; display: flex; flex-direction: column; align-items: center; gap: 15px; padding-top: 15px;"></div>
-        <button class="btn-secondary bottom-back-btn" onclick="showScreen('screen-category')" tabindex="0">もどる</button>
+        <button class="btn-secondary bottom-back-btn" onclick="showScreen('screen-practice-menu')" tabindex="0">もどる</button>
     </div>
 
     <!-- ビジョントレーニング メニュー -->
@@ -801,7 +875,7 @@
             <p>目をきたえて、パソコンをもっととくいになろう！</p>
             <div class="vision-menu-layout" id="vision-menu-content"></div>
         </div>
-        <button class="btn-secondary bottom-back-btn" onclick="showScreen('screen-category')" tabindex="0">もどる</button>
+        <button class="btn-secondary bottom-back-btn" onclick="showScreen('screen-practice-menu')" tabindex="0">もどる</button>
     </div>
 
     <!-- ★新設: Wordれんしゅう メニュー -->
@@ -811,7 +885,7 @@
             <p>テキストをみながら じぶんで すすめてみよう！</p>
             <div class="stage-grid mouse-grid" id="word-menu-content" style="max-width: 900px; gap: 15px;"></div>
         </div>
-        <button class="btn-secondary bottom-back-btn" onclick="showScreen('screen-category')" tabindex="0">もどる</button>
+        <button class="btn-secondary bottom-back-btn" onclick="showScreen('screen-practice-menu')" tabindex="0">もどる</button>
     </div>
 
     <!-- ★新設: Wordれんしゅう 挑戦中待機画面 -->
@@ -950,7 +1024,7 @@
             
             <div id="records-main-menu" style="display:flex; flex-wrap:wrap; gap:20px; justify-content:center; width:100%;">
                 <button class="category-btn" onclick="showRecordSection('rec-gacha')" style="background-color:#FF9800; width:220px; height:120px;">
-                    <span style="font-size:40px;">🎁</span><span style="font-size:18px; font-weight:bold; margin-top:5px;">ガチャ・チケット</span>
+                    <span style="font-size:40px;">🎟️</span><span style="font-size:18px; font-weight:bold; margin-top:5px;">いいね・ガチャ</span>
                 </button>
                 <button class="category-btn" onclick="showRecordSection('rec-theme')" style="background-color:#9C27B0; width:220px; height:120px;">
                     <span style="font-size:40px;">🎨</span><span style="font-size:18px; font-weight:bold; margin-top:5px;">きせかえ・演出</span>
