@@ -21,15 +21,15 @@ import {
 
 import { SoundManager } from '../utils/sound.js';
 import { showScreen, showImeWarning } from '../ui/screen.js';
-import { showCustomAlert } from '../ui/modal.js';
+import { showCustomAlert, showCustomConfirm } from '../ui/modal.js';
 import { getStageName } from '../utils/stages.js';
 import { convertNameToRomaji, shuffle } from '../utils/helpers.js';
 import { getTrainableMistakeEntries, getValidMistakeEntries, hasTrainableMistakes, normalizeMistakeCount } from '../utils/weak-mistakes.js';
 import { createConfetti, showRewardOverlay } from '../ui/reward.js';
 import { getCurrentKeyboardChapter } from '../ui/keyboard-state.js';
 import { renderRecords, showRecordSection } from '../ui/records.js';
-import { markDailyMissionComplete } from '../ui/daily-missions.js';
-import { startVisionGame, renderVisionMenu } from './vision.js';
+import { getNextIncompleteDailyMission, markDailyMissionComplete } from '../ui/daily-missions.js';
+import { startVisionGame, renderVisionMenu, openVisionDifficultyForStage } from './vision.js';
 export { getStageName } from '../utils/stages.js';
 
 let gameMode, currentStage, isProcessing = false;
@@ -45,6 +45,8 @@ let romajiTotalCells = 0;
 let romajiCorrectCells = 0;
 let isClearProcessing = false;
 let pendingCertificateAward = null;
+let pendingDailyMissionTask = null;
+let isMissionPracticeActive = false;
 
 export let visionScore = 0;
 export let visionTarget = 0;
@@ -140,6 +142,28 @@ function clearFeedbackActions() {
     actions.style.display = 'none';
 }
 
+export function startDailyMissionPractice(task) {
+    if (!task) return;
+    els.fbOverlay.style.display = 'none';
+    clearFeedbackActions();
+    pendingDailyMissionTask = null;
+
+    if (task.type === 'mouse') {
+        startGame(Number(task.stage), 'mouse', { fromMission: true });
+        return;
+    }
+
+    if (task.type === 'keyboard') {
+        showScreen('screen-keyboard-menu');
+        startGame(Number(task.stage), 'keyboard', { fromMission: true });
+        return;
+    }
+
+    if (task.type === 'vision') {
+        startGame(String(task.stage), 'vision', { fromMission: true });
+    }
+}
+
 function getNextStageAfterClear() {
     if (gameMode === 'mouse') {
         const nextStage = Number(currentStage || 0) + 1;
@@ -168,15 +192,20 @@ function getNextStageAfterClear() {
 
     if (gameMode === 'vision') {
         const stageKey = String(currentStage || '');
-        const suffix = stageKey.endsWith('_hard') ? '_hard' : (stageKey.endsWith('_easy') ? '_easy' : '');
         const baseId = stageKey.replace('_hard', '').replace('_easy', '');
-        const idx = VISION_STAGES.findIndex(stage => stage.id === baseId);
-        const nextStage = idx !== -1 ? VISION_STAGES[idx + 1] : null;
-        if (nextStage) {
+        const stage = VISION_STAGES.find(item => item.id === baseId);
+        if (stage) {
             return {
-                label: 'つぎのステージへすすむ',
-                detail: `${nextStage.title}${suffix === '_hard' ? ' ハード' : (suffix === '_easy' ? ' イージー' : '')}`,
-                run: () => startGame(`${nextStage.id}${suffix}`, 'vision')
+                label: 'ほかのむずかしさにちょうせんする',
+                detail: stage.title,
+                run: () => {
+                    els.fbOverlay.style.display = 'none';
+                    clearFeedbackActions();
+                    if (!openVisionDifficultyForStage(baseId)) {
+                        renderVisionMenu();
+                        showScreen('screen-vision-menu');
+                    }
+                }
             };
         }
     }
@@ -198,7 +227,19 @@ function renderFeedbackActions() {
         actions.appendChild(certificateButton);
     }
 
-    const nextStage = getNextStageAfterClear();
+    if (pendingDailyMissionTask) {
+        const missionButton = document.createElement('button');
+        missionButton.className = 'btn-primary feedback-mission-button';
+        missionButton.type = 'button';
+        missionButton.innerHTML = `つぎのミッションへすすむ<small>${pendingDailyMissionTask.title}</small>`;
+        missionButton.onclick = () => showCustomConfirm(
+            `つぎのミッション「${pendingDailyMissionTask.title}」に取り組みますか？`,
+            () => startDailyMissionPractice(pendingDailyMissionTask)
+        );
+        actions.appendChild(missionButton);
+    }
+
+    const nextStage = isMissionPracticeActive ? null : getNextStageAfterClear();
     if (nextStage) {
         const nextButton = document.createElement('button');
         nextButton.className = 'btn-primary feedback-next-button';
@@ -276,7 +317,7 @@ function recordPracticeInterrupt(shouldRecord) {
     saveUsers(false);
 }
 
-export function startGame(sid, mode) {
+export function startGame(sid, mode, options = {}) {
     if (mode === 'keyboard' && sid === 9888 && !hasTrainableMistakes(users[currentUser]?.globalMistakes)) {
         showCustomAlert('ミスのデータがないか、すべて克服しました！\nいろいろな練習をしてからまた挑戦してみてね！');
         showScreen('screen-keyboard-category');
@@ -286,6 +327,8 @@ export function startGame(sid, mode) {
     SoundManager.init(); currentStage = sid; gameMode = mode; isProcessing = false;
     isClearProcessing = false;
     pendingCertificateAward = null;
+    pendingDailyMissionTask = null;
+    isMissionPracticeActive = options.fromMission === true;
     mainQueue =[]; currentCount = 0; totalCount = 1; pendingHome = null; isHomeReturn = false;
     mistakeCount = 0; mistakeStats = {}; currRomajiIdx = 0; activeRomajiList =[]; currHiraObj = null; totalKeysTyped = 0; missKeysTyped = 0;
     typedRomajiStr = ""; 
@@ -403,6 +446,8 @@ export function backToMenu(recordInterrupt = false) {
         document.getElementById('feedback-overlay').style.display = 'none';
         document.getElementById('fail-overlay').style.display = 'none';
         clearFeedbackActions();
+        pendingDailyMissionTask = null;
+        isMissionPracticeActive = false;
 
         document.removeEventListener('keydown', handleKeyDown);
         
@@ -727,6 +772,7 @@ export function markClear() {
     if (isClearProcessing) return;
     isClearProcessing = true;
     isProcessing = true;
+    pendingDailyMissionTask = null;
     try {
         if (timerInterval) clearInterval(timerInterval);
         if (visionInterval) clearInterval(visionInterval);
@@ -869,6 +915,9 @@ export function markClear() {
             clearMsg += `<br><span style="font-size:24px; color:#FFD700;">💰 +${coinGain} コインゲット！</span>`;
             if (dailyMissionResult?.task) {
                 clearMsg += `<br><span style="font-size:20px; color:#00c853;">今日のミッション達成！ ${dailyMissionResult.doneCount}/${dailyMissionResult.total}</span>`;
+                pendingDailyMissionTask = dailyMissionResult.doneCount < dailyMissionResult.total
+                    ? getNextIncompleteDailyMission()
+                    : null;
                 if (dailyMissionResult.reward) {
                     clearMsg += `<br><span style="font-size:26px; color:#ff9800;">ミッションボーナス +${dailyMissionResult.reward} コイン！</span>`;
                 }

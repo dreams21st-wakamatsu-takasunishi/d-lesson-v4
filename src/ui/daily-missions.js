@@ -230,6 +230,12 @@ export function ensureDailyMission() {
     return users[currentUser].dailyMission;
 }
 
+export function getNextIncompleteDailyMission() {
+    const mission = ensureDailyMission();
+    if (!mission) return null;
+    return mission.tasks.find(task => !task.doneAt) || null;
+}
+
 function missionMatchesPractice(mission, practice = {}) {
     if (!mission || mission.doneAt) return false;
     const type = String(practice.type || practice.category || '');

@@ -21,7 +21,8 @@ import {
 import {
     switchDashTab,
     renderDashboardTable,
-    renderVisionDashboardTable
+    renderVisionDashboardTable,
+    renderTextDashboardTable
 } from './admin-dashboard.js';
 import {
     adminAddTextTask,
@@ -122,6 +123,7 @@ export {
     switchDashTab,
     renderDashboardTable,
     renderVisionDashboardTable,
+    renderTextDashboardTable,
     adminAddTextTask,
     editTextTask,
     moveTextTask,
@@ -198,6 +200,7 @@ export function adminAddCoins() {
 function adminShellCallbacks() {
     return {
         switchDashTab,
+        renderTextDashboardTable,
         renderPracticeHistoryAdmin: renderPracticeHistoryPanel,
         renderAuthLinkingAdmin,
         renderAdminAuditLog,
@@ -273,6 +276,10 @@ export function updateUserGroup(userId, newGroup) {
 
 export function openStudentReport() {
     openStudentReportPanel(getSelUser());
+}
+
+export function openStudentReportById(userId) {
+    openStudentReportPanel(userId);
 }
 
 export function closeStudentReport() {

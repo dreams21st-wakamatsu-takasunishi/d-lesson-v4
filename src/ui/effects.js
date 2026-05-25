@@ -7,8 +7,9 @@ const CONFETTI_COLORS = [
     '#ffeb3b', '#ffc107', '#ff9800', '#ff5722'
 ];
 
-export function createConfetti(activeEffect = 'default') {
-    const effectData = EFFECTS.find(e => e.id === activeEffect) || EFFECTS[0];
+export function createConfetti(activeEffect = null) {
+    const selectedEffect = activeEffect || window.__D_LESSON_ACTIVE_EFFECT__ || 'default';
+    const effectData = EFFECTS.find(e => e.id === selectedEffect) || EFFECTS[0];
     const isEmoji = effectData.emojis && effectData.emojis.length > 0;
     const particleCount = isEmoji ? 60 : 100;
 

@@ -382,6 +382,15 @@ function openVisionDifficultyDialog(stage, user) {
     if (firstChoice) firstChoice.focus();
 }
 
+export function openVisionDifficultyForStage(stageId) {
+    const stage = VISION_STAGES.find(item => item.id === String(stageId || '').replace('_hard', '').replace('_easy', ''));
+    const user = users[currentUser];
+    if (!stage || !user) return false;
+    if (!Array.isArray(user.visionCleared)) user.visionCleared = [];
+    openVisionDifficultyDialog(stage, user);
+    return true;
+}
+
 function ensureVisionDifficultyDialog() {
     let dialog = document.getElementById('vision-difficulty-modal');
     if (dialog) return dialog;

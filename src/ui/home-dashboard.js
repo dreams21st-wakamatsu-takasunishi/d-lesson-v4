@@ -1,13 +1,14 @@
-import { STAGE_ORDER } from '../data/constants.js';
+import { STAGE_ORDER, VISION_STAGES, WORD_STAGES } from '../data/constants.js';
 import {
     users,
     currentUser,
+    GLOBAL_SETTINGS_ID,
     hasLessonRole
 } from '../api/user.js';
 import { getStageName } from '../utils/stages.js';
 import { renderLastPracticeCard } from './practice-history.js';
 import { showScreen } from './screen.js';
-import { startGame } from '../games/core.js';
+import { startGame, startDailyMissionPractice } from '../games/core.js';
 import { renderDailyMissionPanel } from './daily-missions.js';
 
 const homeUiHandlers = {
@@ -54,17 +55,7 @@ export function updateHomeDashboard() {
     if (dailyMissionCard) {
         renderDailyMissionPanel(dailyMissionCard, {
             startMission: (task) => {
-                if (!task) return;
-                if (task.type === 'mouse') {
-                    homeUiHandlers.openMouseMenu();
-                    startGame(Number(task.stage), 'mouse');
-                } else if (task.type === 'keyboard') {
-                    showScreen('screen-keyboard-menu');
-                    startGame(Number(task.stage), 'keyboard');
-                } else if (task.type === 'vision') {
-                    showScreen('screen-vision-menu');
-                    startGame(String(task.stage), 'vision');
-                }
+                startDailyMissionPractice(task);
             }
         });
     }
@@ -84,6 +75,15 @@ export function updateHomeDashboard() {
     const kbBar = document.getElementById('home-kb-bar');
     if (kbPctDisplay) kbPctDisplay.innerText = `${kPct}%`;
     if (kbBar) kbBar.style.width = `${kPct}%`;
+
+    updatePracticeCategoryProgress(u, {
+        mouse: { done: mLv, total: maxMouse },
+        keyboard: { done: kSeq, total: maxKb },
+        text: getTextTaskProgress(u),
+        vision: getVisionProgress(u),
+        word: getWordProgress(u),
+        minigame: getTypingGameProgress(u)
+    });
 
     const btn = document.getElementById('btn-recommend');
     if (!btn) return;
@@ -111,4 +111,55 @@ export function updateHomeDashboard() {
         btn.style.backgroundColor = '#FFD700';
         btn.style.color = '#333';
     }
+}
+
+function getTextTaskProgress(user) {
+    const tasks = (Array.isArray(users?.[GLOBAL_SETTINGS_ID]?.textTasks) ? users[GLOBAL_SETTINGS_ID].textTasks : [])
+        .filter(task => task && task.hidden !== true)
+        .filter(task => {
+            const targetGroup = String(task?.targetGroup || '').trim();
+            if (!targetGroup) return true;
+            return String(user?.group || '').trim() === targetGroup;
+        });
+    const done = tasks.filter(task => user?.textRecords?.[task.id]).length;
+    return { done, total: tasks.length };
+}
+
+function getVisionProgress(user) {
+    const validIds = new Set(VISION_STAGES.flatMap(stage => [
+        stage.id,
+        `${stage.id}_easy`,
+        `${stage.id}_hard`
+    ]));
+    const cleared = new Set((Array.isArray(user?.visionCleared) ? user.visionCleared : [])
+        .map(String)
+        .filter(id => validIds.has(id)));
+    return { done: cleared.size, total: VISION_STAGES.length * 3 };
+}
+
+function getWordProgress(user) {
+    const progress = user?.wordProgress || {};
+    const done = WORD_STAGES.filter(stage => progress?.[stage.id]?.status === 'cleared').length;
+    return { done, total: WORD_STAGES.length };
+}
+
+function getTypingGameProgress(user) {
+    const done = Number(user?.minigameHighscore || 0) > 0 || Number(user?.dChallengeHighscore || 0) > 0 ? 1 : 0;
+    return { done, total: 2 };
+}
+
+function updatePracticeCategoryProgress(user, progressMap) {
+    Object.entries(progressMap).forEach(([key, progress]) => {
+        const done = Math.max(0, Number(progress?.done || 0));
+        const total = Math.max(0, Number(progress?.total || 0));
+        const percent = total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0;
+        const label = document.getElementById(`cat-${key}-progress`);
+        const meter = document.getElementById(`cat-${key}-meter`);
+        if (label) {
+            label.textContent = total > 0 ? `${done}/${total}` : '未設定';
+        }
+        if (meter) {
+            meter.style.width = `${percent}%`;
+        }
+    });
 }

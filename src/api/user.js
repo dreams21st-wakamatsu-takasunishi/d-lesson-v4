@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { SoundManager } from '../utils/sound.js';
 import { calculateGrade, sortGrades } from '../utils/helpers.js';
 import { sanitizeGlobalMistakes } from '../utils/weak-mistakes.js';
+import { THEMES, EFFECTS } from '../data/constants.js';
 import { showScreen } from '../ui/screen.js';
 import { applyTheme } from '../ui/home.js';
 import { createConfetti } from '../ui/effects.js';
@@ -518,7 +519,7 @@ export function formatPracticeActivity(log) {
         title: log.title || '練習',
         detail: [log.detail, log.amount].filter(Boolean).join(' / ') || '内容の記録があります',
         when,
-        coinsText: coins ? `+${coins}コイン` : ''
+        coinsText: coins ? `${coins > 0 ? '+' : ''}${coins}コイン` : ''
     };
 }
 
@@ -529,6 +530,10 @@ function normalizeUserRecord(userId, data) {
         if (!data.userDataId) data.userDataId = userId;
         data.globalMistakes = sanitizeGlobalMistakes(data.globalMistakes);
         data.practiceLogs = normalizePracticeLogs(data.practiceLogs);
+        data.themeFavorites = Array.isArray(data.themeFavorites) ? Array.from(new Set(data.themeFavorites.map(String))) : [];
+        data.effectFavorites = Array.isArray(data.effectFavorites) ? Array.from(new Set(data.effectFavorites.map(String))) : [];
+        data.randomThemeEnabled = Boolean(data.randomThemeEnabled);
+        data.randomEffectEnabled = Boolean(data.randomEffectEnabled);
     }
     return data;
 }
@@ -1352,6 +1357,65 @@ export function renderUserList(grade) {
     });
 }
 
+function isThemeUnlockedForUser(user, theme) {
+    if (!user || !theme) return false;
+    const checkId = theme.isCustom ? theme.id : `theme_${theme.id}`;
+    return theme.id === 'default'
+        || user.isMaster
+        || (Array.isArray(user.items) && (user.items.includes(checkId) || user.items.includes(theme.id)));
+}
+
+function isEffectUnlockedForUser(user, effect) {
+    if (!user || !effect) return false;
+    return effect.id === 'default'
+        || user.isMaster
+        || (Array.isArray(user.items) && user.items.includes(effect.id));
+}
+
+function pickRandomEntry(values) {
+    if (!values.length) return null;
+    return values[Math.floor(Math.random() * values.length)];
+}
+
+function applyRandomStyleFavorites(userId) {
+    const user = users[userId];
+    if (!user || user.isMaster) return false;
+    let changed = false;
+
+    if (user.randomThemeEnabled) {
+        const candidates = (Array.isArray(user.themeFavorites) ? user.themeFavorites : [])
+            .map(id => THEMES.find(theme => theme.id === id))
+            .filter(theme => isThemeUnlockedForUser(user, theme));
+        const selected = pickRandomEntry(candidates);
+        if (selected) {
+            if (user.theme !== selected.id) changed = true;
+            user.theme = selected.id;
+        } else {
+            user.randomThemeEnabled = false;
+            changed = true;
+        }
+    }
+
+    if (user.randomEffectEnabled) {
+        const candidates = (Array.isArray(user.effectFavorites) ? user.effectFavorites : [])
+            .map(id => EFFECTS.find(effect => effect.id === id))
+            .filter(effect => isEffectUnlockedForUser(user, effect));
+        const selected = pickRandomEntry(candidates);
+        if (selected) {
+            if (user.activeEffect !== selected.id) changed = true;
+            user.activeEffect = selected.id;
+        } else {
+            user.randomEffectEnabled = false;
+            changed = true;
+        }
+    }
+
+    if (typeof window !== 'undefined') {
+        window.__D_LESSON_ACTIVE_EFFECT__ = user.activeEffect || 'default';
+    }
+    return changed;
+}
+
 export function login(userId) {
     currentUser = userId;
     if(!users[userId]) users[userId] = {};
@@ -1371,8 +1435,14 @@ export function login(userId) {
     if(users[userId].items === undefined) users[userId].items =[];
     if(users[userId].tickets === undefined) users[userId].tickets =[];
     if(users[userId].activeEffect === undefined) users[userId].activeEffect = 'default';
+    if(!Array.isArray(users[userId].themeFavorites)) users[userId].themeFavorites = [];
+    if(!Array.isArray(users[userId].effectFavorites)) users[userId].effectFavorites = [];
+    if(users[userId].randomThemeEnabled === undefined) users[userId].randomThemeEnabled = false;
+    if(users[userId].randomEffectEnabled === undefined) users[userId].randomEffectEnabled = false;
+    const randomStyleChanged = applyRandomStyleFavorites(userId);
     
     applyTheme(users[userId].theme);
+    window.__D_LESSON_ACTIVE_EFFECT__ = users[userId].activeEffect || 'default';
     document.getElementById('welcome-msg').innerText = `ようこそ、${getUserDisplayName(userId)} さん`;
 
     updateVisibleUserUi();
@@ -1385,6 +1455,7 @@ export function login(userId) {
         saveUsers(false);
         showStampOverlay();
     } else {
+        if (randomStyleChanged && canWriteUserRow(userId)) saveUsers(false);
         showScreen('screen-category');
     }
 }

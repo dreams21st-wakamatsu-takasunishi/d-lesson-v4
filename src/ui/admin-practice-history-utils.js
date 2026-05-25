@@ -33,6 +33,7 @@ export function buildPracticeHistoryRows(users, helpers) {
                     name: getUserDisplayName(userId),
                     grade,
                     group,
+                    category: String(log.category || 'practice'),
                     dateKey: getLocalDateKey(log.at),
                     timeText: new Date(atMs).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }),
                     atMs,
@@ -48,15 +49,16 @@ export function buildPracticeHistoryRows(users, helpers) {
     return rows;
 }
 
-export function buildPracticeHistoryCsv(rows, selectedDate) {
-    const csvRows = [['date', 'time', 'student_name', 'grade', 'group', 'practice', 'detail', 'amount', 'coins']];
+export function buildPracticeHistoryCsv(rows) {
+    const csvRows = [['date', 'time', 'student_name', 'grade', 'group', 'category', 'practice', 'detail', 'amount', 'coins']];
     rows.forEach(row => {
         csvRows.push([
-            selectedDate,
+            row.dateKey,
             row.timeText,
             row.name,
             row.grade || '',
             row.group || '',
+            row.category || '',
             row.title,
             row.detail || '',
             row.amount || '',

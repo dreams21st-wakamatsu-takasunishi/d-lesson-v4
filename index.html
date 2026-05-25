@@ -80,9 +80,9 @@
                     <span style="font-size:50px;">🗓️</span><span style="font-size:20px; font-weight:bold; margin-top:10px;">取り組み確認</span>
                 </button>
                 <button class="category-btn" onclick="showAdminSection('admin-sec-users')" style="background-color:#2196F3; width:260px;">
-                    <span style="font-size:50px;">👥</span><span style="font-size:20px; font-weight:bold; margin-top:10px;">生徒の管理</span>
+                    <span style="font-size:50px;">👥</span><span style="font-size:20px; font-weight:bold; margin-top:10px;">生徒管理/Auth連携</span>
                 </button>
-                <button class="category-btn" onclick="showAdminSection('admin-sec-auth-link')" style="background-color:#00695C; width:260px;">
+                <button class="category-btn" onclick="showAdminSection('admin-sec-users')" style="background-color:#00695C; width:260px; display:none;">
                     <span style="font-size:50px;">🔐</span><span style="font-size:20px; font-weight:bold; margin-top:10px;">Auth連携</span>
                 </button>
                 <button class="category-btn" onclick="showAdminSection('admin-sec-tasks')" style="background-color:#4CAF50; width:260px;">
@@ -110,9 +110,10 @@
                 <div id="admin-sec-dashboard" class="admin-section" style="display:none; width: 100%;">
                     <h3 style="margin-top:0;">📊 生徒成績ダッシュボード</h3>
                     <div id="admin-dashboard-container" style="width:100%; flex-direction:column; border:2px solid #ccc; border-radius:8px; background:#fff; display:flex;">
-                        <div style="display:flex; justify-content:center; gap:10px; margin-top:15px; margin-bottom:10px;">
+                        <div style="display:flex; justify-content:center; gap:10px; margin-top:15px; margin-bottom:10px; flex-wrap:wrap;">
                             <button class="btn-secondary" id="tab-btn-basic" onclick="switchDashTab('basic')" style="background:#2196F3; padding:8px 20px; border-radius:20px; font-size:18px;">基本進捗</button>
                             <button class="btn-secondary" id="tab-btn-vision" onclick="switchDashTab('vision')" style="background:#9e9e9e; padding:8px 20px; border-radius:20px; font-size:18px;">ビジョンタイム</button>
+                            <button class="btn-secondary" id="tab-btn-text" onclick="switchDashTab('text')" style="background:#9e9e9e; padding:8px 20px; border-radius:20px; font-size:18px;">文章入力</button>
                         </div>
                         <div id="dash-basic">
                             <div style="display:flex; gap:10px; padding:10px; background:#e3f2fd; border-bottom:1px solid #ccc; align-items:center; justify-content:center; flex-wrap:wrap;">
@@ -130,7 +131,7 @@
                             <div style="height:70vh; overflow-y:auto; width:100%;">
                                 <table style="width:100%; border-collapse:collapse; font-size:16px;">
                                     <thead style="background:#f2f2f2; position:sticky; top:0; z-index:10;">
-                                        <tr><th style="border:1px solid #ccc; padding:8px;">名前 (グループ)</th><th style="border:1px solid #ccc; padding:8px;">学年</th><th style="border:1px solid #ccc; padding:8px;">マウス進捗</th><th style="border:1px solid #ccc; padding:8px;">キーボード進捗</th></tr>
+                                        <tr><th style="border:1px solid #ccc; padding:8px;">名前 (グループ)</th><th style="border:1px solid #ccc; padding:8px;">学年</th><th style="border:1px solid #ccc; padding:8px;">マウス進捗</th><th style="border:1px solid #ccc; padding:8px;">キーボード進捗</th><th style="border:1px solid #ccc; padding:8px;">レポート</th></tr>
                                     </thead>
                                     <tbody id="dash-tbody"></tbody>
                                 </table>
@@ -144,6 +145,19 @@
                                     <option value="normal" selected>🟢 ノーマル</option>
                                     <option value="hard">🔥 ハード</option>
                                 </select>
+                                <select id="vision-filter-target" onchange="renderVisionDashboardTable()" style="padding:5px; font-size:16px; border-radius:5px;">
+                                    <option value="all">全員を表示</option>
+                                    <option value="grade">学年でしぼる</option>
+                                    <option value="group">グループでしぼる</option>
+                                    <option value="student">児童名でしぼる</option>
+                                </select>
+                                <select id="vision-filter-grade" onchange="renderVisionDashboardTable()" style="padding:5px; font-size:16px; border-radius:5px;"><option value="all">すべての学年</option></select>
+                                <select id="vision-filter-group" onchange="renderVisionDashboardTable()" style="padding:5px; font-size:16px; border-radius:5px;"><option value="all">すべてのグループ</option></select>
+                                <input type="search" id="vision-filter-search" oninput="renderVisionDashboardTable()" placeholder="児童名で検索" style="padding:6px 8px; font-size:15px; border-radius:6px; border:1px solid #ccc; min-width:180px;">
+                                <select id="vision-view-mode" onchange="renderVisionDashboardTable()" style="padding:5px; font-size:16px; border-radius:5px;">
+                                    <option value="table">表で見る</option>
+                                    <option value="radar">レーダー一覧</option>
+                                </select>
                                 <button class="btn-primary" onclick="exportDashboardCSV()" style="padding:5px 15px; font-size:14px; margin-left:auto; background-color:#4CAF50;">📥 CSV(Excel)出力</button>
                             </div>
                             <!-- ★修正: 高さを広げて視認性向上 -->
@@ -152,16 +166,55 @@
                                     <thead id="dash-vision-thead" style="background:#f2f2f2; position:sticky; top:0; z-index:10;"></thead>
                                     <tbody id="dash-vision-tbody"></tbody>
                                 </table>
+                                <div id="dash-vision-radar-list" style="display:none; padding:14px; grid-template-columns:repeat(auto-fit, minmax(360px, 1fr)); gap:14px;"></div>
+                            </div>
+                        </div>
+                        <div id="dash-text" style="display:none; width:100%;">
+                            <div style="display:flex; gap:10px; padding:10px; background:#f3e5f5; border-bottom:1px solid #ccc; align-items:center; justify-content:center; flex-wrap:wrap;">
+                                <span style="font-weight:bold; color:#6a1b9a;">🔍 文章入力：</span>
+                                <select id="text-dash-filter-grade" onchange="renderTextDashboardTable()" style="padding:5px; font-size:16px; border-radius:5px;"><option value="all">すべての学年</option></select>
+                                <select id="text-dash-filter-group" onchange="renderTextDashboardTable()" style="padding:5px; font-size:16px; border-radius:5px;"><option value="all">すべてのグループ</option></select>
+                                <select id="text-dash-student-select" onchange="renderTextDashboardTable()" style="padding:5px; font-size:16px; border-radius:5px; min-width:180px;"><option value="">グラフ対象を選択</option></select>
+                                <input type="search" id="text-dash-search" oninput="renderTextDashboardTable()" placeholder="児童名で検索" style="padding:6px 8px; font-size:15px; border-radius:6px; border:1px solid #ccc; min-width:180px;">
+                            </div>
+                            <div id="dash-text-summary" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; padding:12px;"></div>
+                            <div id="dash-text-chart" style="margin:0 12px 12px; padding:12px; border:1px solid #ce93d8; border-radius:10px; background:#fff;"></div>
+                            <div style="height:52vh; overflow:auto; width:100%;">
+                                <table style="width:100%; border-collapse:collapse; font-size:15px; min-width:980px; text-align:center;">
+                                    <thead style="background:#f2f2f2; position:sticky; top:0; z-index:10;">
+                                        <tr>
+                                            <th style="border:1px solid #ccc; padding:8px;">児童</th>
+                                            <th style="border:1px solid #ccc; padding:8px;">学年</th>
+                                            <th style="border:1px solid #ccc; padding:8px;">グループ</th>
+                                            <th style="border:1px solid #ccc; padding:8px;">完了課題</th>
+                                            <th style="border:1px solid #ccc; padding:8px;">挑戦回数</th>
+                                            <th style="border:1px solid #ccc; padding:8px;">最高純字数</th>
+                                            <th style="border:1px solid #ccc; padding:8px;">直近</th>
+                                            <th style="border:1px solid #ccc; padding:8px;">伸び</th>
+                                            <th style="border:1px solid #ccc; padding:8px;">レポート</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="dash-text-tbody"></tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <div id="admin-sec-practice-history" class="admin-section" style="display:none; width:100%; flex-direction:column; gap:12px;">
-                    <h3 style="margin-top:0;">🗓️ 日付別取り組み確認</h3>
+                    <h3 style="margin-top:0;">🗓️ 取り組み確認</h3>
                     <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; background:#efebe9; border:1px solid #bcaaa4; border-radius:8px; padding:12px;">
+                        <label style="font-weight:bold; color:#4e342e;">表示
+                            <select id="admin-practice-view" onchange="renderPracticeHistoryAdmin()" style="margin-left:6px; min-width:130px; padding:8px; font-size:14px; border:1px solid #a1887f; border-radius:6px;">
+                                <option value="date">日別</option>
+                                <option value="student">児童別</option>
+                            </select>
+                        </label>
                         <label style="font-weight:bold; color:#4e342e;">日付
                             <select id="admin-practice-date" onchange="renderPracticeHistoryAdmin()" style="margin-left:6px; min-width:180px; padding:8px; font-size:14px; border:1px solid #a1887f; border-radius:6px;"></select>
+                        </label>
+                        <label style="font-weight:bold; color:#4e342e;">児童
+                            <select id="admin-practice-student" onchange="renderPracticeHistoryAdmin()" style="margin-left:6px; min-width:180px; padding:8px; font-size:14px; border:1px solid #a1887f; border-radius:6px;"></select>
                         </label>
                         <label style="font-weight:bold; color:#4e342e;">学年
                             <select id="admin-practice-grade" onchange="renderPracticeHistoryAdmin()" style="margin-left:6px; min-width:130px; padding:8px; font-size:14px; border:1px solid #a1887f; border-radius:6px;">
@@ -173,6 +226,13 @@
                                 <option value="all">すべてのグループ</option>
                             </select>
                         </label>
+                        <label style="font-weight:bold; color:#4e342e;">並び
+                            <select id="admin-practice-sort" onchange="renderPracticeHistoryAdmin()" style="margin-left:6px; min-width:150px; padding:8px; font-size:14px; border:1px solid #a1887f; border-radius:6px;">
+                                <option value="time_desc">時刻 新しい順</option>
+                                <option value="time_asc">時刻 昇順</option>
+                                <option value="student_asc">児童名 昇順</option>
+                            </select>
+                        </label>
                         <input type="search" id="admin-practice-search" oninput="renderPracticeHistoryAdmin()" placeholder="名前・練習名で検索" style="flex:1; min-width:220px; padding:8px; font-size:14px; border:1px solid #a1887f; border-radius:6px;">
                         <button class="btn-secondary" onclick="clearPracticeHistoryFilters()" style="font-size:14px; padding:8px 12px;">解除</button>
                         <button class="btn-primary" onclick="exportPracticeHistoryCsv()" style="font-size:14px; padding:8px 12px; background:#5d4037;">CSV出力</button>
@@ -181,8 +241,9 @@
                     <div style="height:62vh; overflow:auto; background:#fff; border:1px solid #d7ccc8; border-radius:8px;">
                         <table style="width:100%; border-collapse:collapse; font-size:14px; min-width:980px;">
                             <thead style="background:#f5f5f5; position:sticky; top:0; z-index:5;">
-                                <tr>
-                                    <th style="border:1px solid #ddd; padding:8px;">時刻</th>
+                        <tr>
+                            <th style="border:1px solid #ddd; padding:8px;">日付</th>
+                            <th style="border:1px solid #ddd; padding:8px;">時刻</th>
                                     <th style="border:1px solid #ddd; padding:8px;">児童</th>
                                     <th style="border:1px solid #ddd; padding:8px;">学年</th>
                                     <th style="border:1px solid #ddd; padding:8px;">グループ</th>
@@ -198,7 +259,7 @@
                 </div>
 
                 <div id="admin-sec-users" class="admin-section" style="display:none; width: 100%;">
-                    <h3 style="margin-top:0;">👥 生徒の管理</h3>
+                    <h3 style="margin-top:0;">👥 生徒の管理 / Auth連携</h3>
                     <div style="display:flex; gap:20px; width:100%; align-items: flex-start;">
                         <div style="flex:1; display:flex; flex-direction:column; gap:15px;">
                             <div style="display:flex; flex-direction:column; gap:10px; background:#e3f2fd; padding:15px; border-radius:8px; border:1px solid #90caf9;">
@@ -251,7 +312,6 @@
                                 </table>
                             </div>
                             <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:10px;">
-                                <button class="btn-primary" style="font-size:14px; padding:10px 15px; background:#009688;" onclick="openStudentReport()">レポート</button>
                                 <button class="btn-primary" style="font-size:14px; padding:10px 15px;" onclick="openEditProgress()">編集する</button>
                                 <button class="btn-danger" style="font-size:14px; padding:10px 15px;" onclick="adminResetUser()">リセット</button>
                                 <button class="btn-secondary" style="font-size:14px; padding:10px 15px;" onclick="adminForceProgress()">全開放</button>
@@ -648,31 +708,43 @@
                     <span class="practice-category-icon">🖱️</span>
                     <strong>マウスれんしゅう</strong>
                     <small>クリック・ドラッグ・スクロール</small>
+                    <span class="practice-category-progress" id="cat-mouse-progress">0/7</span>
+                    <span class="practice-category-meter"><span id="cat-mouse-meter"></span></span>
                 </button>
                 <button class="practice-category-card practice-card-keyboard" id="cat-keyboard" onclick="goToKeyboardCategory()">
                     <span class="practice-category-icon">⌨️</span>
                     <strong>キーボードれんしゅう</strong>
                     <small>キーの位置・文字入力・苦手特訓</small>
+                    <span class="practice-category-progress" id="cat-keyboard-progress">0%</span>
+                    <span class="practice-category-meter"><span id="cat-keyboard-meter"></span></span>
                 </button>
                 <button class="practice-category-card practice-card-text" id="cat-text" onclick="goToTextMenu()">
                     <span class="practice-category-icon">📝</span>
                     <strong>文章入力れんしゅう</strong>
                     <small>文章を読んで、正しく入力</small>
+                    <span class="practice-category-progress" id="cat-text-progress">0/0</span>
+                    <span class="practice-category-meter"><span id="cat-text-meter"></span></span>
                 </button>
                 <button class="practice-category-card practice-card-minigame" id="cat-minigame" onclick="goToMinigameMenu()">
                     <span class="practice-category-icon">🎮</span>
                     <strong>タイピングゲーム</strong>
                     <small>スコア・ランキングに挑戦</small>
+                    <span class="practice-category-progress" id="cat-minigame-progress">0/2</span>
+                    <span class="practice-category-meter"><span id="cat-minigame-meter"></span></span>
                 </button>
                 <button class="practice-category-card practice-card-vision" id="cat-vision" onclick="goToVisionMenu()">
                     <span class="practice-category-icon">👁️</span>
                     <strong>ビジョントレーニング</strong>
                     <small>見る・覚える・反応する</small>
+                    <span class="practice-category-progress" id="cat-vision-progress">0/0</span>
+                    <span class="practice-category-meter"><span id="cat-vision-meter"></span></span>
                 </button>
                 <button class="practice-category-card practice-card-word" id="cat-word" onclick="goToWordMenu()">
                     <span class="practice-category-icon">📘</span>
                     <strong>Wordれんしゅう</strong>
                     <small>教材PDFとWord操作</small>
+                    <span class="practice-category-progress" id="cat-word-progress">0/0</span>
+                    <span class="practice-category-meter"><span id="cat-word-meter"></span></span>
                 </button>
             </div>
         </div>
@@ -1019,41 +1091,33 @@
 
     <!-- 7. 成績画面（マイページUI刷新） -->
     <div id="screen-records" class="screen">
-        <div class="screen-content" style="width: 100%; max-width: 1100px; padding-top: 10px;">
+        <div class="screen-content" style="width: 100%; max-width: 1520px; padding: 10px 28px 0; box-sizing:border-box;">
             <h2 style="margin: 0 0 10px 0;">🏆 マイページ</h2>
             
-            <div id="records-main-menu" style="display:flex; flex-wrap:wrap; gap:20px; justify-content:center; width:100%;">
-                <button class="category-btn" onclick="showRecordSection('rec-gacha')" style="background-color:#FF9800; width:220px; height:120px;">
+            <div id="records-main-menu" class="records-menu-grid">
+                <button class="category-btn records-menu-card" onclick="showRecordSection('rec-gacha')" style="background-color:#FF9800;">
                     <span style="font-size:40px;">🎟️</span><span style="font-size:18px; font-weight:bold; margin-top:5px;">いいね・ガチャ</span>
                 </button>
-                <button class="category-btn" onclick="showRecordSection('rec-theme')" style="background-color:#9C27B0; width:220px; height:120px;">
+                <button class="category-btn records-menu-card" onclick="showRecordSection('rec-theme')" style="background-color:#9C27B0;">
                     <span style="font-size:40px;">🎨</span><span style="font-size:18px; font-weight:bold; margin-top:5px;">きせかえ・演出</span>
                 </button>
-                <button class="category-btn" onclick="showRecordSection('rec-badge')" style="background-color:#4CAF50; width:220px; height:120px;">
-                    <span style="font-size:40px;">🏆</span><span style="font-size:18px; font-weight:bold; margin-top:5px;">きろくバッジ</span>
+                <button class="category-btn records-menu-card" onclick="showRecordSection('rec-learning')" style="background-color:#E91E63;">
+                    <span style="font-size:40px;">📊</span><span style="font-size:18px; font-weight:bold; margin-top:5px;">せいせき・取り組み</span>
                 </button>
-                <button class="category-btn" onclick="showRecordSection('rec-time')" style="background-color:#2196F3; width:220px; height:120px;">
-                    <span style="font-size:40px;">⏱️</span><span style="font-size:18px; font-weight:bold; margin-top:5px;">タイムアタック記録</span>
-                </button>
-                <button class="category-btn" onclick="showRecordSection('rec-graph')" style="background-color:#E91E63; width:220px; height:120px;">
-                    <span style="font-size:40px;">📊</span><span style="font-size:18px; font-weight:bold; margin-top:5px;">せいせきグラフ</span>
-                </button>
-                <button class="category-btn" onclick="showRecordSection('rec-practice')" style="background-color:#607D8B; width:220px; height:120px;">
-                    <span style="font-size:40px;">📝</span><span style="font-size:18px; font-weight:bold; margin-top:5px;">取り組み記録</span>
-                </button>
-                <button class="category-btn" onclick="showRecordSection('rec-certificate')" style="background-color:#B45309; width:220px; height:120px;">
-                    <span style="font-size:40px;">賞</span><span style="font-size:18px; font-weight:bold; margin-top:5px;">賞状印刷</span>
+                <button class="category-btn records-menu-card" onclick="showRecordSection('rec-achievement')" style="background-color:#4CAF50;">
+                    <span style="font-size:40px;">🏅</span><span style="font-size:18px; font-weight:bold; margin-top:5px;">賞状印刷</span>
                 </button>
             </div>
 
-            <div id="records-panel-content" style="display:none; width:100%; flex-direction:column; align-items:center; flex:1; min-height:0;">
+            <div id="records-panel-content" style="display:none; width:100%; flex-direction:column; align-items:stretch; flex:1; min-height:0;">
                 <div style="width:100%; display:flex; justify-content:flex-start; margin-bottom:10px;">
                     <button class="btn-secondary" onclick="backToRecordMenu()">⬅ メニューへもどる</button>
                 </div>
                 
                 <div id="rec-gacha" class="record-section-content" style="display:none; width:100%;"></div>
                 <div id="rec-theme" class="record-section-content" style="display:none; width:100%;"></div>
-                <div id="rec-badge" class="record-section-content" style="display:none; width:100%; max-height:500px; overflow-y:auto; padding-right:10px;"></div>
+                <div id="rec-learning" class="record-section-content" style="display:none; width:100%;"></div>
+                <div id="rec-achievement" class="record-section-content" style="display:none; width:100%;"></div>
                 <div id="rec-time" class="record-section-content" style="display:none; width:100%; max-height:500px; overflow-y:auto; padding-right:10px;"></div>
                 <div id="rec-graph" class="record-section-content" style="display:none; width:100%;"></div>
                 <div id="rec-practice" class="record-section-content" style="display:none; width:100%; max-height:560px; overflow-y:auto; padding-right:10px;"></div>

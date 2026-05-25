@@ -20,6 +20,21 @@ export function showAdminSection(sectionId, callbacks = {}) {
     target.style.display = 'flex';
     target.style.flexDirection = 'column';
 
+    if (sectionId === 'admin-sec-users') {
+        const authSection = document.getElementById('admin-sec-auth-link');
+        if (authSection && !target.contains(authSection)) {
+            authSection.classList.add('admin-auth-embedded');
+            target.appendChild(authSection);
+        }
+        if (authSection) {
+            authSection.style.display = 'flex';
+            authSection.style.flexDirection = 'column';
+            authSection.style.marginTop = '18px';
+        }
+        getCallback(callbacks, 'updateAdminUserTable')();
+        getCallback(callbacks, 'renderAuthLinkingAdmin')();
+    }
+
     if (sectionId === 'admin-sec-dashboard') getCallback(callbacks, 'switchDashTab')('basic');
     if (sectionId === 'admin-sec-practice-history') getCallback(callbacks, 'renderPracticeHistoryAdmin')();
     if (sectionId === 'admin-sec-auth-link') getCallback(callbacks, 'renderAuthLinkingAdmin')();

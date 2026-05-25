@@ -41,7 +41,14 @@ import {
 import { showCustomAlert } from '../ui/modal.js';
 import { goToMouseMenu } from '../ui/mouse-menu.js';
 import { printCertificate, printEarnedCertificates } from '../ui/certificates.js';
-import { backToRecordMenu, showRecordSection } from '../ui/records.js';
+import {
+    backToRecordMenu,
+    showRecordSection,
+    toggleEffectFavorite,
+    toggleRandomEffect,
+    toggleRandomTheme,
+    toggleThemeFavorite
+} from '../ui/records.js';
 import { closeRewardOverlay } from '../ui/reward.js';
 import { handleGlobalBack, handleGlobalHome, handleGlobalLogout, showScreen, toggleFullScreen } from '../ui/screen.js';
 import { speakInstruction, speakTextTask } from '../ui/speech.js';
@@ -64,7 +71,8 @@ export function registerAppGlobalHandlers() {
 
         retryExam, backToMenu, handleSecretMenuClick,
         showRomajiMenu, renderKeyboardStages, backToKbChapter,
-        showRecordSection, backToRecordMenu, printCertificate, printEarnedCertificates, exportDashboardCSV, startRecommendedStage, loadCustomGlobalSettings,
+        showRecordSection, backToRecordMenu, toggleThemeFavorite, toggleEffectFavorite, toggleRandomTheme, toggleRandomEffect,
+        printCertificate, printEarnedCertificates, exportDashboardCSV, startRecommendedStage, loadCustomGlobalSettings,
         updateGlobalHeader, updateHomeDashboard,
 
         drawGacha, useTicket, changeTheme, changeEffect,

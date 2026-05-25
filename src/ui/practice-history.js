@@ -42,6 +42,16 @@ function appendPracticeMetric(container, label, value, color) {
     container.appendChild(box);
 }
 
+function formatFullDateTime(log) {
+    const at = Date.parse(log?.at);
+    if (!at) return { date: '-', time: '' };
+    const date = new Date(at);
+    return {
+        date: date.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' }),
+        time: date.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
+    };
+}
+
 export function renderPracticeHistorySection(container, userId) {
     container.innerHTML = '';
     const logs = getPracticeLogs(userId);
@@ -86,13 +96,14 @@ export function renderPracticeHistorySection(container, userId) {
         empty.style.cssText = 'background:#fff; border:1px dashed #b0bec5; border-radius:8px; padding:18px; color:#607d8b; text-align:center;';
         list.appendChild(empty);
     } else {
-        logs.slice(0, 30).forEach(log => {
+        logs.slice(0, 50).forEach(log => {
             const info = formatPracticeActivity(log);
             const row = document.createElement('div');
-            row.style.cssText = 'display:grid; grid-template-columns:140px 1fr auto; gap:12px; align-items:center; background:#fff; border:1px solid #d7dee8; border-radius:8px; padding:10px 12px; text-align:left;';
+            row.style.cssText = 'display:grid; grid-template-columns:minmax(132px, 170px) 1fr auto; gap:12px; align-items:center; background:#fff; border:1px solid #d7dee8; border-radius:8px; padding:10px 12px; text-align:left;';
 
+            const whenInfo = formatFullDateTime(log);
             const when = document.createElement('div');
-            when.textContent = info.when || '-';
+            when.innerHTML = `<div>${whenInfo.date}</div><div style="font-size:12px; color:#78909c;">${whenInfo.time}</div>`;
             when.style.cssText = 'font-size:13px; color:#607d8b; font-weight:bold;';
             row.appendChild(when);
 

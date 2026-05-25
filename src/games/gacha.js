@@ -1,4 +1,4 @@
-import { users, currentUser, saveUsers, canWriteCurrentUserRow } from '../api/user.js'
+import { users, currentUser, saveUsers, canWriteCurrentUserRow, recordPracticeActivity } from '../api/user.js'
 import { GACHA_ITEMS } from '../data/gacha-items.js'
 import { SoundManager } from '../utils/sound.js'
 import { showCustomAlert, showCustomConfirm } from '../ui/modal.js'
@@ -17,6 +17,16 @@ export function setGachaUiHandlers(handlers = {}) {
 
 function refreshRecords() {
     renderRecordsHandler();
+}
+
+function isThemeEffectPanelOpen() {
+    return document.getElementById('rec-theme')?.style.display === 'block';
+}
+
+function keepThemeEffectPanelOpen(wasOpen) {
+    if (wasOpen && typeof window.showRecordSection === 'function') {
+        window.showRecordSection('rec-theme');
+    }
 }
 
 export function drawGacha(times = 1, isRareGuaranteed = false) {
@@ -56,7 +66,15 @@ export function drawGacha(times = 1, isRareGuaranteed = false) {
                 }
             }
             
-            u.coins += totalCoinsWon + refundCoins; saveUsers(false); refreshRecords(); 
+            u.coins += totalCoinsWon + refundCoins;
+            recordPracticeActivity({
+                category: 'gacha',
+                title: isRareGuaranteed ? 'ガチャ レア確定' : (times > 1 ? `ガチャ ${times}連` : 'ガチャ 1回'),
+                detail: newItems.length ? `新アイテム: ${newItems.join('、')}` : (refundCoins > 0 ? 'かぶり' : 'コイン当せん'),
+                amount: `消費 ${COST} / コイン当せん ${totalCoinsWon} / かぶり返却 ${refundCoins}`,
+                coins: totalCoinsWon + refundCoins - COST
+            });
+            saveUsers(false); refreshRecords(); 
             
             let rewardTitle = times > 1 ? `✨ ${times}連ガチャ けっか ✨` : "✨ ガチャけっか ✨"; 
             if (isRareGuaranteed) rewardTitle = "✨ レア確定ガチャ けっか ✨";
@@ -105,7 +123,25 @@ export function useTicket(idx) {
     );
 }
 
-export function changeTheme(themeId) { applyTheme(themeId); if (users[currentUser] && canWriteCurrentUserRow()) { users[currentUser].theme = themeId; saveUsers(false); } refreshRecords(); }
+export function changeTheme(themeId) {
+    const stayOnPanel = isThemeEffectPanelOpen();
+    applyTheme(themeId);
+    if (users[currentUser] && canWriteCurrentUserRow()) {
+        users[currentUser].theme = themeId;
+        saveUsers(false);
+    }
+    refreshRecords();
+    keepThemeEffectPanelOpen(stayOnPanel);
+}
 
-export function changeEffect(effId) { if (users[currentUser] && canWriteCurrentUserRow()) { users[currentUser].activeEffect = effId; saveUsers(false); } refreshRecords(); createConfetti(); }
-
+export function changeEffect(effId) {
+    const stayOnPanel = isThemeEffectPanelOpen();
+    if (users[currentUser] && canWriteCurrentUserRow()) {
+        users[currentUser].activeEffect = effId;
+        window.__D_LESSON_ACTIVE_EFFECT__ = effId;
+        saveUsers(false);
+    }
+    refreshRecords();
+    keepThemeEffectPanelOpen(stayOnPanel);
+    createConfetti();
+}
