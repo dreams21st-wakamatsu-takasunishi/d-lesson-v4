@@ -14,9 +14,9 @@ export function isMissingLessonScopeColumnError(error) {
 }
 
 export function normalizeTeacherScope(scopeType, scopeValue) {
-    if (scopeType === 'group') {
+    if (scopeType === 'campus' || scopeType === 'group') {
         return {
-            scope_type: 'group',
+            scope_type: scopeType,
             scope_value: String(scopeValue || '').trim()
         };
     }

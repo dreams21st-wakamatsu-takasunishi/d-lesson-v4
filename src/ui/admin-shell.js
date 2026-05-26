@@ -31,6 +31,7 @@ export function showAdminSection(sectionId, callbacks = {}) {
             authSection.style.flexDirection = 'column';
             authSection.style.marginTop = '18px';
         }
+        getCallback(callbacks, 'renderCampusAdmin')();
         getCallback(callbacks, 'updateAdminUserTable')();
         getCallback(callbacks, 'renderAuthLinkingAdmin')();
     }
@@ -52,6 +53,7 @@ export function backToAdminMenu() {
 }
 
 function openAdminScreen(callbacks = {}) {
+    getCallback(callbacks, 'renderCampusAdmin')();
     getCallback(callbacks, 'updateAdminUserTable')();
     getCallback(callbacks, 'renderAdminTextTasks')();
     getCallback(callbacks, 'renderTicketAdmin')();

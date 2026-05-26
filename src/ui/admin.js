@@ -95,6 +95,7 @@ import {
     clearAdminUserFilters as clearAdminUserFiltersPanel,
     updateUserDisplayName as updateUserDisplayNameRow,
     updateUserBirthdate as updateUserBirthdateRow,
+    updateUserCampus as updateUserCampusRow,
     updateUserGroup as updateUserGroupRow
 } from './admin-user-table.js';
 import {
@@ -103,7 +104,9 @@ import {
     exportStudentCsv,
     applyStudentCsvUpdates as applyStudentCsvUpdatesData,
     adminDeleteUser as deleteStudentData,
-    adminAddCoins as addCoinsData
+    adminAddCoins as addCoinsData,
+    adminAddCampus as addCampusData,
+    renderCampusAdmin
 } from './admin-student-data.js';
 
 export {
@@ -114,6 +117,7 @@ export {
     saveTicketSettings,
     saveStudentIdleLogoutSetting,
     saveDailyMissionSettings,
+    renderCampusAdmin,
     renderOpsGuideAdmin,
     renderTypingRankingSettingsAdmin,
     saveTypingRankingNicknameBlockWords,
@@ -173,6 +177,7 @@ export {
 };
 
 function refreshAdminStudentDataViews() {
+    renderCampusAdmin();
     updateAdminUserTable();
     renderDashboardTable();
 }
@@ -183,6 +188,10 @@ export function adminAddUser() {
 
 export function adminBulkAddUsers() {
     bulkAddUserData(refreshAdminStudentDataViews);
+}
+
+export function adminAddCampus() {
+    addCampusData(refreshAdminStudentDataViews);
 }
 
 export function applyStudentCsvUpdates() {
@@ -203,6 +212,7 @@ function adminShellCallbacks() {
         renderTextDashboardTable,
         renderPracticeHistoryAdmin: renderPracticeHistoryPanel,
         renderAuthLinkingAdmin,
+        renderCampusAdmin,
         renderAdminAuditLog,
         renderOpsGuideAdmin,
         renderTypingRankingSettingsAdmin,
@@ -268,6 +278,10 @@ export function updateUserDisplayName(userId, newName) {
 
 export function updateUserBirthdate(userId, newBirthdate) {
     updateUserBirthdateRow(userId, newBirthdate, adminUserTableOptions());
+}
+
+export function updateUserCampus(userId, newCampusId) {
+    updateUserCampusRow(userId, newCampusId, adminUserTableOptions());
 }
 
 export function updateUserGroup(userId, newGroup) {

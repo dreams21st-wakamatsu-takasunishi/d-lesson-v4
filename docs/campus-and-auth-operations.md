@@ -1,0 +1,126 @@
+# 校舎管理と児童Auth登録 手順
+
+## 目的
+
+Dレッスン内で児童データを作成し、校舎・グループ単位で閲覧範囲を分けられるようにします。
+公開URLは1つのまま、先生アカウントごとに見える児童を制限します。
+
+## 1. Supabase SQLを実行
+
+Supabase SQL Editorで次を実行します。
+
+```sql
+-- ファイルの中身を貼り付けて実行
+supabase/sql/campus_scope_policies.sql
+```
+
+実行後、先生の担当範囲として次が使えます。
+
+- `all`: 全児童
+- `campus`: 校舎単位
+- `group`: グループ単位
+- `campus_group`: 将来用。`campusId:group` の形式
+
+## 2. 管理者画面で校舎を作成
+
+1. 管理者でDレッスンにログイン
+2. `管理者用` → `生徒管理/Auth連携`
+3. `校舎の管理` で校舎名とコードを追加
+
+コードはURLやログインメールで使いやすい英数字を推奨します。
+
+例:
+
+- 校舎名: `若松校`
+- コード: `wakamatsu`
+
+## 3. 児童を校舎に割り当て
+
+児童追加時に校舎を選択します。
+既存児童は児童一覧の `校舎` プルダウンから変更できます。
+
+## 4. 先生の担当範囲を設定
+
+`Auth連携` の先生登録で、担当範囲を選びます。
+
+- 全児童を見る先生: `全児童`
+- 校舎だけを見る先生: `校舎指定` + `wakamatsu`
+- グループだけを見る先生: `グループ指定` + `月曜A`
+
+複数指定する場合はカンマ区切りです。
+
+例:
+
+```text
+wakamatsu,takasunishi
+```
+
+## 5. Dレッスン内でAuth児童アカウントを作る準備
+
+Edge Functionを使う場合、Supabaseに次の環境変数を設定します。
+
+```text
+SUPABASE_URL
+SUPABASE_ANON_KEY
+SUPABASE_SERVICE_ROLE_KEY
+STUDENT_LOGIN_EMAIL_DOMAIN
+STUDENT_LOGIN_EMAIL_PREFIX
+STUDENT_LOGIN_NUMBER_PAD
+LESSON_USER_DATA_TABLE
+```
+
+例:
+
+```text
+STUDENT_LOGIN_EMAIL_DOMAIN=dlesson.example.com
+STUDENT_LOGIN_EMAIL_PREFIX=dlesson-student-
+STUDENT_LOGIN_NUMBER_PAD=3
+LESSON_USER_DATA_TABLE=user_data
+```
+
+Supabase CLIを使う場合:
+
+```powershell
+supabase functions deploy admin-create-student
+supabase secrets set STUDENT_LOGIN_EMAIL_DOMAIN=dlesson.example.com
+supabase secrets set STUDENT_LOGIN_EMAIL_PREFIX=dlesson-student-
+supabase secrets set STUDENT_LOGIN_NUMBER_PAD=3
+supabase secrets set LESSON_USER_DATA_TABLE=user_data
+```
+
+`SUPABASE_SERVICE_ROLE_KEY` は公開してはいけません。GitHub Pagesや`.env.local`には入れず、Supabase Edge FunctionのSecretにだけ保存します。
+
+## 6. Auth児童アカウント作成
+
+1. 管理者でDレッスンにログイン
+2. `管理者用` → `生徒管理/Auth連携`
+3. 対象児童の行で `Auth作成`
+4. 児童番号とあいことばを入力
+
+作成後、次が自動で行われます。
+
+- Supabase Authユーザー作成
+- `lesson_user_access` に student 権限を登録
+- 児童データに `loginNumber` と `authUserId` を記録
+
+Edge Function未デプロイの場合は、従来どおりAuth User IDを手入力して登録できます。
+
+## 7. 校舎別URL
+
+校舎別のログインメールに分けたい場合、公開URLに `campus` を付けます。
+
+```text
+https://example.github.io/d-lesson-v4/?campus=wakamatsu
+```
+
+この場合、児童番号1番のログインメールは次の形式になります。
+
+```text
+dlesson-student-wakamatsu-001@dlesson.example.com
+```
+
+`campus` を付けない場合は従来通りです。
+
+```text
+dlesson-student-001@dlesson.example.com
+```

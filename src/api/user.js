@@ -52,6 +52,7 @@ export const STORAGE_KEY = 'pc_practice_v5_split';
 export const GLOBAL_SETTINGS_ID = '__GLOBAL_SETTINGS__';
 export const MASTER_DEBUG_ID = 'Master_Debug';
 export const SETTINGS_TABLE_KEY = `${TARGET_TABLE}:global`;
+export const DEFAULT_CAMPUS_ID = 'main';
 const PRACTICE_LOG_LIMIT = 80;
 
 export let users = {};
@@ -293,7 +294,7 @@ function normalizeLessonAccessRows(rows) {
     }));
 }
 
-function parseScopeGroups(scopeValue) {
+function parseScopeValues(scopeValue) {
     return String(scopeValue || '')
         .split(',')
         .map(value => value.trim())
@@ -304,7 +305,19 @@ export function getTeacherScopeSummary(accessRows = currentLessonAccess) {
     const teacherRows = (Array.isArray(accessRows) ? accessRows : []).filter(access => access?.role === 'teacher');
     if (teacherRows.length === 0) return 'なし';
     if (teacherRows.some(access => (access.scope_type || 'all') === 'all')) return '全児童';
-    const groups = Array.from(new Set(teacherRows.flatMap(access => parseScopeGroups(access.scope_value))));
+    const campuses = Array.from(new Set(
+        teacherRows
+            .filter(access => access.scope_type === 'campus')
+            .flatMap(access => parseScopeValues(access.scope_value))
+            .map(getCampusName)
+    ));
+    const groups = Array.from(new Set(
+        teacherRows
+            .filter(access => access.scope_type === 'group')
+            .flatMap(access => parseScopeValues(access.scope_value))
+    ));
+    if (campuses.length && groups.length) return `校舎: ${campuses.join(',')} / 繧ｰ繝ｫ繝ｼ繝・ ${groups.join(',')}`;
+    if (campuses.length) return `校舎: ${campuses.join(',')}`;
     return groups.length ? `グループ: ${groups.join(',')}` : 'なし';
 }
 
@@ -474,6 +487,66 @@ function normalizePracticeLogs(logs) {
         .slice(0, PRACTICE_LOG_LIMIT);
 }
 
+function normalizeCampusRecord(record) {
+    const id = String(record?.id || record?.campusId || record?.code || '').trim() || DEFAULT_CAMPUS_ID;
+    const name = String(record?.name || record?.label || id).trim() || id;
+    const code = String(record?.code || id).trim() || id;
+    return { id, name, code };
+}
+
+export function ensureCampusSettings() {
+    if (!users || typeof users !== 'object') users = {};
+    if (!users[GLOBAL_SETTINGS_ID] || typeof users[GLOBAL_SETTINGS_ID] !== 'object') {
+        users[GLOBAL_SETTINGS_ID] = {};
+    }
+
+    const settings = users[GLOBAL_SETTINGS_ID];
+    const campuses = Array.isArray(settings.campuses) ? settings.campuses.map(normalizeCampusRecord) : [];
+    const byId = new Map();
+    campuses.forEach(campus => {
+        if (!byId.has(campus.id)) byId.set(campus.id, campus);
+    });
+    if (!byId.has(DEFAULT_CAMPUS_ID)) {
+        byId.set(DEFAULT_CAMPUS_ID, { id: DEFAULT_CAMPUS_ID, name: '本校', code: DEFAULT_CAMPUS_ID });
+    }
+    settings.campuses = Array.from(byId.values()).sort((a, b) => {
+        if (a.id === DEFAULT_CAMPUS_ID) return -1;
+        if (b.id === DEFAULT_CAMPUS_ID) return 1;
+        return a.name.localeCompare(b.name, 'ja');
+    });
+    return settings.campuses;
+}
+
+export function getCampusList() {
+    return ensureCampusSettings();
+}
+
+export function normalizeCampusId(value) {
+    const text = String(value || '').trim();
+    if (!text) return DEFAULT_CAMPUS_ID;
+    const campus = getCampusList().find(item => (
+        item.id === text || item.name === text || item.code === text
+    ));
+    return campus ? campus.id : text;
+}
+
+export function getCampusName(campusId) {
+    const id = normalizeCampusId(campusId);
+    const campus = getCampusList().find(item => item.id === id);
+    return campus?.name || id || '本校';
+}
+
+export function getCampusCode(campusId) {
+    const id = normalizeCampusId(campusId);
+    const campus = getCampusList().find(item => item.id === id);
+    return campus?.code || id || DEFAULT_CAMPUS_ID;
+}
+
+export function getUserCampusId(userOrId) {
+    const data = typeof userOrId === 'string' ? users[userOrId] : userOrId;
+    return normalizeCampusId(data?.campusId || data?.campus || DEFAULT_CAMPUS_ID);
+}
+
 export function recordPracticeActivity(entry = {}) {
     if (!currentUser || !users[currentUser] || !canWriteUserRow(currentUser)) return null;
     const logs = normalizePracticeLogs(users[currentUser].practiceLogs);
@@ -525,9 +598,14 @@ export function formatPracticeActivity(log) {
 
 function normalizeUserRecord(userId, data) {
     if (!data || typeof data !== 'object') return data;
+    if (userId === GLOBAL_SETTINGS_ID) {
+        ensureCampusSettings();
+        return data;
+    }
     if (!isSystemUserId(userId)) {
         if (!data.displayName) data.displayName = getUserDataDisplayName(userId, data);
         if (!data.userDataId) data.userDataId = userId;
+        data.campusId = getUserCampusId(data);
         data.globalMistakes = sanitizeGlobalMistakes(data.globalMistakes);
         data.practiceLogs = normalizePracticeLogs(data.practiceLogs);
         data.themeFavorites = Array.isArray(data.themeFavorites) ? Array.from(new Set(data.themeFavorites.map(String))) : [];
@@ -608,8 +686,21 @@ function padStudentLoginNumber(number) {
     return String(number).padStart(STUDENT_LOGIN_NUMBER_PAD, '0');
 }
 
+function getStudentLoginCampusCode() {
+    if (typeof window === 'undefined') return '';
+    try {
+        const params = new URLSearchParams(window.location.search);
+        const value = params.get('campus') || params.get('campusCode') || import.meta.env.VITE_STUDENT_LOGIN_CAMPUS_CODE || '';
+        return String(value || '').trim().replace(/[^a-zA-Z0-9_-]/g, '');
+    } catch (_err) {
+        return '';
+    }
+}
+
 function buildStudentLoginEmail(number) {
-    return `${STUDENT_LOGIN_EMAIL_PREFIX}${padStudentLoginNumber(number)}@${STUDENT_LOGIN_EMAIL_DOMAIN}`;
+    const campusCode = getStudentLoginCampusCode();
+    const campusPart = campusCode ? `${campusCode}-` : '';
+    return `${STUDENT_LOGIN_EMAIL_PREFIX}${campusPart}${padStudentLoginNumber(number)}@${STUDENT_LOGIN_EMAIL_DOMAIN}`;
 }
 
 function buildStaffAuthFormHtml(isPrimary = false) {

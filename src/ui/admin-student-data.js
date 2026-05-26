@@ -1,7 +1,13 @@
 import {
     users,
     saveUsers,
+    GLOBAL_SETTINGS_ID,
+    DEFAULT_CAMPUS_ID,
     createUserDataId,
+    getCampusList,
+    getCampusName,
+    getUserCampusId,
+    normalizeCampusId,
     getUserDisplayName,
     isSystemUserId,
     deleteCloudUserRows,
@@ -16,7 +22,7 @@ function runAfterChange(afterChange) {
     if (typeof afterChange === 'function') afterChange();
 }
 
-function createStudentRecord(name, birthdate, group) {
+function createStudentRecord(name, birthdate, group, campusId = DEFAULT_CAMPUS_ID) {
     const grade = calculateGrade(birthdate);
     let userDataId = createUserDataId();
     while (users[userDataId]) userDataId = createUserDataId();
@@ -26,6 +32,7 @@ function createStudentRecord(name, birthdate, group) {
         userDataId,
         birthdate,
         grade,
+        campusId: normalizeCampusId(campusId),
         mouseLevel: 1,
         keyboardSequence: 0,
         coins: 0,
@@ -37,20 +44,163 @@ function createStudentRecord(name, birthdate, group) {
     return userDataId;
 }
 
+function getCampusInputValue(id) {
+    return normalizeCampusId(document.getElementById(id)?.value || DEFAULT_CAMPUS_ID);
+}
+
+export function renderCampusAdmin() {
+    const campusList = getCampusList();
+    let addCampusSelect = document.getElementById('admin-add-campus');
+    if (!addCampusSelect) {
+        const groupInput = document.getElementById('admin-add-group');
+        if (groupInput?.parentElement) {
+            addCampusSelect = document.createElement('select');
+            addCampusSelect.id = 'admin-add-campus';
+            addCampusSelect.title = '校舎';
+            addCampusSelect.style.cssText = 'margin:0; width:130px; padding:8px; font-size:16px; border:1px solid #ccc; border-radius:6px;';
+            groupInput.parentElement.insertBefore(addCampusSelect, groupInput);
+        }
+    }
+
+    if (!document.getElementById('admin-campus-list')) {
+        const addNameInput = document.getElementById('admin-add-name');
+        const addCard = addNameInput?.closest('div[style]');
+        const parent = addCard?.parentElement;
+        if (parent && addCard) {
+            const campusCard = document.createElement('div');
+            campusCard.id = 'admin-campus-card';
+            campusCard.style.cssText = 'display:flex; flex-direction:column; gap:10px; background:#eefaf7; padding:15px; border-radius:8px; border:1px solid #80cbc4;';
+            campusCard.innerHTML = `
+                <span style="font-weight:bold; color:#00695c;">校舎の管理</span>
+                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                    <input type="text" id="admin-campus-name" placeholder="校舎名 例: 若松校" style="margin:0; flex:1; min-width:140px; padding:8px; font-size:14px;">
+                    <input type="text" id="admin-campus-code" placeholder="コード 例: wakamatsu" style="margin:0; width:150px; padding:8px; font-size:14px;">
+                    <button type="button" class="btn-primary" onclick="adminAddCampus()" style="font-size:14px; padding:8px 12px;">校舎追加</button>
+                </div>
+                <div id="admin-campus-list" style="display:flex; flex-direction:column; gap:6px;"></div>
+            `;
+            parent.insertBefore(campusCard, addCard.nextSibling);
+        }
+    }
+
+    const campusFilter = document.getElementById('admin-user-campus-filter');
+    if (!campusFilter) {
+        const groupFilter = document.getElementById('admin-user-group-filter');
+        if (groupFilter?.parentElement) {
+            const select = document.createElement('select');
+            select.id = 'admin-user-campus-filter';
+            select.onchange = () => {
+                if (typeof window.updateAdminUserTable === 'function') window.updateAdminUserTable();
+            };
+            select.style.cssText = 'min-width:130px; padding:8px; font-size:14px; border:1px solid #ccc; border-radius:6px; margin:0;';
+            groupFilter.parentElement.insertBefore(select, groupFilter);
+        }
+    }
+
+    const scopeTypeSelect = document.getElementById('auth-teacher-scope-type');
+    if (scopeTypeSelect && !scopeTypeSelect.querySelector('option[value="campus"]')) {
+        const opt = document.createElement('option');
+        opt.value = 'campus';
+        opt.innerText = '校舎指定';
+        scopeTypeSelect.appendChild(opt);
+    }
+
+    const listEl = document.getElementById('admin-campus-list');
+
+    if (addCampusSelect) {
+        const current = addCampusSelect.value || DEFAULT_CAMPUS_ID;
+        addCampusSelect.innerHTML = '';
+        campusList.forEach(campus => {
+            const opt = document.createElement('option');
+            opt.value = campus.id;
+            opt.innerText = campus.name;
+            addCampusSelect.appendChild(opt);
+        });
+        addCampusSelect.value = campusList.some(campus => campus.id === current) ? current : DEFAULT_CAMPUS_ID;
+    }
+
+    if (!listEl) return;
+    listEl.innerHTML = '';
+    campusList.forEach(campus => {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex; align-items:center; justify-content:space-between; gap:8px; padding:6px 8px; border:1px solid #d8e5e3; border-radius:6px; background:#fff;';
+        const label = document.createElement('span');
+        label.innerText = `${campus.name} / ${campus.id}`;
+        label.style.cssText = 'font-size:13px; color:#234; font-weight:700;';
+        row.appendChild(label);
+
+        if (campus.id !== DEFAULT_CAMPUS_ID) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn-secondary';
+            btn.innerText = '削除';
+            btn.style.cssText = 'font-size:12px; padding:4px 8px;';
+            btn.onclick = () => adminDeleteCampus(campus.id);
+            row.appendChild(btn);
+        }
+        listEl.appendChild(row);
+    });
+}
+
+export function adminAddCampus(afterChange) {
+    const nameInput = document.getElementById('admin-campus-name');
+    const codeInput = document.getElementById('admin-campus-code');
+    const name = String(nameInput?.value || '').trim();
+    const code = String(codeInput?.value || '').trim();
+    if (!name) return showCustomAlert('校舎名を入力してください。');
+
+    const id = normalizeCampusId(code || name);
+    const campuses = getCampusList();
+    if (campuses.some(campus => campus.id === id || campus.name === name)) {
+        showCustomAlert('同じ校舎がすでに登録されています。');
+        return;
+    }
+
+    users[GLOBAL_SETTINGS_ID].campuses = [...campuses, { id, name, code: code || id }];
+    recordAdminAudit('campus_added', { id, name, code: code || id });
+    saveUsers(true);
+    if (nameInput) nameInput.value = '';
+    if (codeInput) codeInput.value = '';
+    renderCampusAdmin();
+    runAfterChange(afterChange);
+}
+
+export function adminDeleteCampus(campusId, afterChange) {
+    const id = normalizeCampusId(campusId);
+    if (id === DEFAULT_CAMPUS_ID) return;
+    const used = Object.keys(users).some(userId => (
+        users[userId]
+        && !users[userId].isMaster
+        && !isSystemUserId(userId)
+        && getUserCampusId(users[userId]) === id
+    ));
+    if (used) {
+        showCustomAlert('この校舎に所属している児童がいるため削除できません。先に児童の校舎を変更してください。');
+        return;
+    }
+    users[GLOBAL_SETTINGS_ID].campuses = getCampusList().filter(campus => campus.id !== id);
+    recordAdminAudit('campus_deleted', { id });
+    saveUsers(true);
+    renderCampusAdmin();
+    runAfterChange(afterChange);
+}
+
 export function adminAddUser(afterChange) {
     const name = document.getElementById('admin-add-name').value.trim();
     const birthdate = document.getElementById('admin-add-birth').value;
+    const campusId = getCampusInputValue('admin-add-campus');
     const group = document.getElementById('admin-add-group').value.trim();
 
     if (!name) return showCustomAlert('名前を入力してください');
     if (userDisplayNameExists(name)) return showCustomAlert('その名前はすでに登録されています');
     if (!birthdate) return showCustomAlert('生年月日を入力してください');
 
-    const userDataId = createStudentRecord(name, birthdate, group);
+    const userDataId = createStudentRecord(name, birthdate, group, campusId);
     recordAdminAudit('児童追加', {
         user: name,
         userDataId,
         birthdate,
+        campusId,
         group
     });
     saveUsers(true);
@@ -71,9 +221,11 @@ export function adminBulkAddUsers(afterChange) {
         const parts = line.split(/[,、\s]+/);
         const name = parts[0].trim();
         const birthdate = parts.length > 1 ? parts[1].trim() : '2015-04-01';
-        const group = parts.length > 2 ? parts[2].trim() : '';
+        const selectedCampusId = getCampusInputValue('admin-add-campus');
+        const campusId = parts.length > 3 ? normalizeCampusId(parts[2]) : selectedCampusId;
+        const group = parts.length > 3 ? parts[3].trim() : (parts.length > 2 ? parts[2].trim() : '');
         if (name && !userDisplayNameExists(name)) {
-            createStudentRecord(name, birthdate, group);
+            createStudentRecord(name, birthdate, group, campusId);
             added++;
         }
     });
@@ -115,11 +267,12 @@ function normalizeCsvKey(key) {
     if (['name', 'displayname', 'display_name', '名前'].includes(value)) return 'displayName';
     if (['birth', 'birthdate', 'birthday', '生年月日'].includes(value)) return 'birthdate';
     if (['group', 'class', 'グループ'].includes(value)) return 'group';
+    if (['campus', 'campusid', 'campus_id', 'school', 'school_id', '校舎'].includes(value)) return 'campusId';
     return value;
 }
 
 export function exportStudentCsv() {
-    const rows = [['user_data_id', 'name', 'birthdate', 'group']];
+    const rows = [['user_data_id', 'name', 'birthdate', 'campus_id', 'campus_name', 'group']];
     Object.keys(users)
         .filter(userDataId => users[userDataId] && !users[userDataId].isMaster && !isSystemUserId(userDataId))
         .sort((a, b) => getUserDisplayName(a).localeCompare(getUserDisplayName(b), 'ja'))
@@ -129,6 +282,8 @@ export function exportStudentCsv() {
                 userDataId,
                 getUserDisplayName(userDataId),
                 user.birthdate || user.birth || '',
+                getUserCampusId(user),
+                getCampusName(getUserCampusId(user)),
                 user.group || ''
             ]);
         });
@@ -179,6 +334,7 @@ export function applyStudentCsvUpdates(afterChange) {
         const before = {
             displayName: getUserDisplayName(userDataId),
             birthdate: user.birthdate || user.birth || '',
+            campusId: getUserCampusId(user),
             group: user.group || ''
         };
 
@@ -200,6 +356,14 @@ export function applyStudentCsvUpdates(afterChange) {
             if (birthdate && birthdate !== before.birthdate) {
                 user.birthdate = birthdate;
                 user.grade = calculateGrade(birthdate);
+                changed = true;
+            }
+        }
+
+        if (Object.prototype.hasOwnProperty.call(row, 'campusId')) {
+            const campusId = normalizeCampusId(row.campusId);
+            if (campusId !== before.campusId) {
+                user.campusId = campusId;
                 changed = true;
             }
         }

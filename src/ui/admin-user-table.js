@@ -1,6 +1,11 @@
 import {
     users,
     saveUsers,
+    DEFAULT_CAMPUS_ID,
+    getCampusList,
+    getCampusName,
+    getUserCampusId,
+    normalizeCampusId,
     getUserDisplayName,
     isSystemUserId,
     userDisplayNameExists
@@ -39,12 +44,23 @@ export function updateAdminUserTable(options = {}) {
     if (!tbody) return;
     tbody.innerHTML = '';
 
+    const headerRow = document.querySelector('#admin-user-table thead tr');
+    if (headerRow && !headerRow.querySelector('[data-campus-header="true"]')) {
+        const th = document.createElement('th');
+        th.dataset.campusHeader = 'true';
+        th.style.cssText = 'padding:8px; border:1px solid #ddd;';
+        th.innerText = '校舎';
+        headerRow.insertBefore(th, headerRow.children[4] || null);
+    }
+
     const searchInput = document.getElementById('admin-user-search');
     const gradeFilter = document.getElementById('admin-user-grade-filter');
+    const campusFilter = document.getElementById('admin-user-campus-filter');
     const groupFilter = document.getElementById('admin-user-group-filter');
     const countLabel = document.getElementById('admin-user-count');
     const searchText = (searchInput?.value || '').trim().toLowerCase();
     const selectedGrade = gradeFilter?.value || 'all';
+    const selectedCampus = campusFilter?.value || 'all';
     const selectedGroup = groupFilter?.value || 'all';
 
     let list = Object.keys(users)
@@ -58,21 +74,30 @@ export function updateAdminUserTable(options = {}) {
                 id: userId,
                 name: getUserDisplayName(userId),
                 grade,
+                campusId: getUserCampusId(users[userId]),
                 group: users[userId].group || '',
                 user: users[userId]
             };
         });
 
     const grades = sortGrades(Array.from(new Set(list.map(item => item.grade).filter(Boolean))));
+    const campusIds = Array.from(new Set([DEFAULT_CAMPUS_ID, ...list.map(item => item.campusId).filter(Boolean)]));
+    updateAdminFilterSelect(campusFilter, campusIds, 'すべての校舎', selectedCampus);
+    if (campusFilter) {
+        Array.from(campusFilter.options).forEach(option => {
+            if (option.value !== 'all') option.innerText = getCampusName(option.value);
+        });
+    }
     const groups = Array.from(new Set(list.map(item => item.group).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'ja'));
     updateAdminFilterSelect(gradeFilter, grades, 'すべての学年', selectedGrade);
     updateAdminFilterSelect(groupFilter, groups, 'すべてのグループ', selectedGroup);
 
     list = list.filter(item => {
         if (gradeFilter && gradeFilter.value !== 'all' && item.grade !== gradeFilter.value) return false;
+        if (campusFilter && campusFilter.value !== 'all' && item.campusId !== campusFilter.value) return false;
         if (groupFilter && groupFilter.value !== 'all' && item.group !== groupFilter.value) return false;
         if (!searchText) return true;
-        const haystack = `${item.name} ${item.id} ${item.group}`.toLowerCase();
+        const haystack = `${item.name} ${item.id} ${getCampusName(item.campusId)} ${item.group}`.toLowerCase();
         return haystack.includes(searchText);
     });
 
@@ -82,7 +107,7 @@ export function updateAdminUserTable(options = {}) {
     if (list.length === 0) {
         const tr = document.createElement('tr');
         const td = document.createElement('td');
-        td.colSpan = 7;
+        td.colSpan = 8;
         td.style.cssText = 'padding:14px; border:1px solid #ddd; color:#777; text-align:center;';
         td.innerText = '条件に合う児童がいません';
         tr.appendChild(td);
@@ -129,6 +154,21 @@ export function updateAdminUserTable(options = {}) {
         gradeTd.innerText = item.grade;
         tr.appendChild(gradeTd);
 
+        const campusTd = document.createElement('td');
+        campusTd.style.cssText = 'padding:5px; border:1px solid #ddd;';
+        const campusSelect = document.createElement('select');
+        campusSelect.style.cssText = 'width:100px; padding:2px; font-size:12px; border:1px solid #ccc;';
+        getCampusList().forEach(campus => {
+            const opt = document.createElement('option');
+            opt.value = campus.id;
+            opt.innerText = campus.name;
+            campusSelect.appendChild(opt);
+        });
+        campusSelect.value = item.campusId || DEFAULT_CAMPUS_ID;
+        campusSelect.onchange = () => updateUserCampus(item.id, campusSelect.value, options);
+        campusTd.appendChild(campusSelect);
+        tr.appendChild(campusTd);
+
         const groupTd = document.createElement('td');
         groupTd.style.cssText = 'padding:5px; border:1px solid #ddd;';
         const groupInput = document.createElement('input');
@@ -156,9 +196,11 @@ export function updateAdminUserTable(options = {}) {
 export function clearAdminUserFilters(options = {}) {
     const searchInput = document.getElementById('admin-user-search');
     const gradeFilter = document.getElementById('admin-user-grade-filter');
+    const campusFilter = document.getElementById('admin-user-campus-filter');
     const groupFilter = document.getElementById('admin-user-group-filter');
     if (searchInput) searchInput.value = '';
     if (gradeFilter) gradeFilter.value = 'all';
+    if (campusFilter) campusFilter.value = 'all';
     if (groupFilter) groupFilter.value = 'all';
     updateAdminUserTable(options);
 }
@@ -205,6 +247,23 @@ export function updateUserBirthdate(userId, newBirthdate, options = {}) {
         userDataId: userId,
         before: oldBirthdate,
         after: newBirthdate
+    });
+    saveUsers(true);
+    updateAdminUserTable(options);
+    runUserChanged(options);
+}
+
+export function updateUserCampus(userId, newCampusId, options = {}) {
+    if (!users[userId]) return;
+
+    const oldCampusId = getUserCampusId(users[userId]);
+    const campusId = normalizeCampusId(newCampusId);
+    users[userId].campusId = campusId;
+    recordAdminAudit('campus_changed', {
+        user: getUserDisplayName(userId),
+        userDataId: userId,
+        before: oldCampusId,
+        after: campusId
     });
     saveUsers(true);
     updateAdminUserTable(options);

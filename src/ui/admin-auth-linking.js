@@ -1,8 +1,11 @@
 import {
     users,
+    saveUsers,
     refreshCurrentLessonAccess,
     REQUIRE_SUPABASE_AUTH,
     supabase,
+    getCampusCode,
+    getUserCampusId,
     getUserDisplayName,
     isSystemUserId
 } from '../api/user.js';
@@ -75,7 +78,7 @@ export async function linkRoleAuthUser(role) {
         ? getTeacherScopeFormValues()
         : { scope_type: 'all', scope_value: '' };
 
-    if (role === 'teacher' && scope.scope_type === 'group' && !scope.scope_value) {
+    if (role === 'teacher' && scope.scope_type !== 'all' && !scope.scope_value) {
         showCustomAlert('先生の対象グループを入力してください。');
         return;
     }
@@ -129,6 +132,63 @@ export async function linkStudentAuthUser(userDataId, inputId) {
     });
 }
 
+async function createStudentAuthAccount(userDataId, inputId) {
+    if (!ensureAuthLinkingReady()) return;
+    const user = users[userDataId];
+    const displayName = getUserDisplayName(userDataId);
+    const defaultNumber = user?.loginNumber || '';
+    const studentNumber = window.prompt(`${displayName} さんの児童番号を入力してください。`, defaultNumber);
+    if (studentNumber === null) return;
+    const cleanNumber = String(studentNumber || '').replace(/\D/g, '');
+    if (!cleanNumber) {
+        showCustomAlert('児童番号を入力してください。');
+        return;
+    }
+    const passcode = window.prompt(`${displayName} さんのあいことばを6けた以上の数字で入力してください。`, '');
+    if (passcode === null) return;
+    const cleanPasscode = String(passcode || '').replace(/\D/g, '');
+    if (cleanPasscode.length < 6) {
+        showCustomAlert('あいことばは6けた以上の数字で入力してください。');
+        return;
+    }
+
+    const campusId = getUserCampusId(user);
+    const campusCode = getCampusCode(campusId);
+    const { data, error } = await supabase.functions.invoke('admin-create-student', {
+        body: {
+            userDataId,
+            displayName,
+            studentNumber: cleanNumber,
+            passcode: cleanPasscode,
+            campusId,
+            campusCode,
+            group: user?.group || ''
+        }
+    });
+
+    if (error || data?.error) {
+        showCustomAlert(`Auth作成に失敗しました: ${data?.error || error?.message || 'unknown error'}`);
+        return;
+    }
+
+    if (inputId && data?.authUserId) {
+        const input = document.getElementById(inputId);
+        if (input) input.value = data.authUserId;
+    }
+    user.loginNumber = cleanNumber;
+    user.authUserId = data.authUserId;
+    await saveUsers(true);
+    await refreshCurrentLessonAccess();
+    recordAdminAudit('auth_student_created', {
+        user: displayName,
+        userDataId,
+        authUserId: data.authUserId,
+        email: data.email
+    });
+    showCustomAlert(`${displayName} さんのAuthアカウントを作成しました。\n${data.email}`);
+    await renderAuthLinkingAdmin();
+}
+
 async function copyText(text) {
     try {
         await navigator.clipboard.writeText(text);
@@ -158,7 +218,7 @@ export function copyRoleAccessSql(role) {
     const scope = role === 'teacher'
         ? getTeacherScopeFormValues()
         : { scope_type: 'all', scope_value: '' };
-    if (role === 'teacher' && scope.scope_type === 'group' && !scope.scope_value) {
+    if (role === 'teacher' && scope.scope_type !== 'all' && !scope.scope_value) {
         showCustomAlert('先生の対象グループを入力してください。');
         return;
     }
@@ -245,6 +305,13 @@ export async function renderAuthLinkingAdmin() {
 
         const actionTd = document.createElement('td');
         actionTd.style.cssText = 'border:1px solid #ddd; padding:6px; white-space:nowrap;';
+        const createBtn = document.createElement('button');
+        createBtn.className = 'btn-primary';
+        createBtn.style.cssText = 'font-size:13px; padding:6px 10px; margin-right:6px;';
+        createBtn.innerText = 'Auth作成';
+        createBtn.onclick = () => createStudentAuthAccount(item.id, inputId);
+        actionTd.appendChild(createBtn);
+
         const linkBtn = document.createElement('button');
         linkBtn.className = 'btn-primary';
         linkBtn.style.cssText = 'font-size:13px; padding:6px 10px; margin-right:6px;';
