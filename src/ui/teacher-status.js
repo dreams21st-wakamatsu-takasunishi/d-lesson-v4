@@ -1,4 +1,4 @@
-import { STAGE_ORDER } from '../data/constants.js';
+import { STAGE_ORDER, VISION_STAGES } from '../data/constants.js';
 import {
     canManageScopedUserRow,
     createUserDataId,
@@ -25,20 +25,29 @@ import {
     users
 } from '../api/user.js';
 import { escapeCsvCell, getBackupDateStamp } from '../utils/export-format.js';
-import { calculateGrade } from '../utils/helpers.js';
+import { calculateGrade, sortGrades } from '../utils/helpers.js';
 import { showCustomAlert, showCustomConfirm } from './modal.js';
 import { recordAdminAudit } from './admin-audit.js';
 import { showScreen } from './screen.js';
+import { getDashboardProgressPercent, getVisionDifficultySuffix } from './admin-dashboard-utils.js';
+import { buildPracticeHistoryCsv } from './admin-practice-history-utils.js';
+import {
+    buildVisionRadarData,
+    renderVisionRadarChart
+} from './admin-report-utils.js';
+import { openStudentReportPanel } from './admin-student-report.js';
 
 const TEACHER_STATUS_STALE_DAYS = 14;
 const TEACHER_STATUS_LOW_KEYBOARD_PERCENT = 40;
 const TEACHER_STATUS_LOW_MOUSE_LEVEL = 3;
 const TEACHER_STATUS_PRINT_WINDOW_FEATURES = 'popup=yes,width=1180,height=840,menubar=no,toolbar=no,location=no,status=no,scrollbars=yes,resizable=yes';
-const TEACHER_MENU_MODES = new Set(['students', 'grades', 'history', 'reports']);
+const TEACHER_MENU_MODES = new Set(['students', 'grades', 'history', 'reports', 'textTasks', 'rewards']);
 const TEACHER_MENU_ITEMS = [
-    { mode: 'students', icon: '👥', title: '担当児童', note: '担当範囲の児童一覧を確認', color: '#2196F3' },
     { mode: 'grades', icon: '📊', title: '生徒成績', note: '進捗・文章課題・要確認を見る', color: '#E91E63' },
     { mode: 'history', icon: '🗓️', title: '取り組み確認', note: '前回の練習や未実施を確認', color: '#795548' },
+    { mode: 'students', icon: '👥', title: '生徒管理/Auth作成', note: '追加・編集・削除を担当範囲だけで実行', color: '#2196F3' },
+    { mode: 'textTasks', icon: '📝', title: '文章課題', note: '担当児童の課題状況を確認', color: '#4CAF50' },
+    { mode: 'rewards', icon: '🎟️', title: 'チケット・コイン', note: '担当児童への付与と履歴確認', color: '#FF9800' },
     { mode: 'reports', icon: '🖨️', title: 'レポート印刷', note: '個別詳細から印刷', color: '#607D8B' },
     { mode: 'preview', icon: '🔎', title: '先生用プレビュー', note: '保存せず練習画面を確認', color: '#00695C' }
 ];
@@ -52,6 +61,33 @@ const teacherStatusFilters = {
 
 let selectedTeacherStatusUserId = '';
 let teacherMenuMode = 'students';
+let teacherGradeTab = 'basic';
+
+const teacherGradeFilters = {
+    basicGrade: 'all',
+    basicGroup: 'all',
+    basicSort: 'name',
+    visionDifficulty: 'normal',
+    visionTarget: 'all',
+    visionGrade: 'all',
+    visionGroup: 'all',
+    visionSearch: '',
+    visionView: 'table',
+    textGrade: 'all',
+    textGroup: 'all',
+    textSearch: '',
+    textStudent: ''
+};
+
+const teacherHistoryFilters = {
+    view: 'date',
+    date: '',
+    student: '',
+    grade: 'all',
+    group: 'all',
+    sort: 'time_desc',
+    search: ''
+};
 
 function escapeHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, char => ({
@@ -61,6 +97,101 @@ function escapeHtml(value) {
         '"': '&quot;',
         "'": '&#39;'
     })[char]);
+}
+
+function updateTeacherOptionValue(currentValue, values, fallback = 'all') {
+    return values.includes(currentValue) ? currentValue : fallback;
+}
+
+function getTeacherGrades(rows) {
+    return sortGrades(Array.from(new Set(rows.map(row => row.grade).filter(Boolean))));
+}
+
+function getTeacherGroups(rows) {
+    return Array.from(new Set(rows.map(row => row.group).filter(group => group && group !== '-')))
+        .sort((a, b) => a.localeCompare(b, 'ja'));
+}
+
+function renderTeacherOptions(values, allLabel, selected = 'all') {
+    return `
+        <option value="all"${selected === 'all' ? ' selected' : ''}>${escapeHtml(allLabel)}</option>
+        ${values.map(value => `<option value="${escapeHtml(value)}"${value === selected ? ' selected' : ''}>${escapeHtml(value)}</option>`).join('')}
+    `;
+}
+
+function filterTeacherRowsByGradeGroupSearch(rows, grade = 'all', group = 'all', search = '') {
+    const normalizedSearch = String(search || '').trim().toLowerCase();
+    return rows.filter(row => {
+        if (grade !== 'all' && row.grade !== grade) return false;
+        if (group !== 'all' && row.group !== group) return false;
+        if (!normalizedSearch) return true;
+        return `${row.name} ${row.userId} ${row.group}`.toLowerCase().includes(normalizedSearch);
+    });
+}
+
+function renderTeacherProgressCell(value, total, color) {
+    const pct = getDashboardProgressPercent(value, total);
+    return `<div class="teacher-admin-progress-cell">
+        <span style="width:${escapeHtml(pct)}%; background:${escapeHtml(color)};">${pct ? `${escapeHtml(pct)}%` : ''}</span>
+    </div>`;
+}
+
+function formatTeacherSeconds(value) {
+    return Number.isFinite(value) && value > 0 ? `${value.toFixed(1)}秒` : '-';
+}
+
+function formatTeacherVisionDiff(record, average) {
+    if (!Number.isFinite(record) || !Number.isFinite(average) || average <= 0) return '';
+    const diff = record - average;
+    if (Math.abs(diff) < 0.05) return '<small class="teacher-vision-diff even">平均と同じくらい</small>';
+    const className = diff < 0 ? 'good' : 'slow';
+    const label = diff < 0 ? '平均より速い' : '平均よりゆっくり';
+    return `<small class="teacher-vision-diff ${className}">${Math.abs(diff).toFixed(1)}秒 ${label}</small>`;
+}
+
+function getTeacherTextHistory(userId) {
+    return getPracticeLogs(userId)
+        .filter(log => log.category === 'text' || String(log.title || '').includes('文章入力'))
+        .map(log => {
+            const amount = `${log.amount || ''}`;
+            const scoreMatch = amount.match(/(?:純文字数|score|文字数)\s*[:：]?\s*([0-9]+)/i);
+            const inputMatch = amount.match(/(?:入力|total)\s*[:：]?\s*([0-9]+)/i);
+            const score = scoreMatch ? Number(scoreMatch[1]) : (inputMatch ? Number(inputMatch[1]) : null);
+            return {
+                ...log,
+                score,
+                atMs: Date.parse(log.at) || 0
+            };
+        })
+        .filter(log => log.atMs && Number.isFinite(log.score))
+        .sort((a, b) => a.atMs - b.atMs);
+}
+
+function buildTeacherTextMetrics(row) {
+    const tasks = getVisibleTextTasksForStudent(row.user);
+    const records = row.user?.textRecords || {};
+    const completed = tasks.filter(task => records[task.id]).length;
+    const taskRecords = tasks.map(task => records[task.id]).filter(Boolean);
+    const attempts = taskRecords.reduce((sum, record) => sum + Number(record?.attempts || 1), 0);
+    const bestScore = taskRecords.reduce((max, record) => Math.max(max, Number(record?.score || 0)), 0);
+    const latestAt = taskRecords
+        .map(record => Date.parse(record?.lastCompletedAt || record?.bestAt || record?.updatedAt || ''))
+        .filter(value => Number.isFinite(value))
+        .sort((a, b) => b - a)[0] || 0;
+    const history = getTeacherTextHistory(row.userId);
+    const firstScore = history.find(log => Number.isFinite(log.score))?.score || 0;
+    const lastScore = [...history].reverse().find(log => Number.isFinite(log.score))?.score || 0;
+    const growth = history.length >= 2 ? lastScore - firstScore : 0;
+    return { total: tasks.length, completed, attempts, bestScore, latestAt, history, growth };
+}
+
+function renderTeacherSummaryCard(label, value, color) {
+    return `
+        <div class="teacher-admin-summary-card" style="border-color:${escapeHtml(color)};">
+            <span>${escapeHtml(label)}</span>
+            <strong style="color:${escapeHtml(color)};">${escapeHtml(value)}</strong>
+        </div>
+    `;
 }
 
 function isStudentUser(userId, user) {
@@ -97,6 +228,7 @@ function getTextTaskProgress(user) {
 function getStudentRows() {
     return Object.entries(users)
         .filter(([userId, user]) => isStudentUser(userId, user))
+        .filter(([userId]) => hasLessonRole('admin') || canManageScopedUserRow(userId))
         .map(([userId, user]) => {
             const text = getTextTaskProgress(user);
             const latestLog = getLatestPracticeActivity(userId);
@@ -114,6 +246,7 @@ function getStudentRows() {
 
             const row = {
                 userId,
+                user,
                 name: getUserDisplayName(userId),
                 birthdate,
                 grade,
@@ -333,6 +466,12 @@ function getTeacherMenuMetric(mode, rows) {
     if (mode === 'grades') return `要確認 ${rows.filter(row => row.attention.length > 0).length}`;
     if (mode === 'history') return `記録なし ${rows.filter(row => !row.latestLog).length}`;
     if (mode === 'reports') return '印刷';
+    if (mode === 'textTasks') {
+        const entries = getTeacherScopedTextTasks(rows);
+        const incomplete = entries.reduce((sum, entry) => sum + entry.stats.incomplete, 0);
+        return `課題 ${entries.length} / 未完了 ${incomplete}`;
+    }
+    if (mode === 'rewards') return '付与・履歴';
     return '確認専用';
 }
 
@@ -342,7 +481,9 @@ function renderTeacherModeNote(rows, allRows, scopeLabel) {
         students: '担当範囲に入っている児童だけを表示します。校舎やグループの範囲外の児童は表示されません。',
         grades: 'マウス、キーボード、文章課題の進み具合を並べて確認します。詳しく見たい児童は「詳細」を押してください。',
         history: '前回の練習が古い児童や、まだ取り組み記録がない児童を見つけやすくする画面です。',
-        reports: '表示中の範囲で児童を確認し、必要な児童の「詳細」から個別印刷できます。'
+        reports: '表示中の範囲で児童を確認し、必要な児童の「詳細」から個別印刷できます。',
+        textTasks: '担当範囲の児童に関係する文章課題の実施状況を確認し、CSVで出力できます。',
+        rewards: '担当範囲の児童にだけ、コインやいいねポイントを付与できます。全体設定は管理者専用です。'
     }[teacherMenuMode] || '';
 
     return `
@@ -644,6 +785,60 @@ function printTeacherStudentDetail(userId) {
     setTimeout(() => printWindow.print(), 250);
 }
 
+function openTeacherStudentReport(userId) {
+    const row = getStudentRows().find(item => item.userId === userId);
+    if (!row) {
+        showCustomAlert('表示できる担当児童が見つかりません。');
+        return;
+    }
+    openStudentReportPanel(userId);
+}
+
+function exportTeacherHistoryCsv() {
+    const rows = getFilteredTeacherHistoryRows(getFilteredTeacherStatusRows()).rows;
+    if (!rows.length) {
+        showCustomAlert('CSVに出力できる取り組み記録がありません。');
+        return;
+    }
+    const csv = buildPracticeHistoryCsv(rows);
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    const scope = teacherHistoryFilters.view === 'student'
+        ? `student_${teacherHistoryFilters.student || 'unknown'}`
+        : (teacherHistoryFilters.date || 'all');
+    anchor.href = url;
+    anchor.download = `d-lesson_teacher_practice_${scope}_${getBackupDateStamp()}.csv`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
+    recordAdminAudit('teacher_practice_history_csv_exported', { scope, rows: rows.length });
+}
+
+function resetTeacherHistoryFilters() {
+    teacherHistoryFilters.view = 'date';
+    teacherHistoryFilters.date = '';
+    teacherHistoryFilters.student = '';
+    teacherHistoryFilters.grade = 'all';
+    teacherHistoryFilters.group = 'all';
+    teacherHistoryFilters.sort = 'time_desc';
+    teacherHistoryFilters.search = '';
+    renderTeacherStatus();
+}
+
+function updateTeacherGradeFilter(name, value) {
+    if (!Object.prototype.hasOwnProperty.call(teacherGradeFilters, name)) return;
+    teacherGradeFilters[name] = value;
+    renderTeacherStatus();
+}
+
+function updateTeacherHistoryFilter(name, value) {
+    if (!Object.prototype.hasOwnProperty.call(teacherHistoryFilters, name)) return;
+    teacherHistoryFilters[name] = value;
+    renderTeacherStatus();
+}
+
 function attachTeacherStatusControlHandlers(modal) {
     if (modal.dataset.teacherStatusControls === 'attached') return;
     modal.dataset.teacherStatusControls = 'attached';
@@ -704,7 +899,34 @@ function attachTeacherStatusControlHandlers(modal) {
 
             const detailPrintButton = event.target.closest('[data-teacher-detail-print-user-id]');
             if (detailPrintButton) {
-                printTeacherStudentDetail(detailPrintButton.dataset.teacherDetailPrintUserId || '');
+                openTeacherStudentReport(detailPrintButton.dataset.teacherDetailPrintUserId || '');
+                return;
+            }
+
+            const reportButton = event.target.closest('[data-teacher-report-open-user-id]');
+            if (reportButton) {
+                openTeacherStudentReport(reportButton.dataset.teacherReportOpenUserId || '');
+                return;
+            }
+
+            const gradeTabButton = event.target.closest('[data-teacher-grade-tab]');
+            if (gradeTabButton) {
+                teacherGradeTab = ['basic', 'vision', 'text'].includes(gradeTabButton.dataset.teacherGradeTab)
+                    ? gradeTabButton.dataset.teacherGradeTab
+                    : 'basic';
+                renderTeacherStatus();
+                return;
+            }
+
+            const historyResetButton = event.target.closest('[data-teacher-history-reset]');
+            if (historyResetButton) {
+                resetTeacherHistoryFilters();
+                return;
+            }
+
+            const historyExportButton = event.target.closest('[data-teacher-history-export]');
+            if (historyExportButton) {
+                exportTeacherHistoryCsv();
                 return;
             }
 
@@ -720,15 +942,76 @@ function attachTeacherStatusControlHandlers(modal) {
                 return;
             }
 
+            const textExportButton = event.target.closest('[data-teacher-text-export-task]');
+            if (textExportButton) {
+                exportTeacherTextTaskCsv(textExportButton.dataset.teacherTextExportTask || '', false);
+                return;
+            }
+
+            const textIncompleteButton = event.target.closest('[data-teacher-text-incomplete-task]');
+            if (textIncompleteButton) {
+                exportTeacherTextTaskCsv(textIncompleteButton.dataset.teacherTextIncompleteTask || '', true);
+                return;
+            }
+
+            const coinButton = event.target.closest('[data-teacher-grant-coins]');
+            if (coinButton) {
+                void grantTeacherCoinsFromForm();
+                return;
+            }
+
+            const ticketButton = event.target.closest('[data-teacher-grant-ticket]');
+            if (ticketButton) {
+                void grantTeacherTicketFromForm();
+                return;
+            }
+
             const button = event.target.closest('[data-teacher-status-user-id]');
             if (!button) return;
             selectedTeacherStatusUserId = button.dataset.teacherStatusUserId || '';
             renderTeacherStatus();
         });
 
-        body.addEventListener('change', event => {
+        body.addEventListener('input', event => {
             const target = event.target;
             if (!(target instanceof HTMLInputElement)) return;
+            const gradeFilter = target.dataset.teacherGradeFilter;
+            if (gradeFilter) {
+                updateTeacherGradeFilter(gradeFilter, target.value || '');
+                return;
+            }
+            const historyFilter = target.dataset.teacherHistoryFilter;
+            if (historyFilter) {
+                updateTeacherHistoryFilter(historyFilter, target.value || '');
+            }
+        });
+
+        body.addEventListener('change', event => {
+            const target = event.target;
+            if (target instanceof HTMLSelectElement) {
+                const gradeFilter = target.dataset.teacherGradeFilter;
+                if (gradeFilter) {
+                    updateTeacherGradeFilter(gradeFilter, target.value || 'all');
+                    return;
+                }
+                const historyFilter = target.dataset.teacherHistoryFilter;
+                if (historyFilter) {
+                    updateTeacherHistoryFilter(historyFilter, target.value || 'all');
+                    return;
+                }
+            }
+            if (!(target instanceof HTMLInputElement)) return;
+
+            const gradeFilter = target.dataset.teacherGradeFilter;
+            if (gradeFilter) {
+                updateTeacherGradeFilter(gradeFilter, target.value || '');
+                return;
+            }
+            const historyFilter = target.dataset.teacherHistoryFilter;
+            if (historyFilter) {
+                updateTeacherHistoryFilter(historyFilter, target.value || '');
+                return;
+            }
 
             const nameUserId = target.dataset.teacherEditName;
             if (nameUserId) {
@@ -1034,6 +1317,195 @@ function deleteTeacherStudent(userId) {
     });
 }
 
+function getTeacherTextTasks() {
+    return Array.isArray(users[GLOBAL_SETTINGS_ID]?.textTasks)
+        ? users[GLOBAL_SETTINGS_ID].textTasks
+        : [];
+}
+
+function getTeacherTextTaskStats(task, rows) {
+    const targetGroup = String(task?.targetGroup || '').trim();
+    const targets = rows.filter(row => !targetGroup || row.group === targetGroup);
+    const completed = targets.filter(row => Boolean(users[row.userId]?.textRecords?.[task.id])).length;
+    return {
+        targetGroup,
+        targets,
+        completed,
+        incomplete: Math.max(0, targets.length - completed),
+        percent: targets.length ? Math.round((completed / targets.length) * 100) : 0
+    };
+}
+
+function getTeacherScopedTextTasks(rows) {
+    const groups = new Set(rows.map(row => row.group).filter(group => group && group !== '-'));
+    return getTeacherTextTasks()
+        .filter(task => {
+            const targetGroup = String(task?.targetGroup || '').trim();
+            return !targetGroup || groups.has(targetGroup);
+        })
+        .map(task => ({
+            task,
+            stats: getTeacherTextTaskStats(task, rows)
+        }));
+}
+
+function exportTeacherTextTaskCsv(taskId, incompleteOnly = false) {
+    const rows = getFilteredTeacherStatusRows();
+    const entry = getTeacherScopedTextTasks(rows).find(item => item.task.id === taskId);
+    if (!entry) {
+        showCustomAlert('出力できる課題が見つかりません。');
+        return;
+    }
+
+    const csvRows = [[
+        'task_title',
+        'student_name',
+        'user_data_id',
+        'campus',
+        'group',
+        'status',
+        'score',
+        'miss',
+        'attempts',
+        'last_completed_at'
+    ]];
+
+    entry.stats.targets
+        .filter(row => {
+            const record = users[row.userId]?.textRecords?.[taskId];
+            return incompleteOnly ? !record : true;
+        })
+        .forEach(row => {
+            const record = users[row.userId]?.textRecords?.[taskId] || null;
+            csvRows.push([
+                entry.task.title || '',
+                row.name,
+                row.userId,
+                row.campusName,
+                row.group,
+                record ? 'done' : 'incomplete',
+                record?.score ?? '',
+                record?.miss ?? '',
+                record?.attempts ?? '',
+                record?.lastCompletedAt || record?.updatedAt || record?.bestAt || ''
+            ]);
+        });
+
+    const suffix = incompleteOnly ? 'incomplete' : 'progress';
+    downloadTeacherStatusCsv(
+        `d-lesson_teacher_text_task_${suffix}_${getBackupDateStamp()}.csv`,
+        csvRows
+    );
+}
+
+function getTeacherTicketConfig() {
+    const config = users[GLOBAL_SETTINGS_ID]?.ticketConfig || {};
+    return {
+        normal: {
+            id: 'ticket_normal',
+            icon: config.normal?.icon || '🎟️',
+            name: config.normal?.name || '👍 いいねポイント 5こ'
+        },
+        newRecord: {
+            id: 'ticket_newrecord',
+            icon: config.newRecord?.icon || '🎟️',
+            name: config.newRecord?.name || '👍 いいねポイント 1こ'
+        }
+    };
+}
+
+function getTeacherRewardTargetRows(selectId = 'teacher-reward-target') {
+    const rows = getFilteredTeacherStatusRows();
+    const select = document.getElementById(selectId);
+    const target = select?.value || '__filtered__';
+    if (target === '__filtered__') return rows;
+    return rows.filter(row => row.userId === target);
+}
+
+async function grantTeacherCoinsFromForm() {
+    const amountInput = document.getElementById('teacher-coin-amount');
+    const amount = Math.floor(Number(amountInput?.value || 0));
+    const targetRows = getTeacherRewardTargetRows('teacher-reward-target');
+
+    if (!targetRows.length) return showCustomAlert('付与できる児童がいません。');
+    if (!Number.isFinite(amount) || amount <= 0) return showCustomAlert('付与するコイン数を入力してください。');
+
+    const applyGrant = async () => {
+        targetRows.forEach(row => {
+            users[row.userId].coins = Number(users[row.userId]?.coins || 0) + amount;
+        });
+        const saved = await saveManagedUserRows(targetRows.map(row => row.userId));
+        if (!saved) {
+            showCustomAlert('コイン付与の保存に失敗しました。先生の担当範囲または通信状態を確認してください。');
+            return;
+        }
+        recordAdminAudit('teacher_coin_granted', {
+            amount,
+            count: targetRows.length,
+            users: targetRows.map(row => row.userId)
+        });
+        renderTeacherStatus();
+        renderTeacherMenuHome();
+        showCustomAlert(`${targetRows.length}人に ${amount} コインを付与しました。`);
+    };
+
+    if (targetRows.length > 1) {
+        showCustomConfirm(`表示中の ${targetRows.length}人に ${amount} コインを付与しますか？`, () => { void applyGrant(); });
+        return;
+    }
+    await applyGrant();
+}
+
+async function grantTeacherTicketFromForm() {
+    const type = document.getElementById('teacher-ticket-type')?.value === 'newRecord' ? 'newRecord' : 'normal';
+    const config = getTeacherTicketConfig()[type];
+    const targetRows = getTeacherRewardTargetRows('teacher-ticket-target');
+
+    if (!targetRows.length) return showCustomAlert('付与できる児童がいません。');
+
+    const applyGrant = async () => {
+        const date = new Date().toLocaleDateString('ja-JP');
+        targetRows.forEach(row => {
+            if (!Array.isArray(users[row.userId].tickets)) users[row.userId].tickets = [];
+            users[row.userId].tickets.push({
+                id: config.id,
+                name: config.name,
+                date
+            });
+        });
+        const saved = await saveManagedUserRows(targetRows.map(row => row.userId));
+        if (!saved) {
+            showCustomAlert('チケット付与の保存に失敗しました。先生の担当範囲または通信状態を確認してください。');
+            return;
+        }
+        recordAdminAudit('teacher_ticket_granted', {
+            ticket: config.name,
+            count: targetRows.length,
+            users: targetRows.map(row => row.userId)
+        });
+        renderTeacherStatus();
+        renderTeacherMenuHome();
+        showCustomAlert(`${targetRows.length}人に「${config.name}」を付与しました。`);
+    };
+
+    if (targetRows.length > 1) {
+        showCustomConfirm(`表示中の ${targetRows.length}人に「${config.name}」を付与しますか？`, () => { void applyGrant(); });
+        return;
+    }
+    await applyGrant();
+}
+
+function getTeacherTicketHistoryEntries(rows) {
+    return rows
+        .flatMap(row => (Array.isArray(users[row.userId]?.ticketHistory) ? users[row.userId].ticketHistory : []).map(item => ({
+            row,
+            item,
+            time: Number(item.timestamp || Date.parse(item.date || '')) || 0
+        })))
+        .sort((a, b) => b.time - a.time)
+        .slice(0, 80);
+}
+
 function renderTeacherStatusDetail(rows) {
     const selectedRow = rows.find(row => row.userId === selectedTeacherStatusUserId);
     if (!selectedRow) return '';
@@ -1283,7 +1755,7 @@ function getTeacherHistoryEntries(rows) {
         .slice(0, 300);
 }
 
-function renderTeacherHistoryRows(rows) {
+function renderTeacherHistoryRowsLegacy(rows) {
     const entries = getTeacherHistoryEntries(rows);
     if (entries.length === 0) {
         return `
@@ -1323,6 +1795,165 @@ function renderTeacherHistoryRows(rows) {
     `;
 }
 
+function getTeacherPracticeHistoryRows(rows) {
+    return rows.flatMap(row => getPracticeLogs(row.userId).map(log => {
+        const atMs = Date.parse(log.at || '');
+        const info = formatPracticeActivity(log);
+        const date = atMs ? new Date(atMs) : null;
+        return {
+            userId: row.userId,
+            name: row.name,
+            grade: row.grade,
+            group: row.group === '-' ? '' : row.group,
+            category: String(log.category || 'practice'),
+            dateKey: date
+                ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+                : '',
+            timeText: date ? date.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : '-',
+            atMs: atMs || 0,
+            title: info.title || log.title || '練習',
+            detail: log.detail || info.detail || '',
+            amount: log.amount || '',
+            coins: Number(log.coins || 0),
+            status: log.status || ''
+        };
+    }))
+        .filter(item => item.atMs)
+        .sort((a, b) => b.atMs - a.atMs || a.name.localeCompare(b.name, 'ja'));
+}
+
+function syncTeacherHistoryFilterDefaults(allRows) {
+    const dates = Array.from(new Set(allRows.map(row => row.dateKey).filter(Boolean))).sort((a, b) => b.localeCompare(a));
+    const students = Array.from(new Map(allRows.map(row => [row.userId, row.name])).entries())
+        .map(([id, name]) => ({ id, name }))
+        .sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+    teacherHistoryFilters.date = updateTeacherOptionValue(teacherHistoryFilters.date, dates, dates[0] || '');
+    teacherHistoryFilters.student = students.some(student => student.id === teacherHistoryFilters.student)
+        ? teacherHistoryFilters.student
+        : (students[0]?.id || '');
+}
+
+function getFilteredTeacherHistoryRows(rows) {
+    const allRows = getTeacherPracticeHistoryRows(rows);
+    syncTeacherHistoryFilterDefaults(allRows);
+    const search = teacherHistoryFilters.search.trim().toLowerCase();
+    const filtered = allRows.filter(row => {
+        if (teacherHistoryFilters.view === 'date') {
+            if (!teacherHistoryFilters.date || row.dateKey !== teacherHistoryFilters.date) return false;
+            if (teacherHistoryFilters.grade !== 'all' && row.grade !== teacherHistoryFilters.grade) return false;
+            if (teacherHistoryFilters.group !== 'all' && row.group !== teacherHistoryFilters.group) return false;
+        } else if (teacherHistoryFilters.view === 'student') {
+            if (!teacherHistoryFilters.student || row.userId !== teacherHistoryFilters.student) return false;
+        }
+        if (!search) return true;
+        return `${row.name} ${row.userId} ${row.group} ${row.title} ${row.detail} ${row.amount}`.toLowerCase().includes(search);
+    });
+
+    filtered.sort((a, b) => {
+        if (teacherHistoryFilters.sort === 'time_asc') return a.atMs - b.atMs || a.name.localeCompare(b.name, 'ja');
+        if (teacherHistoryFilters.sort === 'student_asc') return a.name.localeCompare(b.name, 'ja') || a.atMs - b.atMs;
+        return b.atMs - a.atMs || a.name.localeCompare(b.name, 'ja');
+    });
+
+    return { rows: filtered, allRows };
+}
+
+function renderTeacherHistoryRows(rows) {
+    const { rows: historyRows, allRows } = getFilteredTeacherHistoryRows(rows);
+    const grades = getTeacherGrades(rows);
+    const groups = getTeacherGroups(rows);
+    const dates = Array.from(new Set(allRows.map(row => row.dateKey).filter(Boolean))).sort((a, b) => b.localeCompare(a));
+    const students = Array.from(new Map(allRows.map(row => [row.userId, row.name])).entries())
+        .map(([id, name]) => ({ id, name }))
+        .sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+    const activeStudents = new Set(historyRows.map(row => row.userId)).size;
+    const totalCoins = historyRows.reduce((sum, row) => sum + row.coins, 0);
+    const selectedStudentName = students.find(student => student.id === teacherHistoryFilters.student)?.name || '記録なし';
+
+    return `
+        <div class="teacher-admin-filter-panel teacher-history-filter-panel">
+            <label>表示
+                <select data-teacher-history-filter="view">
+                    <option value="date"${teacherHistoryFilters.view === 'date' ? ' selected' : ''}>日別</option>
+                    <option value="student"${teacherHistoryFilters.view === 'student' ? ' selected' : ''}>児童別</option>
+                </select>
+            </label>
+            <label>日付
+                <select data-teacher-history-filter="date" ${teacherHistoryFilters.view !== 'date' ? 'disabled' : ''}>
+                    ${dates.length ? dates.map(dateKey => `<option value="${escapeHtml(dateKey)}"${dateKey === teacherHistoryFilters.date ? ' selected' : ''}>${escapeHtml(dateKey)} (${escapeHtml(allRows.filter(row => row.dateKey === dateKey).length)}件)</option>`).join('') : '<option value="">記録なし</option>'}
+                </select>
+            </label>
+            <label>児童
+                <select data-teacher-history-filter="student" ${teacherHistoryFilters.view !== 'student' ? 'disabled' : ''}>
+                    ${students.length ? students.map(student => `<option value="${escapeHtml(student.id)}"${student.id === teacherHistoryFilters.student ? ' selected' : ''}>${escapeHtml(student.name)}</option>`).join('') : '<option value="">記録なし</option>'}
+                </select>
+            </label>
+            <label>学年
+                <select data-teacher-history-filter="grade" ${teacherHistoryFilters.view !== 'date' ? 'disabled' : ''}>
+                    ${renderTeacherOptions(grades, 'すべての学年', teacherHistoryFilters.grade)}
+                </select>
+            </label>
+            <label>グループ
+                <select data-teacher-history-filter="group" ${teacherHistoryFilters.view !== 'date' ? 'disabled' : ''}>
+                    ${renderTeacherOptions(groups, 'すべてのグループ', teacherHistoryFilters.group)}
+                </select>
+            </label>
+            <label>並び順
+                <select data-teacher-history-filter="sort">
+                    <option value="time_desc"${teacherHistoryFilters.sort === 'time_desc' ? ' selected' : ''}>時刻が新しい順</option>
+                    <option value="time_asc"${teacherHistoryFilters.sort === 'time_asc' ? ' selected' : ''}>時刻が古い順</option>
+                    <option value="student_asc"${teacherHistoryFilters.sort === 'student_asc' ? ' selected' : ''}>児童名順</option>
+                </select>
+            </label>
+            <input type="search" data-teacher-history-filter="search" value="${escapeHtml(teacherHistoryFilters.search)}" placeholder="名前・練習名で検索">
+            <button type="button" class="teacher-status-reset" data-teacher-history-reset>解除</button>
+            <button type="button" class="teacher-status-export" data-teacher-history-export>CSV</button>
+        </div>
+        <div class="teacher-admin-summary-grid">
+            ${renderTeacherSummaryCard(teacherHistoryFilters.view === 'student' ? '選択児童' : '選択日', teacherHistoryFilters.view === 'student' ? selectedStudentName : (teacherHistoryFilters.date || '記録なし'), '#795548')}
+            ${renderTeacherSummaryCard('取り組んだ児童', `${activeStudents}人`, '#2196F3')}
+            ${renderTeacherSummaryCard('取り組み件数', `${historyRows.length}件`, '#4CAF50')}
+            ${renderTeacherSummaryCard('コイン増減合計', `${totalCoins}コイン`, '#FF9800')}
+        </div>
+        <div class="teacher-status-table-wrap teacher-history-wrap">
+            <table class="teacher-status-table teacher-history-table">
+                <thead>
+                    <tr>
+                        <th>日付</th>
+                        <th>時刻</th>
+                        <th>児童</th>
+                        <th>学年</th>
+                        <th>グループ</th>
+                        <th>取り組み</th>
+                        <th>内容</th>
+                        <th>結果</th>
+                        <th>コイン</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${historyRows.length ? historyRows.map(row => `
+                        <tr>
+                            <td>${escapeHtml(row.dateKey || '-')}</td>
+                            <td>${escapeHtml(row.timeText)}</td>
+                            <td><strong>${escapeHtml(row.name)}</strong></td>
+                            <td>${escapeHtml(row.grade || '-')}</td>
+                            <td>${escapeHtml(row.group || '-')}</td>
+                            <td>${escapeHtml(row.title)}</td>
+                            <td>${escapeHtml(row.detail || '-')}</td>
+                            <td>${escapeHtml([row.amount, row.status].filter(Boolean).join(' / ') || '-')}</td>
+                            <td>${row.coins ? `+${escapeHtml(row.coins)}` : ''}</td>
+                        </tr>
+                    `).join('') : `
+                        <tr>
+                            <td colspan="9" style="text-align:center; color:#78909c; font-weight:800;">条件に合う取り組み記録はありません。</td>
+                        </tr>
+                    `}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
 function renderTeacherReportRows(rows) {
     if (rows.length === 0) {
         return `
@@ -1352,10 +1983,461 @@ function renderTeacherReportRows(rows) {
     `;
 }
 
+function renderTeacherTextTaskRows(rows) {
+    const entries = getTeacherScopedTextTasks(rows);
+    if (entries.length === 0) {
+        return `
+            <div class="teacher-status-empty">
+                担当範囲の児童に表示される文章課題がありません。
+            </div>
+        `;
+    }
+
+    return `
+        <div class="teacher-text-task-note">
+            <strong>文章課題</strong>
+            <span>先生メニューでは、担当範囲の児童に関係する課題だけを表示します。全校舎共通の作成・削除は管理者メニューで行います。</span>
+        </div>
+        <div class="teacher-status-table-wrap teacher-text-task-wrap">
+            <table class="teacher-status-table teacher-text-task-table">
+                <thead>
+                    <tr>
+                        <th>課題</th>
+                        <th>対象</th>
+                        <th>制限</th>
+                        <th>達成</th>
+                        <th>未完了</th>
+                        <th>表示</th>
+                        <th>CSV</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${entries.map(({ task, stats }) => `
+                        <tr>
+                            <td>
+                                <strong>${escapeHtml(task.title || '無題の課題')}</strong>
+                                <small>${escapeHtml(String(task.content || '').replace(/\s+/g, ' ').slice(0, 80))}</small>
+                            </td>
+                            <td>${escapeHtml(stats.targetGroup || '担当範囲の全員')}</td>
+                            <td>${escapeHtml(task.time || '-')}分 / ★${escapeHtml(task.star || 3)}</td>
+                            <td>
+                                <span>${escapeHtml(stats.completed)} / ${escapeHtml(stats.targets.length)}人</span>
+                                ${renderProgressBar(stats.percent)}
+                            </td>
+                            <td>${escapeHtml(stats.incomplete)}人</td>
+                            <td>${task.hidden === true ? '<span class="teacher-status-alert notice">非公開</span>' : '<span class="teacher-status-ok">公開中</span>'}</td>
+                            <td>
+                                <button type="button" class="teacher-status-detail-btn" data-teacher-text-export-task="${escapeHtml(task.id)}">進捗CSV</button>
+                                <button type="button" class="teacher-status-detail-btn secondary" data-teacher-text-incomplete-task="${escapeHtml(task.id)}">未完了CSV</button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
+function renderTeacherRewardRows(rows) {
+    const config = getTeacherTicketConfig();
+    const history = getTeacherTicketHistoryEntries(rows);
+
+    return `
+        <div class="teacher-reward-grid">
+            <section class="teacher-reward-card">
+                <h4>コイン付与</h4>
+                <p>担当範囲の児童だけに付与できます。全校舎一括付与は管理者メニュー専用です。</p>
+                ${renderTeacherRewardTargetSelect(rows)}
+                <div class="teacher-reward-form-row">
+                    <input id="teacher-coin-amount" type="number" min="1" step="1" value="100" inputmode="numeric" aria-label="付与コイン数">
+                    <button type="button" data-teacher-grant-coins>コインを付与</button>
+                </div>
+            </section>
+            <section class="teacher-reward-card">
+                <h4>いいねポイント付与</h4>
+                <p>児童のマイページで使えるいいねポイントを付与します。</p>
+                ${renderTeacherRewardTargetSelect(rows, 'ticket')}
+                <div class="teacher-reward-form-row">
+                    <select id="teacher-ticket-type">
+                        <option value="normal">${escapeHtml(config.normal.name)}</option>
+                        <option value="newRecord">${escapeHtml(config.newRecord.name)}</option>
+                    </select>
+                    <button type="button" data-teacher-grant-ticket>チケットを付与</button>
+                </div>
+            </section>
+        </div>
+        <div class="teacher-status-table-wrap teacher-ticket-history-wrap">
+            <table class="teacher-status-table teacher-ticket-history-table">
+                <thead>
+                    <tr>
+                        <th>日時</th>
+                        <th>児童</th>
+                        <th>グループ</th>
+                        <th>使用したいいねポイント</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${history.length ? history.map(({ row, item }) => `
+                        <tr>
+                            <td>${escapeHtml(item.date || '-')}</td>
+                            <td><strong>${escapeHtml(row.name)}</strong></td>
+                            <td>${escapeHtml(row.group)}</td>
+                            <td>${escapeHtml(item.ticketName || item.name || '-')}</td>
+                        </tr>
+                    `).join('') : `
+                        <tr>
+                            <td colspan="4" style="text-align:center; color:#78909c; font-weight:800;">担当範囲内の使用履歴はまだありません。</td>
+                        </tr>
+                    `}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
+function renderTeacherRewardTargetSelect(rows, suffix = 'coin') {
+    return `
+        <label class="teacher-reward-target-label">
+            対象
+            <select id="${suffix === 'ticket' ? 'teacher-ticket-target' : 'teacher-reward-target'}" data-teacher-target-mirror="${escapeHtml(suffix)}">
+                <option value="__filtered__">表示中の児童全員</option>
+                ${rows.map(row => `
+                    <option value="${escapeHtml(row.userId)}">${escapeHtml(row.name)}（${escapeHtml(row.group)}）</option>
+                `).join('')}
+            </select>
+        </label>
+    `;
+}
+
+function renderTeacherGradeTabs() {
+    const tabs = [
+        ['basic', '基本進捗'],
+        ['vision', 'ビジョンタイム'],
+        ['text', '文章入力']
+    ];
+    return `
+        <div class="teacher-admin-tabs">
+            ${tabs.map(([tab, label]) => `
+                <button type="button" class="${teacherGradeTab === tab ? 'active' : ''}" data-teacher-grade-tab="${escapeHtml(tab)}">
+                    ${escapeHtml(label)}
+                </button>
+            `).join('')}
+        </div>
+    `;
+}
+
+function renderTeacherBasicGrades(rows) {
+    const grades = getTeacherGrades(rows);
+    const groups = getTeacherGroups(rows);
+    teacherGradeFilters.basicGrade = updateTeacherOptionValue(teacherGradeFilters.basicGrade, ['all', ...grades]);
+    teacherGradeFilters.basicGroup = updateTeacherOptionValue(teacherGradeFilters.basicGroup, ['all', ...groups]);
+    const list = filterTeacherRowsByGradeGroupSearch(rows, teacherGradeFilters.basicGrade, teacherGradeFilters.basicGroup);
+    if (teacherGradeFilters.basicSort === 'mouse_desc') list.sort((a, b) => b.mouseLevel - a.mouseLevel || a.name.localeCompare(b.name, 'ja'));
+    else if (teacherGradeFilters.basicSort === 'kb_desc') list.sort((a, b) => b.keyboardPercent - a.keyboardPercent || a.name.localeCompare(b.name, 'ja'));
+    else list.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
+
+    return `
+        <div class="teacher-admin-filter-panel">
+            <label>学年
+                <select data-teacher-grade-filter="basicGrade">
+                    ${renderTeacherOptions(grades, 'すべての学年', teacherGradeFilters.basicGrade)}
+                </select>
+            </label>
+            <label>グループ
+                <select data-teacher-grade-filter="basicGroup">
+                    ${renderTeacherOptions(groups, 'すべてのグループ', teacherGradeFilters.basicGroup)}
+                </select>
+            </label>
+            <label>並び順
+                <select data-teacher-grade-filter="basicSort">
+                    <option value="name"${teacherGradeFilters.basicSort === 'name' ? ' selected' : ''}>名前順</option>
+                    <option value="mouse_desc"${teacherGradeFilters.basicSort === 'mouse_desc' ? ' selected' : ''}>マウス進捗順</option>
+                    <option value="kb_desc"${teacherGradeFilters.basicSort === 'kb_desc' ? ' selected' : ''}>キーボード進捗順</option>
+                </select>
+            </label>
+        </div>
+        <div class="teacher-status-table-wrap">
+            <table class="teacher-status-table teacher-admin-grade-table">
+                <thead>
+                    <tr>
+                        <th>児童</th>
+                        <th>学年</th>
+                        <th>グループ</th>
+                        <th>マウス</th>
+                        <th>キーボード</th>
+                        <th>文章入力</th>
+                        <th>レポート</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${list.length ? list.map(row => `
+                        <tr>
+                            <td><strong>${escapeHtml(row.name)}</strong><small>${escapeHtml(row.userId)}</small></td>
+                            <td>${escapeHtml(row.grade || '-')}</td>
+                            <td>${escapeHtml(row.group || '-')}</td>
+                            <td>${renderTeacherProgressCell(row.mouseLevel, 7, '#2196F3')}</td>
+                            <td>${renderTeacherProgressCell(row.keyboardPercent, 100, '#FF9800')}</td>
+                            <td>${renderTeacherProgressCell(row.text.done, row.text.total, '#4CAF50')}</td>
+                            <td><button type="button" class="teacher-status-detail-btn" data-teacher-report-open-user-id="${escapeHtml(row.userId)}">レポート</button></td>
+                        </tr>
+                    `).join('') : `
+                        <tr><td colspan="7" style="text-align:center; color:#78909c; font-weight:800;">条件に合う児童がいません。</td></tr>
+                    `}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
+function getTeacherVisionRows(rows) {
+    const grades = getTeacherGrades(rows);
+    const groups = getTeacherGroups(rows);
+    teacherGradeFilters.visionGrade = updateTeacherOptionValue(teacherGradeFilters.visionGrade, ['all', ...grades]);
+    teacherGradeFilters.visionGroup = updateTeacherOptionValue(teacherGradeFilters.visionGroup, ['all', ...groups]);
+    if (teacherGradeFilters.visionTarget === 'grade') return filterTeacherRowsByGradeGroupSearch(rows, teacherGradeFilters.visionGrade, 'all');
+    if (teacherGradeFilters.visionTarget === 'group') return filterTeacherRowsByGradeGroupSearch(rows, 'all', teacherGradeFilters.visionGroup);
+    if (teacherGradeFilters.visionTarget === 'student') return filterTeacherRowsByGradeGroupSearch(rows, 'all', 'all', teacherGradeFilters.visionSearch);
+    return rows;
+}
+
+function renderTeacherVisionGrades(rows) {
+    const grades = getTeacherGrades(rows);
+    const groups = getTeacherGroups(rows);
+    const list = getTeacherVisionRows(rows);
+    const suffix = getVisionDifficultySuffix(teacherGradeFilters.visionDifficulty);
+    const averageByStage = {};
+    VISION_STAGES.forEach(stage => {
+        const values = list
+            .map(row => Number(row.user?.examRecords?.[stage.id + suffix]))
+            .filter(value => Number.isFinite(value) && value > 0);
+        averageByStage[stage.id] = values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
+    });
+    const visibleUsers = Object.fromEntries(list.map(row => [row.userId, row.user]));
+
+    return `
+        <div class="teacher-admin-filter-panel teacher-vision-filter-panel">
+            <label>難易度
+                <select data-teacher-grade-filter="visionDifficulty">
+                    <option value="easy"${teacherGradeFilters.visionDifficulty === 'easy' ? ' selected' : ''}>Easy</option>
+                    <option value="normal"${teacherGradeFilters.visionDifficulty === 'normal' ? ' selected' : ''}>Normal</option>
+                    <option value="hard"${teacherGradeFilters.visionDifficulty === 'hard' ? ' selected' : ''}>Hard</option>
+                </select>
+            </label>
+            <label>絞り込み
+                <select data-teacher-grade-filter="visionTarget">
+                    <option value="all"${teacherGradeFilters.visionTarget === 'all' ? ' selected' : ''}>担当範囲全体</option>
+                    <option value="grade"${teacherGradeFilters.visionTarget === 'grade' ? ' selected' : ''}>学年</option>
+                    <option value="group"${teacherGradeFilters.visionTarget === 'group' ? ' selected' : ''}>グループ</option>
+                    <option value="student"${teacherGradeFilters.visionTarget === 'student' ? ' selected' : ''}>児童検索</option>
+                </select>
+            </label>
+            <label>学年
+                <select data-teacher-grade-filter="visionGrade" ${teacherGradeFilters.visionTarget !== 'grade' ? 'disabled' : ''}>
+                    ${renderTeacherOptions(grades, 'すべての学年', teacherGradeFilters.visionGrade)}
+                </select>
+            </label>
+            <label>グループ
+                <select data-teacher-grade-filter="visionGroup" ${teacherGradeFilters.visionTarget !== 'group' ? 'disabled' : ''}>
+                    ${renderTeacherOptions(groups, 'すべてのグループ', teacherGradeFilters.visionGroup)}
+                </select>
+            </label>
+            <input type="search" data-teacher-grade-filter="visionSearch" value="${escapeHtml(teacherGradeFilters.visionSearch)}" placeholder="児童名で検索" ${teacherGradeFilters.visionTarget !== 'student' ? 'disabled' : ''}>
+            <label>表示
+                <select data-teacher-grade-filter="visionView">
+                    <option value="table"${teacherGradeFilters.visionView === 'table' ? ' selected' : ''}>表</option>
+                    <option value="radar"${teacherGradeFilters.visionView === 'radar' ? ' selected' : ''}>レーダー一覧</option>
+                </select>
+            </label>
+        </div>
+        ${teacherGradeFilters.visionView === 'radar' ? `
+            <div class="teacher-vision-radar-list">
+                ${list.length ? list.map(row => renderVisionRadarChart(
+                    buildVisionRadarData(row.user, visibleUsers, VISION_STAGES, isSystemUserId),
+                    { title: `${row.name} さん`, compact: true }
+                )).join('') : '<div class="teacher-status-empty">条件に合う児童がいません。</div>'}
+            </div>
+        ` : `
+            <div class="teacher-status-table-wrap teacher-vision-table-wrap">
+                <table class="teacher-status-table teacher-admin-vision-table">
+                    <thead>
+                        <tr>
+                            <th>児童</th>
+                            ${VISION_STAGES.map(stage => `<th>${escapeHtml(stage.title)}</th>`).join('')}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="teacher-average-row">
+                            <td><strong>平均タイム</strong></td>
+                            ${VISION_STAGES.map(stage => `<td>${escapeHtml(formatTeacherSeconds(averageByStage[stage.id]))}</td>`).join('')}
+                        </tr>
+                        ${list.length ? list.map(row => `
+                            <tr>
+                                <td><strong>${escapeHtml(row.name)}</strong><small>${escapeHtml(row.group || '-')}</small></td>
+                                ${VISION_STAGES.map(stage => {
+                                    const record = Number(row.user?.examRecords?.[stage.id + suffix]);
+                                    const hasRecord = Number.isFinite(record) && record > 0;
+                                    return `<td class="${hasRecord ? '' : 'teacher-empty-record'}">
+                                        <strong>${hasRecord ? escapeHtml(formatTeacherSeconds(record)) : '-'}</strong>
+                                        ${hasRecord ? formatTeacherVisionDiff(record, averageByStage[stage.id]) : ''}
+                                    </td>`;
+                                }).join('')}
+                            </tr>
+                        `).join('') : `
+                            <tr><td colspan="${escapeHtml(VISION_STAGES.length + 1)}" style="text-align:center; color:#78909c; font-weight:800;">条件に合う児童がいません。</td></tr>
+                        `}
+                    </tbody>
+                </table>
+            </div>
+        `}
+    `;
+}
+
+function renderTeacherTextSparkline(history) {
+    const points = history.map(log => Number(log.score)).filter(value => Number.isFinite(value));
+    if (points.length < 2) return '<span class="teacher-text-spark-empty">記録待ち</span>';
+    const max = Math.max(...points, 1);
+    const min = Math.min(...points, 0);
+    const width = 160;
+    const height = 48;
+    const span = Math.max(1, max - min);
+    const svgPoints = points.map((value, index) => {
+        const x = points.length === 1 ? width / 2 : (index / (points.length - 1)) * width;
+        const y = height - ((value - min) / span) * (height - 8) - 4;
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+    const lastPoint = svgPoints.split(' ').pop().split(',');
+    return `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="文章入力の伸び">
+        <polyline points="${svgPoints}" fill="none" stroke="#7B1FA2" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"></polyline>
+        <circle cx="${lastPoint[0]}" cy="${lastPoint[1]}" r="4" fill="#7B1FA2"></circle>
+    </svg>`;
+}
+
+function renderTeacherTextGrades(rows) {
+    const grades = getTeacherGrades(rows);
+    const groups = getTeacherGroups(rows);
+    teacherGradeFilters.textGrade = updateTeacherOptionValue(teacherGradeFilters.textGrade, ['all', ...grades]);
+    teacherGradeFilters.textGroup = updateTeacherOptionValue(teacherGradeFilters.textGroup, ['all', ...groups]);
+    const filtered = filterTeacherRowsByGradeGroupSearch(
+        rows,
+        teacherGradeFilters.textGrade,
+        teacherGradeFilters.textGroup,
+        teacherGradeFilters.textSearch
+    );
+    teacherGradeFilters.textStudent = filtered.some(row => row.userId === teacherGradeFilters.textStudent)
+        ? teacherGradeFilters.textStudent
+        : (filtered[0]?.userId || '');
+    const metricsMap = new Map(filtered.map(row => [row.userId, buildTeacherTextMetrics(row)]));
+    const active = filtered.filter(row => metricsMap.get(row.userId)?.completed > 0).length;
+    const completedTotal = filtered.reduce((sum, row) => sum + metricsMap.get(row.userId).completed, 0);
+    const attemptsTotal = filtered.reduce((sum, row) => sum + metricsMap.get(row.userId).attempts, 0);
+    const selectedRow = filtered.find(row => row.userId === teacherGradeFilters.textStudent) || filtered[0];
+    const selectedMetrics = selectedRow ? metricsMap.get(selectedRow.userId) : null;
+    const recent = selectedMetrics ? selectedMetrics.history.slice(-12) : [];
+    const maxScore = Math.max(...recent.map(log => log.score || 0), 1);
+
+    return `
+        <div class="teacher-admin-filter-panel teacher-text-filter-panel">
+            <label>学年
+                <select data-teacher-grade-filter="textGrade">
+                    ${renderTeacherOptions(grades, 'すべての学年', teacherGradeFilters.textGrade)}
+                </select>
+            </label>
+            <label>グループ
+                <select data-teacher-grade-filter="textGroup">
+                    ${renderTeacherOptions(groups, 'すべてのグループ', teacherGradeFilters.textGroup)}
+                </select>
+            </label>
+            <label>グラフ対象
+                <select data-teacher-grade-filter="textStudent">
+                    ${filtered.length ? filtered.map(row => `<option value="${escapeHtml(row.userId)}"${row.userId === teacherGradeFilters.textStudent ? ' selected' : ''}>${escapeHtml(row.name)}</option>`).join('') : '<option value="">記録なし</option>'}
+                </select>
+            </label>
+            <input type="search" data-teacher-grade-filter="textSearch" value="${escapeHtml(teacherGradeFilters.textSearch)}" placeholder="児童名で検索">
+        </div>
+        <div class="teacher-admin-summary-grid">
+            ${renderTeacherSummaryCard('対象児童', `${filtered.length}人`, '#7B1FA2')}
+            ${renderTeacherSummaryCard('取り組みあり', `${active}人`, '#009688')}
+            ${renderTeacherSummaryCard('完了課題合計', `${completedTotal}件`, '#4CAF50')}
+            ${renderTeacherSummaryCard('挑戦回数合計', `${attemptsTotal}回`, '#FF9800')}
+        </div>
+        <div class="teacher-text-chart-card">
+            ${selectedRow ? `
+                <div class="teacher-text-chart-head">
+                    <strong>${escapeHtml(selectedRow.name)} さんの文章入力の伸び</strong>
+                    <span class="${selectedMetrics.growth >= 0 ? 'good' : 'slow'}">伸び: ${selectedMetrics.growth >= 0 ? '+' : ''}${escapeHtml(selectedMetrics.growth)}</span>
+                </div>
+                ${recent.length ? `
+                    <div class="teacher-text-bar-chart">
+                        ${recent.map(log => {
+                            const h = Math.max(8, Math.round((Number(log.score || 0) / maxScore) * 130));
+                            const date = new Date(log.atMs).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' });
+                            return `<div title="${escapeHtml(formatPracticeActivity(log).detail || '')}">
+                                <span>${escapeHtml(log.score || 0)}</span>
+                                <b style="height:${escapeHtml(h)}px;"></b>
+                                <small>${escapeHtml(date)}</small>
+                            </div>`;
+                        }).join('')}
+                    </div>
+                ` : '<p>文章入力の取り組み履歴はまだありません。</p>'}
+            ` : '<p>グラフ対象の児童がいません。</p>'}
+        </div>
+        <div class="teacher-status-table-wrap">
+            <table class="teacher-status-table teacher-admin-text-table">
+                <thead>
+                    <tr>
+                        <th>児童</th>
+                        <th>学年</th>
+                        <th>グループ</th>
+                        <th>完了課題</th>
+                        <th>挑戦回数</th>
+                        <th>最高スコア</th>
+                        <th>最終完了</th>
+                        <th>伸び</th>
+                        <th>レポート</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${filtered.length ? filtered.map(row => {
+                        const metrics = metricsMap.get(row.userId);
+                        const latest = metrics.latestAt ? new Date(metrics.latestAt).toLocaleDateString('ja-JP') : '-';
+                        return `
+                            <tr>
+                                <td><strong>${escapeHtml(row.name)}</strong></td>
+                                <td>${escapeHtml(row.grade || '-')}</td>
+                                <td>${escapeHtml(row.group || '-')}</td>
+                                <td>${escapeHtml(metrics.completed)} / ${escapeHtml(metrics.total)}</td>
+                                <td>${escapeHtml(metrics.attempts)}</td>
+                                <td>${escapeHtml(metrics.bestScore)}</td>
+                                <td>${escapeHtml(latest)}</td>
+                                <td class="${metrics.growth >= 0 ? 'teacher-growth-good' : 'teacher-growth-slow'}">${metrics.growth >= 0 ? '+' : ''}${escapeHtml(metrics.growth)}<br>${renderTeacherTextSparkline(metrics.history)}</td>
+                                <td><button type="button" class="teacher-status-detail-btn" data-teacher-report-open-user-id="${escapeHtml(row.userId)}">レポート</button></td>
+                            </tr>
+                        `;
+                    }).join('') : `
+                        <tr><td colspan="9" style="text-align:center; color:#78909c; font-weight:800;">条件に合う児童がいません。</td></tr>
+                    `}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
+function renderTeacherGradesRows(rows) {
+    return `
+        ${renderTeacherGradeTabs()}
+        ${teacherGradeTab === 'vision' ? renderTeacherVisionGrades(rows) : ''}
+        ${teacherGradeTab === 'text' ? renderTeacherTextGrades(rows) : ''}
+        ${teacherGradeTab === 'basic' ? renderTeacherBasicGrades(rows) : ''}
+    `;
+}
+
 function renderTeacherModeContent(rows) {
     if (teacherMenuMode === 'students') return renderTeacherStudentManagementRows(rows);
+    if (teacherMenuMode === 'grades') return renderTeacherGradesRows(rows);
     if (teacherMenuMode === 'history') return renderTeacherHistoryRows(rows);
     if (teacherMenuMode === 'reports') return renderTeacherReportRows(rows);
+    if (teacherMenuMode === 'textTasks') return renderTeacherTextTaskRows(rows);
+    if (teacherMenuMode === 'rewards') return renderTeacherRewardRows(rows);
     return `${renderTeacherStatusDetail(rows)}${renderStudentRows(rows)}`;
 }
 
@@ -1476,7 +2558,9 @@ function syncTeacherPanelHeader() {
             students: '担当範囲の児童一覧を確認します。詳しく見たい児童は詳細を押してください。',
             grades: '進捗、文章課題、要確認の児童をまとめて確認します。',
             history: '前回の練習や未実施の児童を確認します。',
-            reports: '個別詳細から児童レポートを印刷します。'
+            reports: '個別詳細から児童レポートを印刷します。',
+            textTasks: '担当範囲の文章課題の進み具合を確認します。',
+            rewards: '担当範囲の児童へコインやいいねポイントを付与します。'
         }[teacherMenuMode] || '担当範囲の児童状況を確認します。';
     }
 }
@@ -1566,7 +2650,9 @@ function ensureTeacherStatusModal() {
 function renderTeacherStatus() {
     const allRows = getStudentRows();
     syncTeacherStatusControls(allRows);
-    const rows = sortTeacherStatusRows(allRows.filter(rowMatchesTeacherStatusFilters));
+    const filteredRows = sortTeacherStatusRows(allRows.filter(rowMatchesTeacherStatusFilters));
+    const adminLikeTeacherModes = new Set(['grades', 'history', 'reports']);
+    const rows = adminLikeTeacherModes.has(teacherMenuMode) ? allRows : filteredRows;
     if (selectedTeacherStatusUserId && !rows.some(row => row.userId === selectedTeacherStatusUserId)) {
         selectedTeacherStatusUserId = '';
     }
