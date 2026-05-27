@@ -52,7 +52,7 @@ import {
 import { closeRewardOverlay } from '../ui/reward.js';
 import { handleGlobalBack, handleGlobalHome, handleGlobalLogout, showScreen, toggleFullScreen } from '../ui/screen.js';
 import { speakInstruction, speakTextTask } from '../ui/speech.js';
-import { closeTeacherStatus, openTeacherStatus } from '../ui/teacher-status.js';
+import { closeTeacherStatus, openTeacherMenu, openTeacherStatus } from '../ui/teacher-status.js';
 
 export function registerAppGlobalHandlers() {
     const globalFunctions = [
@@ -63,7 +63,7 @@ export function registerAppGlobalHandlers() {
 
         handleGlobalBack, handleGlobalHome, handleGlobalLogout,
         closeStampOverlay, closeRewardOverlay,
-        openTeacherStatus, closeTeacherStatus,
+        openTeacherMenu, openTeacherStatus, closeTeacherStatus,
 
         startMinigame, stopMinigame, openExternalTypingSite, openFreeTimeSite, openTypingRankingPage, saveTypingRankingNickname,
         toggleRubyInPrep, toggleNaviInPrep, confirmStartTextPractice, closeTextPrepModal,

@@ -21,15 +21,12 @@ export function setHomeUiHandlers(handlers = {}) {
 }
 
 function updateTitleRoleActions() {
-    const teacherPreviewBtn = document.getElementById('title-teacher-preview-btn');
-    const teacherStatusBtn = document.getElementById('title-teacher-status-btn');
+    const teacherMenuBtn = document.getElementById('title-teacher-menu-btn');
     const adminBtn = document.getElementById('title-admin-btn');
-    const canUseTeacherPreview = hasLessonRole('teacher', 'admin');
-    const canUseTeacherStatus = hasLessonRole('teacher', 'admin');
+    const canUseTeacherMenu = hasLessonRole('teacher', 'admin');
     const canUseAdmin = hasLessonRole('admin');
 
-    if (teacherPreviewBtn) teacherPreviewBtn.style.display = canUseTeacherPreview ? 'inline-flex' : 'none';
-    if (teacherStatusBtn) teacherStatusBtn.style.display = canUseTeacherStatus ? 'inline-flex' : 'none';
+    if (teacherMenuBtn) teacherMenuBtn.style.display = canUseTeacherMenu ? 'inline-flex' : 'none';
     if (adminBtn) adminBtn.style.display = canUseAdmin ? 'inline-flex' : 'none';
 }
 

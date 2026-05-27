@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 
 const source = readFileSync('src/ui/teacher-status.js', 'utf8');
 const style = readFileSync('src/style.css', 'utf8');
+const html = readFileSync('index.html', 'utf8');
 
 function assertSource(pattern, label) {
   assert.match(source, pattern, `${label} is missing from teacher-status.js.`);
@@ -20,6 +21,10 @@ assertSource(/id="teacher-status-sort"/, 'Teacher status sort selector');
 assertSource(/value="keyboard-low"/, 'Keyboard-low sort option');
 assertSource(/value="mouse-low"/, 'Mouse-low sort option');
 assertSource(/value="latest-old"/, 'Oldest-practice sort option');
+assertSource(/export function openTeacherMenu/, 'Teacher menu exported opener');
+assertSource(/data-teacher-menu-action/, 'Teacher menu action wiring');
+assertSource(/先生メニュー/, 'Teacher menu title');
+assert.match(html, /id="title-teacher-menu-btn"/, 'Teacher menu title button is missing from index.html.');
 
 assertSource(/function\s+sortTeacherStatusRows\s*\(/, 'Teacher status sort function');
 assertSource(/teacherStatusFilters\.sort\s*=\s*event\.target\.value\s*\|\|\s*'group-name'/, 'Teacher status sort change handler');
@@ -38,11 +43,25 @@ assertSource(/data-teacher-detail-print-user-id/, 'Teacher status detail print w
 assertSource(/function\s+renderTeacherStatusDetail\s*\(/, 'Teacher status detail panel');
 assertSource(/function\s+printTeacherStatus\s*\(/, 'Teacher status print handler');
 assertSource(/function\s+exportTeacherStatusCsv\s*\(/, 'Teacher status CSV handler');
+assertSource(/data-teacher-edit-name/, 'Teacher student name edit wiring');
+assertSource(/data-teacher-edit-birthdate/, 'Teacher student birthdate edit wiring');
+assertSource(/data-teacher-edit-group/, 'Teacher student group edit wiring');
+assertSource(/data-teacher-delete-user-id/, 'Teacher student delete wiring');
+assertSource(/data-teacher-add-student/, 'Teacher student add wiring');
+assertSource(/function\s+renderTeacherStudentManagementRows\s*\(/, 'Teacher student management renderer');
+assertSource(/function\s+renderTeacherHistoryRows\s*\(/, 'Teacher history renderer');
+assertSource(/function\s+renderTeacherReportRows\s*\(/, 'Teacher report renderer');
+assertSource(/function\s+addTeacherStudentFromForm\s*\(/, 'Teacher student add handler');
 
 assertStyle(/\.teacher-status-controls/, 'Teacher status controls styles');
 assertStyle(/\.teacher-status-alerts/, 'Teacher status attention label styles');
 assertStyle(/\.teacher-status-ok/, 'Teacher status OK label styles');
 assertStyle(/\.teacher-status-detail-btn/, 'Teacher status detail button styles');
 assertStyle(/\.teacher-status-print/, 'Teacher status print button styles');
+assertStyle(/\.teacher-menu-grid/, 'Teacher menu grid styles');
+assertStyle(/\.teacher-menu-card/, 'Teacher menu card styles');
+assertStyle(/\.teacher-student-manage-table/, 'Teacher student management table styles');
+assertStyle(/\.teacher-student-add-card/, 'Teacher student add card styles');
+assertStyle(/\.teacher-report-grid/, 'Teacher report grid styles');
 
 console.log('Teacher status UI check passed.');

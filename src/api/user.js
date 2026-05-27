@@ -267,7 +267,31 @@ function maybeEnterSingleStudentUser() {
     return true;
 }
 
-function canWriteUserRow(userId) {
+function lessonAccessMatchesUserData(access, userId) {
+    if (!access || !userId || access.role !== 'teacher') return false;
+    const user = users?.[userId];
+    if (!user || isSystemUserId(userId)) return false;
+
+    const scopeType = access.scope_type || 'all';
+    const scopeValues = parseScopeValues(access.scope_value);
+    if (scopeType === 'all') return true;
+
+    const campusId = getUserCampusId(user);
+    const group = String(user.group || '').trim();
+    if (scopeType === 'campus') return scopeValues.includes(campusId);
+    if (scopeType === 'group') return scopeValues.includes(group);
+    if (scopeType === 'campus_group') return scopeValues.includes(`${campusId}:${group}`);
+    return false;
+}
+
+export function canManageScopedUserRow(userId) {
+    if (!userId) return false;
+    if (!canUseRlsCloudSync()) return true;
+    if (hasLessonRole('admin')) return true;
+    return currentLessonAccess.some(access => lessonAccessMatchesUserData(access, userId));
+}
+
+export function canWriteUserRow(userId) {
     if (!userId) return false;
     if (!canUseRlsCloudSync()) return true;
     if (hasLessonRole('admin')) return true;
@@ -1125,7 +1149,10 @@ export async function deleteCloudUserRows(userIds) {
     if (ids.length === 0) return [];
     if (!canUseRlsCloudSync() && !canUseLegacyCloudSync()) return [];
     if (canUseRlsCloudSync() && !hasLessonRole('admin')) {
-        throw new Error('Admin role is required to delete cloud user rows');
+        const canDeleteScopedRows = hasLessonRole('teacher') && ids.every(userId => canManageScopedUserRow(userId));
+        if (!canDeleteScopedRows) {
+            throw new Error('Admin or scoped teacher role is required to delete cloud user rows');
+        }
     }
 
     const deletedIds = Array.from(new Set(ids));
@@ -1148,6 +1175,38 @@ export async function deleteCloudUserRows(userIds) {
     }
 
     return deletedIds;
+}
+
+export async function saveManagedUserRows(userIds) {
+    const ids = Array.from(new Set((Array.isArray(userIds) ? userIds : [userIds]).filter(Boolean)));
+    if (ids.length === 0) return true;
+    if (!canUseRlsCloudSync()) return saveUsers(true);
+    if (!navigator.onLine) {
+        setSyncStatus('offline');
+        return false;
+    }
+
+    normalizeUsersCollection();
+    const upsertData = ids.map(userId => {
+        if (!canManageScopedUserRow(userId) || !shouldPersistUserRow(userId, users[userId])) return null;
+        return { id: userId, data: users[userId] };
+    }).filter(Boolean);
+
+    if (upsertData.length !== ids.length) {
+        throw new Error('Scoped role is not allowed to save one or more user rows.');
+    }
+
+    setSyncStatus('syncing');
+    try {
+        const { error } = await supabase.from(TARGET_TABLE).upsert(upsertData);
+        if (error) throw error;
+        setSyncStatus('rls synced');
+        return true;
+    } catch (error) {
+        console.error('Managed row save failed:', error);
+        setSyncStatus('sync error');
+        return false;
+    }
 }
 
 async function pruneCloudStudentRowsMissingFrom(nextUsers) {

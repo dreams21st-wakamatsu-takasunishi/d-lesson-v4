@@ -29,7 +29,7 @@ npm.cmd run check:release-test
 | `check:admin-progress-editor-utils` | 進捗編集・リセット処理が壊れていないこと |
 | `check:clear-guards` | クリア処理の二重実行防止が残っていること |
 | `check:student-login-ui` | 児童ログインのあいことば表示切替が残っていること |
-| `check:teacher-status-ui` | 先生用確認の検索、絞り込み、並び替え、要確認ラベル、印刷/CSVが残っていること |
+| `check:teacher-status-ui` | 先生メニューの検索、絞り込み、並び替え、要確認ラベル、印刷/CSVが残っていること |
 | `check:practice-interrupts` | 練習を途中でやめた時の取り組み記録が残る導線が壊れていないこと |
 | `check:typing-ranking` | タイピングランキングの最高記録保存、同一児童重複防止、ニックネーム安全対策が残っていること |
 | `check:inline-handlers` | HTML の `onclick` などが未定義関数を呼んでいないこと |
@@ -50,7 +50,7 @@ npm.cmd run check:clear-guards
 npm.cmd run check:student-login-ui
 ```
 
-先生用確認の主要UIだけを確認する場合:
+先生メニューの主要UIだけを確認する場合:
 
 ```powershell
 npm.cmd run check:teacher-status-ui

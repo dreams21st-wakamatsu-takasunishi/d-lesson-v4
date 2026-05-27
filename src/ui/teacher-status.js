@@ -1,23 +1,47 @@
 import { STAGE_ORDER } from '../data/constants.js';
 import {
+    canManageScopedUserRow,
+    createUserDataId,
+    deleteCloudUserRows,
+    DEFAULT_CAMPUS_ID,
     GLOBAL_SETTINGS_ID,
     currentLessonAccess,
     formatPracticeActivity,
+    getCampusCode,
+    getCampusName,
     getLatestPracticeActivity,
     getPracticeLogs,
     getTeacherScopeSummary,
+    getUserCampusId,
     getUserDisplayName,
     hasLessonRole,
     isSystemUserId,
+    normalizeCampusId,
+    refreshCurrentLessonAccess,
+    REQUIRE_SUPABASE_AUTH,
+    saveManagedUserRows,
+    supabase,
+    userDisplayNameExists,
     users
 } from '../api/user.js';
 import { escapeCsvCell, getBackupDateStamp } from '../utils/export-format.js';
-import { showCustomAlert } from './modal.js';
+import { calculateGrade } from '../utils/helpers.js';
+import { showCustomAlert, showCustomConfirm } from './modal.js';
+import { recordAdminAudit } from './admin-audit.js';
+import { showScreen } from './screen.js';
 
 const TEACHER_STATUS_STALE_DAYS = 14;
 const TEACHER_STATUS_LOW_KEYBOARD_PERCENT = 40;
 const TEACHER_STATUS_LOW_MOUSE_LEVEL = 3;
 const TEACHER_STATUS_PRINT_WINDOW_FEATURES = 'popup=yes,width=1180,height=840,menubar=no,toolbar=no,location=no,status=no,scrollbars=yes,resizable=yes';
+const TEACHER_MENU_MODES = new Set(['students', 'grades', 'history', 'reports']);
+const TEACHER_MENU_ITEMS = [
+    { mode: 'students', icon: '👥', title: '担当児童', note: '担当範囲の児童一覧を確認', color: '#2196F3' },
+    { mode: 'grades', icon: '📊', title: '生徒成績', note: '進捗・文章課題・要確認を見る', color: '#E91E63' },
+    { mode: 'history', icon: '🗓️', title: '取り組み確認', note: '前回の練習や未実施を確認', color: '#795548' },
+    { mode: 'reports', icon: '🖨️', title: 'レポート印刷', note: '個別詳細から印刷', color: '#607D8B' },
+    { mode: 'preview', icon: '🔎', title: '先生用プレビュー', note: '保存せず練習画面を確認', color: '#00695C' }
+];
 
 const teacherStatusFilters = {
     search: '',
@@ -27,6 +51,7 @@ const teacherStatusFilters = {
 };
 
 let selectedTeacherStatusUserId = '';
+let teacherMenuMode = 'students';
 
 function escapeHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, char => ({
@@ -76,6 +101,11 @@ function getStudentRows() {
             const text = getTextTaskProgress(user);
             const latestLog = getLatestPracticeActivity(userId);
             const latest = formatPracticeActivity(latestLog);
+            const birthdate = user.birthdate || user.birth || '';
+            const grade = (user.grade && String(user.grade) !== 'undefined')
+                ? String(user.grade)
+                : calculateGrade(birthdate);
+            const campusId = getUserCampusId(user);
             const mouseLevel = Number(user.mouseLevel || 0);
             const keyboardSequence = Number(user.keyboardSequence || 0);
             const keyboardPercent = STAGE_ORDER.length
@@ -85,7 +115,12 @@ function getStudentRows() {
             const row = {
                 userId,
                 name: getUserDisplayName(userId),
+                birthdate,
+                grade,
+                campusId,
+                campusName: getCampusName(campusId || DEFAULT_CAMPUS_ID),
                 group: String(user.group || '').trim() || '-',
+                coins: Number(user.coins || 0),
                 mouseLevel,
                 keyboardPercent,
                 text,
@@ -245,6 +280,18 @@ function formatTeacherStatusDate(value) {
     });
 }
 
+function formatTeacherStatusFullDate(value) {
+    const time = Date.parse(value || '');
+    if (!time) return '-';
+    return new Date(time).toLocaleString('ja-JP', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
 function getTextTaskDetailRows(userId) {
     const user = users[userId];
     if (!user) return [];
@@ -275,6 +322,61 @@ function downloadTeacherStatusCsv(filename, rows) {
 
 function getTeacherStatusScopeLabel() {
     return hasLessonRole('admin') ? '全児童' : getTeacherScopeSummary(currentLessonAccess);
+}
+
+function getTeacherMenuItem(mode) {
+    return TEACHER_MENU_ITEMS.find(item => item.mode === mode) || TEACHER_MENU_ITEMS[0];
+}
+
+function getTeacherMenuMetric(mode, rows) {
+    if (mode === 'students') return `${rows.length}人`;
+    if (mode === 'grades') return `要確認 ${rows.filter(row => row.attention.length > 0).length}`;
+    if (mode === 'history') return `記録なし ${rows.filter(row => !row.latestLog).length}`;
+    if (mode === 'reports') return '印刷';
+    return '確認専用';
+}
+
+function renderTeacherModeNote(rows, allRows, scopeLabel) {
+    const mode = getTeacherMenuItem(teacherMenuMode);
+    const copy = {
+        students: '担当範囲に入っている児童だけを表示します。校舎やグループの範囲外の児童は表示されません。',
+        grades: 'マウス、キーボード、文章課題の進み具合を並べて確認します。詳しく見たい児童は「詳細」を押してください。',
+        history: '前回の練習が古い児童や、まだ取り組み記録がない児童を見つけやすくする画面です。',
+        reports: '表示中の範囲で児童を確認し、必要な児童の「詳細」から個別印刷できます。'
+    }[teacherMenuMode] || '';
+
+    return `
+        <div class="teacher-status-mode-note">
+            <div>
+                <span>${escapeHtml(mode.icon)}</span>
+                <strong>${escapeHtml(mode.title)}</strong>
+            </div>
+            <p>${escapeHtml(copy)}</p>
+            <small>表示範囲: ${escapeHtml(scopeLabel)} / 表示中 ${escapeHtml(rows.length)}人 / 担当内 ${escapeHtml(allRows.length)}人</small>
+        </div>
+    `;
+}
+
+function runTeacherMenuAction(mode) {
+    if (mode === 'preview') {
+        closeTeacherStatus();
+        if (typeof window.loginAsMaster === 'function') {
+            window.loginAsMaster();
+            return;
+        }
+        showCustomAlert('先生用プレビューを開けませんでした。画面を再読み込みしてからもう一度お試しください。');
+        return;
+    }
+
+    if (!TEACHER_MENU_MODES.has(mode)) return;
+    if (mode === 'history' && teacherStatusFilters.sort === 'group-name') {
+        teacherStatusFilters.sort = 'latest-old';
+    }
+    if (mode === 'grades' && teacherStatusFilters.status === 'no-practice') {
+        teacherStatusFilters.status = 'all';
+    }
+
+    showTeacherMenuSection(mode);
 }
 
 function buildTeacherStatusCsvRows(rows, scopeLabel) {
@@ -354,7 +456,7 @@ function buildTeacherStatusPrintHtml(rows, scopeLabel) {
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<title>Dレッスン 先生用確認</title>
+<title>Dレッスン 先生メニュー確認</title>
 <style>
     body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #263238; margin: 24px; }
     h1 { margin: 0 0 8px; color: #00695c; font-size: 24px; }
@@ -371,7 +473,7 @@ function buildTeacherStatusPrintHtml(rows, scopeLabel) {
 </style>
 </head>
 <body>
-    <h1>Dレッスン 先生用確認</h1>
+    <h1>Dレッスン 先生メニュー確認</h1>
     <div class="meta">
         <span>表示範囲: ${escapeHtml(scopeLabel)}</span>
         <span>児童数: ${escapeHtml(rows.length)}人</span>
@@ -594,9 +696,27 @@ function attachTeacherStatusControlHandlers(modal) {
     if (incompleteExportButton) incompleteExportButton.addEventListener('click', exportTeacherTextIncompleteCsv);
     if (body) {
         body.addEventListener('click', event => {
+            const menuButton = event.target.closest('[data-teacher-menu-action]');
+            if (menuButton) {
+                runTeacherMenuAction(menuButton.dataset.teacherMenuAction || 'students');
+                return;
+            }
+
             const detailPrintButton = event.target.closest('[data-teacher-detail-print-user-id]');
             if (detailPrintButton) {
                 printTeacherStudentDetail(detailPrintButton.dataset.teacherDetailPrintUserId || '');
+                return;
+            }
+
+            const deleteButton = event.target.closest('[data-teacher-delete-user-id]');
+            if (deleteButton) {
+                deleteTeacherStudent(deleteButton.dataset.teacherDeleteUserId || '');
+                return;
+            }
+
+            const addButton = event.target.closest('[data-teacher-add-student]');
+            if (addButton) {
+                void addTeacherStudentFromForm();
                 return;
             }
 
@@ -604,6 +724,28 @@ function attachTeacherStatusControlHandlers(modal) {
             if (!button) return;
             selectedTeacherStatusUserId = button.dataset.teacherStatusUserId || '';
             renderTeacherStatus();
+        });
+
+        body.addEventListener('change', event => {
+            const target = event.target;
+            if (!(target instanceof HTMLInputElement)) return;
+
+            const nameUserId = target.dataset.teacherEditName;
+            if (nameUserId) {
+                void updateTeacherStudentName(nameUserId, target.value);
+                return;
+            }
+
+            const birthUserId = target.dataset.teacherEditBirthdate;
+            if (birthUserId) {
+                void updateTeacherStudentBirthdate(birthUserId, target.value);
+                return;
+            }
+
+            const groupUserId = target.dataset.teacherEditGroup;
+            if (groupUserId) {
+                void updateTeacherStudentGroup(groupUserId, target.value);
+            }
         });
     }
 }
@@ -615,6 +757,281 @@ function renderProgressBar(percent) {
             <span style="width:${escapeHtml(safePercent)}%;"></span>
         </span>
     `;
+}
+
+function getTeacherStudentRow(userId) {
+    return getStudentRows().find(row => row.userId === userId) || null;
+}
+
+function canManageTeacherStudent(userId) {
+    return hasLessonRole('admin') || canManageScopedUserRow(userId);
+}
+
+function parseTeacherScopeValues(value) {
+    return String(value || '')
+        .split(',')
+        .map(item => item.trim())
+        .filter(Boolean);
+}
+
+function getTeacherDefaultCampusId() {
+    if (hasLessonRole('admin')) return DEFAULT_CAMPUS_ID;
+    const teacherAccess = currentLessonAccess.filter(access => access?.role === 'teacher');
+    const campusAccess = teacherAccess.find(access => access.scope_type === 'campus' && parseTeacherScopeValues(access.scope_value).length);
+    if (campusAccess) return normalizeCampusId(parseTeacherScopeValues(campusAccess.scope_value)[0]);
+
+    const campusGroupAccess = teacherAccess.find(access => access.scope_type === 'campus_group' && parseTeacherScopeValues(access.scope_value).length);
+    if (campusGroupAccess) {
+        const first = parseTeacherScopeValues(campusGroupAccess.scope_value)[0] || '';
+        return normalizeCampusId(first.split(':')[0] || DEFAULT_CAMPUS_ID);
+    }
+
+    return DEFAULT_CAMPUS_ID;
+}
+
+function createTeacherStudentRecord(name, birthdate, group) {
+    const campusId = getTeacherDefaultCampusId();
+    let userDataId = createUserDataId();
+    while (users[userDataId]) userDataId = createUserDataId();
+
+    users[userDataId] = {
+        displayName: name,
+        userDataId,
+        birthdate,
+        grade: calculateGrade(birthdate),
+        campusId,
+        mouseLevel: 1,
+        keyboardSequence: 0,
+        coins: 0,
+        items: [],
+        tickets: [],
+        loginStamps: [],
+        group
+    };
+    return userDataId;
+}
+
+async function createTeacherStudentAuthAccount(userDataId, studentNumber, passcode) {
+    if (!REQUIRE_SUPABASE_AUTH || !supabase) {
+        throw new Error('Supabase Auth is not enabled.');
+    }
+
+    const user = users[userDataId];
+    const campusId = getUserCampusId(user);
+    const { data, error } = await supabase.functions.invoke('admin-create-student', {
+        body: {
+            userDataId,
+            displayName: getUserDisplayName(userDataId),
+            studentNumber,
+            passcode,
+            campusId,
+            campusCode: getCampusCode(campusId),
+            group: user?.group || ''
+        }
+    });
+
+    if (error || data?.error) {
+        throw new Error(data?.error || error?.message || 'Auth account creation failed.');
+    }
+
+    user.loginNumber = String(studentNumber || '').replace(/\D/g, '');
+    user.authUserId = data.authUserId;
+    await refreshCurrentLessonAccess();
+    return data;
+}
+
+async function addTeacherStudentFromForm() {
+    const nameInput = document.getElementById('teacher-add-name');
+    const birthInput = document.getElementById('teacher-add-birthdate');
+    const groupInput = document.getElementById('teacher-add-group');
+    const numberInput = document.getElementById('teacher-add-login-number');
+    const passcodeInput = document.getElementById('teacher-add-passcode');
+
+    const name = String(nameInput?.value || '').trim();
+    const birthdate = String(birthInput?.value || '').trim();
+    const group = String(groupInput?.value || '').trim();
+    const loginNumber = String(numberInput?.value || '').replace(/\D/g, '');
+    const passcode = String(passcodeInput?.value || '').replace(/\D/g, '');
+
+    if (!name) return showCustomAlert('児童名を入力してください。');
+    if (userDisplayNameExists(name)) return showCustomAlert('同じ名前の児童がすでに登録されています。');
+    if (!birthdate) return showCustomAlert('生年月日を入力してください。');
+    if (!loginNumber) return showCustomAlert('児童番号を入力してください。');
+    if (passcode.length < 6) return showCustomAlert('あいことばは6けた以上の数字で入力してください。');
+
+    const userDataId = createTeacherStudentRecord(name, birthdate, group);
+    const saved = await saveManagedUserRows(userDataId);
+    if (!saved) {
+        delete users[userDataId];
+        renderTeacherStatus();
+        showCustomAlert('児童データの保存に失敗しました。先生の担当校舎権限、または Supabase の teacher_campus_write_policies.sql 実行状況を確認してください。');
+        return;
+    }
+
+    try {
+        const authData = await createTeacherStudentAuthAccount(userDataId, loginNumber, passcode);
+        await saveManagedUserRows(userDataId);
+        recordAdminAudit('teacher_student_added', {
+            user: name,
+            userDataId,
+            campusId: getUserCampusId(users[userDataId]),
+            group,
+            authUserId: authData.authUserId,
+            loginNumber
+        });
+        if (nameInput) nameInput.value = '';
+        if (birthInput) birthInput.value = '';
+        if (groupInput) groupInput.value = '';
+        if (numberInput) numberInput.value = '';
+        if (passcodeInput) passcodeInput.value = '';
+        renderTeacherStatus();
+        renderTeacherMenuHome();
+        showCustomAlert(`${name}さんを追加し、ログイン用アカウントを作成しました。\n番号: ${loginNumber}`);
+    } catch (error) {
+        console.error('Teacher add student auth failed:', error);
+        renderTeacherStatus();
+        showCustomAlert(`児童データは追加されましたが、Auth作成に失敗しました。\n${error.message}`);
+    }
+}
+
+async function saveTeacherStudentChange(userId, action, payload, rollback) {
+    const saved = await saveManagedUserRows(userId);
+    if (!saved) {
+        if (typeof rollback === 'function') rollback();
+        renderTeacherStatus();
+        renderTeacherMenuHome();
+        showCustomAlert('保存に失敗しました。通信状態または先生の担当校舎権限を確認してください。');
+        return false;
+    }
+
+    recordAdminAudit(action, {
+        user: getUserDisplayName(userId),
+        userDataId: userId,
+        ...payload
+    });
+    renderTeacherStatus();
+    renderTeacherMenuHome();
+    return true;
+}
+
+async function updateTeacherStudentName(userId, value) {
+    const user = users[userId];
+    if (!user || !canManageTeacherStudent(userId)) {
+        showCustomAlert('この児童を変更する権限がありません。');
+        renderTeacherStatus();
+        return;
+    }
+
+    const displayName = String(value || '').trim();
+    const before = getUserDisplayName(userId);
+    if (!displayName) {
+        showCustomAlert('児童名を入力してください。');
+        renderTeacherStatus();
+        return;
+    }
+    if (displayName === before) return;
+    if (userDisplayNameExists(displayName, userId)) {
+        showCustomAlert('同じ名前の児童がすでに登録されています。');
+        renderTeacherStatus();
+        return;
+    }
+
+    user.displayName = displayName;
+    await saveTeacherStudentChange(
+        userId,
+        'teacher_student_name_updated',
+        { before, after: displayName },
+        () => { user.displayName = before; }
+    );
+}
+
+async function updateTeacherStudentBirthdate(userId, value) {
+    const user = users[userId];
+    if (!user || !canManageTeacherStudent(userId)) {
+        showCustomAlert('この児童を変更する権限がありません。');
+        renderTeacherStatus();
+        return;
+    }
+
+    const birthdate = String(value || '').trim();
+    const beforeBirthdate = user.birthdate || user.birth || '';
+    const beforeGrade = user.grade;
+    if (!birthdate) {
+        showCustomAlert('生年月日を入力してください。');
+        renderTeacherStatus();
+        return;
+    }
+    if (birthdate === beforeBirthdate) return;
+
+    user.birthdate = birthdate;
+    user.grade = calculateGrade(birthdate);
+    await saveTeacherStudentChange(
+        userId,
+        'teacher_student_birthdate_updated',
+        { before: beforeBirthdate, after: birthdate },
+        () => {
+            user.birthdate = beforeBirthdate;
+            user.grade = beforeGrade;
+        }
+    );
+}
+
+async function updateTeacherStudentGroup(userId, value) {
+    const user = users[userId];
+    if (!user || !canManageTeacherStudent(userId)) {
+        showCustomAlert('この児童を変更する権限がありません。');
+        renderTeacherStatus();
+        return;
+    }
+
+    const group = String(value || '').trim();
+    const before = user.group || '';
+    if (group === before) return;
+
+    user.group = group;
+    await saveTeacherStudentChange(
+        userId,
+        'teacher_student_group_updated',
+        { before, after: group },
+        () => { user.group = before; }
+    );
+}
+
+function deleteTeacherStudent(userId) {
+    const row = getTeacherStudentRow(userId);
+    if (!row || !users[userId]) {
+        showCustomAlert('削除できる児童が見つかりません。');
+        renderTeacherStatus();
+        return;
+    }
+    if (!canManageTeacherStudent(userId)) {
+        showCustomAlert('この児童を削除する権限がありません。');
+        renderTeacherStatus();
+        return;
+    }
+
+    showCustomConfirm(`${row.name}さんを削除しますか？\nこの操作はクラウド上の児童データも削除します。`, async () => {
+        const backup = users[userId];
+        try {
+            await deleteCloudUserRows(userId);
+            delete users[userId];
+            selectedTeacherStatusUserId = '';
+            recordAdminAudit('teacher_student_deleted', {
+                user: row.name,
+                userDataId: userId,
+                campusId: row.campusId,
+                group: row.group
+            });
+            renderTeacherStatus();
+            renderTeacherMenuHome();
+            showCustomAlert(`${row.name}さんを削除しました。`);
+        } catch (error) {
+            console.error('Teacher delete failed:', error);
+            users[userId] = backup;
+            renderTeacherStatus();
+            showCustomAlert('削除に失敗しました。先生の担当校舎権限、または Supabase の teacher_campus_write_policies.sql 実行状況を確認してください。');
+        }
+    });
 }
 
 function renderTeacherStatusDetail(rows) {
@@ -751,6 +1168,349 @@ function renderStudentRows(rows) {
     `;
 }
 
+function renderTeacherStudentManagementRows(rows) {
+    const addForm = `
+        <div class="teacher-student-add-card">
+            <div>
+                <strong>児童を追加</strong>
+                <small>ログイン中の先生の担当校舎に自動で所属します。児童番号とあいことばも同時に作成します。</small>
+            </div>
+            <input id="teacher-add-name" type="text" placeholder="児童名">
+            <input id="teacher-add-birthdate" type="date" title="生年月日">
+            <input id="teacher-add-group" type="text" placeholder="グループ 例: 月曜A">
+            <input id="teacher-add-login-number" type="text" inputmode="numeric" placeholder="番号">
+            <input id="teacher-add-passcode" type="password" inputmode="numeric" placeholder="あいことば">
+            <button type="button" data-teacher-add-student>追加してAuth作成</button>
+        </div>
+    `;
+
+    if (rows.length === 0) {
+        return `
+            ${addForm}
+            <div class="teacher-status-empty">
+                表示できる児童がいません。検索条件、担当校舎、先生ロールの範囲を確認してください。
+            </div>
+        `;
+    }
+
+    return `
+        ${addForm}
+        <div class="teacher-status-table-wrap teacher-student-manage-wrap">
+            <table class="teacher-status-table teacher-student-manage-table">
+                <thead>
+                    <tr>
+                        <th>児童名</th>
+                        <th>校舎</th>
+                        <th>生年月日</th>
+                        <th>学年</th>
+                        <th>グループ</th>
+                        <th>進捗</th>
+                        <th>コイン</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rows.map(row => {
+                        const canManage = canManageTeacherStudent(row.userId);
+                        return `
+                            <tr>
+                                <td>
+                                    <input
+                                        type="text"
+                                        class="teacher-student-input"
+                                        value="${escapeHtml(row.name)}"
+                                        data-teacher-edit-name="${escapeHtml(row.userId)}"
+                                        ${canManage ? '' : 'disabled'}
+                                    >
+                                    <small>${escapeHtml(row.userId)}</small>
+                                </td>
+                                <td><span class="teacher-student-readonly">${escapeHtml(row.campusName)}</span></td>
+                                <td>
+                                    <input
+                                        type="date"
+                                        class="teacher-student-input date"
+                                        value="${escapeHtml(row.birthdate)}"
+                                        data-teacher-edit-birthdate="${escapeHtml(row.userId)}"
+                                        ${canManage ? '' : 'disabled'}
+                                    >
+                                </td>
+                                <td>${escapeHtml(row.grade || '-')}</td>
+                                <td>
+                                    <input
+                                        type="text"
+                                        class="teacher-student-input"
+                                        value="${escapeHtml(row.group === '-' ? '' : row.group)}"
+                                        placeholder="例: 月曜A"
+                                        data-teacher-edit-group="${escapeHtml(row.userId)}"
+                                        ${canManage ? '' : 'disabled'}
+                                    >
+                                </td>
+                                <td>
+                                    <span>マウス Lv.${escapeHtml(row.mouseLevel)}</span>
+                                    <small>キーボード ${escapeHtml(row.keyboardPercent)}% / 文章 ${escapeHtml(row.text.done)} / ${escapeHtml(row.text.total)}</small>
+                                </td>
+                                <td>${escapeHtml(row.coins)}枚</td>
+                                <td>
+                                    <button
+                                        type="button"
+                                        class="teacher-status-detail-btn"
+                                        data-teacher-detail-print-user-id="${escapeHtml(row.userId)}"
+                                    >レポート</button>
+                                    <button
+                                        type="button"
+                                        class="teacher-danger-mini"
+                                        data-teacher-delete-user-id="${escapeHtml(row.userId)}"
+                                        ${canManage ? '' : 'disabled'}
+                                    >削除</button>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
+function getTeacherHistoryEntries(rows) {
+    return rows
+        .flatMap(row => getPracticeLogs(row.userId).map(log => ({
+            row,
+            log,
+            time: Date.parse(log.at || '') || 0
+        })))
+        .sort((a, b) => b.time - a.time)
+        .slice(0, 300);
+}
+
+function renderTeacherHistoryRows(rows) {
+    const entries = getTeacherHistoryEntries(rows);
+    if (entries.length === 0) {
+        return `
+            <div class="teacher-status-empty">
+                表示範囲内に取り組み記録がありません。
+            </div>
+        `;
+    }
+
+    return `
+        <div class="teacher-status-table-wrap teacher-history-wrap">
+            <table class="teacher-status-table teacher-history-table">
+                <thead>
+                    <tr>
+                        <th>日時</th>
+                        <th>児童</th>
+                        <th>グループ</th>
+                        <th>取り組み</th>
+                        <th>内容</th>
+                        <th>コイン</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${entries.map(({ row, log }) => `
+                        <tr>
+                            <td>${escapeHtml(formatTeacherStatusFullDate(log.at))}</td>
+                            <td><strong>${escapeHtml(row.name)}</strong></td>
+                            <td>${escapeHtml(row.group)}</td>
+                            <td>${escapeHtml(log.title || '練習')}</td>
+                            <td>${escapeHtml([log.detail, log.amount, log.status].filter(Boolean).join(' / ') || '-')}</td>
+                            <td>${escapeHtml(Number(log.coins || 0))}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+}
+
+function renderTeacherReportRows(rows) {
+    if (rows.length === 0) {
+        return `
+            <div class="teacher-status-empty">
+                レポートを表示できる児童がいません。
+            </div>
+        `;
+    }
+
+    return `
+        <div class="teacher-report-grid">
+            ${rows.map(row => `
+                <article class="teacher-report-card">
+                    <div>
+                        <strong>${escapeHtml(row.name)}</strong>
+                        <small>${escapeHtml(row.campusName)} / ${escapeHtml(row.group)} / ${escapeHtml(row.grade || '-')}</small>
+                    </div>
+                    <dl>
+                        <div><dt>マウス</dt><dd>Lv.${escapeHtml(row.mouseLevel)}</dd></div>
+                        <div><dt>キーボード</dt><dd>${escapeHtml(row.keyboardPercent)}%</dd></div>
+                        <div><dt>文章</dt><dd>${escapeHtml(row.text.done)} / ${escapeHtml(row.text.total)}</dd></div>
+                    </dl>
+                    <button type="button" data-teacher-detail-print-user-id="${escapeHtml(row.userId)}">レポートを印刷</button>
+                </article>
+            `).join('')}
+        </div>
+    `;
+}
+
+function renderTeacherModeContent(rows) {
+    if (teacherMenuMode === 'students') return renderTeacherStudentManagementRows(rows);
+    if (teacherMenuMode === 'history') return renderTeacherHistoryRows(rows);
+    if (teacherMenuMode === 'reports') return renderTeacherReportRows(rows);
+    return `${renderTeacherStatusDetail(rows)}${renderStudentRows(rows)}`;
+}
+
+function renderTeacherMenuHome() {
+    const mainMenu = document.getElementById('teacher-main-menu');
+    const scope = document.getElementById('teacher-menu-scope');
+    if (!mainMenu || !scope) return;
+
+    const rows = getStudentRows();
+    const scopeLabel = getTeacherStatusScopeLabel();
+    const noPracticeCount = rows.filter(row => !row.latestLog).length;
+    const attentionCount = rows.filter(row => row.attention.length > 0).length;
+
+    scope.innerHTML = `
+        <div>
+            <span>表示範囲</span>
+            <strong>${escapeHtml(scopeLabel)}</strong>
+        </div>
+        <div>
+            <span>担当児童</span>
+            <strong>${escapeHtml(rows.length)}人</strong>
+        </div>
+        <div>
+            <span>要確認 / 記録なし</span>
+            <strong>${escapeHtml(attentionCount)} / ${escapeHtml(noPracticeCount)}人</strong>
+        </div>
+    `;
+
+    mainMenu.innerHTML = TEACHER_MENU_ITEMS.map(item => `
+        <button
+            type="button"
+            class="category-btn teacher-menu-home-card"
+            data-teacher-menu-action="${escapeHtml(item.mode)}"
+            style="background-color:${escapeHtml(item.color)};"
+        >
+            <span class="teacher-menu-home-icon">${escapeHtml(item.icon)}</span>
+            <span class="teacher-menu-home-title">${escapeHtml(item.title)}</span>
+            <span class="teacher-menu-home-note">${escapeHtml(item.note)}</span>
+            <span class="teacher-menu-home-metric">${escapeHtml(getTeacherMenuMetric(item.mode, rows))}</span>
+        </button>
+    `).join('');
+}
+
+function ensureTeacherMenuScreen() {
+    let screen = document.getElementById('screen-teacher-menu');
+    if (screen) return screen;
+
+    document.getElementById('teacher-status-modal')?.remove();
+
+    screen = document.createElement('div');
+    screen.id = 'screen-teacher-menu';
+    screen.className = 'screen';
+    screen.innerHTML = `
+        <div class="screen-content teacher-menu-screen-content">
+            <h2>📋 先生メニュー</h2>
+            <div id="teacher-menu-scope" class="teacher-menu-scope"></div>
+            <div id="teacher-main-menu" class="teacher-menu-home-grid"></div>
+            <div id="teacher-panel-content" class="teacher-panel-content" style="display:none;">
+                <div class="teacher-panel-toolbar">
+                    <button type="button" id="teacher-panel-back" class="btn-secondary">← 先生メニューへもどる</button>
+                    <div>
+                        <h3 id="teacher-panel-title">担当児童</h3>
+                        <p id="teacher-panel-description">担当範囲の児童状況を確認します。</p>
+                    </div>
+                </div>
+                <div class="teacher-status-controls">
+                    <input id="teacher-status-search" type="text" placeholder="児童名・IDで検索">
+                    <select id="teacher-status-group-filter">
+                        <option value="all">すべてのグループ</option>
+                    </select>
+                    <select id="teacher-status-status-filter">
+                        <option value="all">すべての状況</option>
+                        <option value="no-practice">前回記録なし</option>
+                        <option value="text-incomplete">文章課題 未完了あり</option>
+                        <option value="text-complete">文章課題 完了</option>
+                    </select>
+                    <select id="teacher-status-sort">
+                        <option value="group-name">グループ・名前順</option>
+                        <option value="text-incomplete">文章未完了が多い順</option>
+                        <option value="no-practice">前回記録なしを上に</option>
+                        <option value="keyboard-low">キーボード進捗が低い順</option>
+                        <option value="mouse-low">マウスLvが低い順</option>
+                        <option value="latest-old">前回練習が古い順</option>
+                    </select>
+                    <button type="button" id="teacher-status-reset" class="teacher-status-reset">解除</button>
+                    <button type="button" id="teacher-status-print" class="teacher-status-print">印刷</button>
+                    <button type="button" id="teacher-status-export" class="teacher-status-export">表示中CSV</button>
+                    <button type="button" id="teacher-status-incomplete-export" class="teacher-status-export secondary">未完了CSV</button>
+                </div>
+                <div id="teacher-status-body" class="teacher-status-body teacher-menu-panel-body"></div>
+            </div>
+            <button id="teacher-menu-bottom-back" class="btn-secondary bottom-back-btn">タイトルへもどる</button>
+        </div>
+    `;
+
+    const container = document.getElementById('game-container') || document.body;
+    container.appendChild(screen);
+    attachTeacherStatusControlHandlers(screen);
+
+    screen.querySelector('#teacher-main-menu')?.addEventListener('click', event => {
+        const button = event.target.closest('[data-teacher-menu-action]');
+        if (!button) return;
+        runTeacherMenuAction(button.dataset.teacherMenuAction || 'students');
+    });
+    screen.querySelector('#teacher-panel-back')?.addEventListener('click', showTeacherMenuHome);
+    screen.querySelector('#teacher-menu-bottom-back')?.addEventListener('click', () => showScreen('screen-title'));
+
+    return screen;
+}
+
+function syncTeacherPanelHeader() {
+    const item = getTeacherMenuItem(teacherMenuMode);
+    const title = document.getElementById('teacher-panel-title');
+    const description = document.getElementById('teacher-panel-description');
+    if (title) title.textContent = `${item.icon} ${item.title}`;
+    if (description) {
+        description.textContent = {
+            students: '担当範囲の児童一覧を確認します。詳しく見たい児童は詳細を押してください。',
+            grades: '進捗、文章課題、要確認の児童をまとめて確認します。',
+            history: '前回の練習や未実施の児童を確認します。',
+            reports: '個別詳細から児童レポートを印刷します。'
+        }[teacherMenuMode] || '担当範囲の児童状況を確認します。';
+    }
+}
+
+function showTeacherMenuHome() {
+    const screen = ensureTeacherMenuScreen();
+    selectedTeacherStatusUserId = '';
+    renderTeacherMenuHome();
+
+    const main = screen.querySelector('#teacher-main-menu');
+    const panel = screen.querySelector('#teacher-panel-content');
+    const bottomBack = screen.querySelector('#teacher-menu-bottom-back');
+    if (main) main.style.display = 'grid';
+    if (panel) panel.style.display = 'none';
+    if (bottomBack) bottomBack.style.display = 'block';
+    showScreen('screen-teacher-menu');
+}
+
+function showTeacherMenuSection(mode) {
+    const screen = ensureTeacherMenuScreen();
+    teacherMenuMode = TEACHER_MENU_MODES.has(mode) ? mode : 'students';
+    selectedTeacherStatusUserId = '';
+
+    const main = screen.querySelector('#teacher-main-menu');
+    const panel = screen.querySelector('#teacher-panel-content');
+    const bottomBack = screen.querySelector('#teacher-menu-bottom-back');
+    if (main) main.style.display = 'none';
+    if (panel) panel.style.display = 'flex';
+    if (bottomBack) bottomBack.style.display = 'none';
+    syncTeacherPanelHeader();
+    renderTeacherStatus();
+    showScreen('screen-teacher-menu');
+}
+
 function ensureTeacherStatusModal() {
     let modal = document.getElementById('teacher-status-modal');
     if (modal) return modal;
@@ -763,8 +1523,8 @@ function ensureTeacherStatusModal() {
         <div class="teacher-status-dialog" role="dialog" aria-modal="true" aria-labelledby="teacher-status-title">
             <div class="teacher-status-header">
                 <div>
-                    <h2 id="teacher-status-title">先生用確認</h2>
-                    <p>担当範囲の児童の進み具合を確認できます。ここから児童データは変更されません。</p>
+                    <h2 id="teacher-status-title">先生メニュー</h2>
+                    <p>担当範囲の児童状況を確認します。校舎・グループの範囲外の児童は表示されません。</p>
                 </div>
                 <button type="button" class="teacher-status-close" onclick="closeTeacherStatus()" aria-label="閉じる">×</button>
             </div>
@@ -819,6 +1579,7 @@ function renderTeacherStatus() {
     const scopeLabel = getTeacherStatusScopeLabel();
 
     body.innerHTML = `
+        ${renderTeacherModeNote(rows, allRows, scopeLabel)}
         <div class="teacher-status-summary">
             <div>
                 <span>表示範囲</span>
@@ -837,8 +1598,7 @@ function renderTeacherStatus() {
                 <strong>${escapeHtml(attentionCount)}人</strong>
             </div>
         </div>
-        ${renderTeacherStatusDetail(rows)}
-        ${renderStudentRows(rows)}
+        ${renderTeacherModeContent(rows)}
     `;
 }
 
@@ -848,12 +1608,19 @@ export function closeTeacherStatus() {
 }
 
 export function openTeacherStatus() {
+    openTeacherMenu('students');
+}
+
+export function openTeacherMenu(mode = 'home') {
     if (!hasLessonRole('teacher', 'admin')) {
         showCustomAlert('先生または管理者アカウントでログインしてください。');
         return;
     }
 
-    const modal = ensureTeacherStatusModal();
-    renderTeacherStatus();
-    modal.style.display = 'flex';
+    if (TEACHER_MENU_MODES.has(mode)) {
+        showTeacherMenuSection(mode);
+        return;
+    }
+
+    showTeacherMenuHome();
 }

@@ -47,16 +47,57 @@ function buildStudentEmail(payload: CreateStudentPayload) {
   return `${prefix}${campusPart}${padNumber(payload.studentNumber)}@${domain}`;
 }
 
-async function assertLessonAdmin(serviceClient: ReturnType<typeof createClient>, authUserId: string) {
+type LessonAccessRow = {
+  role: string;
+  scope_type?: string | null;
+  scope_value?: string | null;
+};
+
+function parseScopeValues(value: string | null | undefined) {
+  return String(value || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function payloadMatchesTeacherScope(payload: CreateStudentPayload, row: LessonAccessRow) {
+  if (row.role !== 'teacher') return false;
+  const scopeType = row.scope_type || 'all';
+  if (scopeType === 'all') return true;
+
+  const campusId = String(payload.campusId || 'main').trim() || 'main';
+  const group = String(payload.group || '').trim();
+  const values = parseScopeValues(row.scope_value);
+
+  if (scopeType === 'campus') return values.includes(campusId);
+  if (scopeType === 'group') return values.includes(group);
+  if (scopeType === 'campus_group') return values.includes(`${campusId}:${group}`);
+  return false;
+}
+
+function dataMatchesTeacherScope(data: Record<string, unknown>, row: LessonAccessRow) {
+  return payloadMatchesTeacherScope({
+    userDataId: String(data.userDataId || ''),
+    studentNumber: '',
+    passcode: '',
+    campusId: String(data.campusId || data.campus || 'main'),
+    group: String(data.group || ''),
+  }, row);
+}
+
+async function getAllowedLessonAccessRows(serviceClient: ReturnType<typeof createClient>, authUserId: string, payload: CreateStudentPayload) {
   const { data, error } = await serviceClient
     .from('lesson_user_access')
-    .select('role')
+    .select('role,scope_type,scope_value')
     .eq('auth_user_id', authUserId)
-    .eq('role', 'admin')
-    .maybeSingle();
+    .in('role', ['admin', 'teacher']);
 
   if (error) throw error;
-  if (!data) throw new Error('Admin lesson access is required.');
+  const rows = (data || []) as LessonAccessRow[];
+  if (rows.some((row) => row.role === 'admin')) return rows;
+  const teacherRows = rows.filter((row) => payloadMatchesTeacherScope(payload, row));
+  if (teacherRows.length > 0) return teacherRows;
+  throw new Error('Admin or scoped teacher lesson access is required.');
 }
 
 serve(async (req) => {
@@ -79,8 +120,6 @@ serve(async (req) => {
 
     const { data: authData, error: authError } = await authClient.auth.getUser(token);
     if (authError || !authData.user) return jsonResponse({ error: 'Invalid session.' }, 401);
-    await assertLessonAdmin(serviceClient, authData.user.id);
-
     const payload = await req.json() as CreateStudentPayload;
     const userDataId = String(payload.userDataId || '').trim();
     const passcode = String(payload.passcode || '').trim();
@@ -88,6 +127,21 @@ serve(async (req) => {
     if (!userDataId) return jsonResponse({ error: 'userDataId is required.' }, 400);
     if (!studentNumber) return jsonResponse({ error: 'studentNumber is required.' }, 400);
     if (!/^\d{6,32}$/.test(passcode)) return jsonResponse({ error: 'passcode must be 6-32 digits.' }, 400);
+
+    const allowedAccessRows = await getAllowedLessonAccessRows(serviceClient, authData.user.id, payload);
+    const { data: currentRow } = await serviceClient
+      .from(userDataTable)
+      .select('data')
+      .eq('id', userDataId)
+      .maybeSingle();
+
+    if (
+      currentRow?.data
+      && typeof currentRow.data === 'object'
+      && !allowedAccessRows.some((row) => row.role === 'admin' || dataMatchesTeacherScope(currentRow.data as Record<string, unknown>, row))
+    ) {
+      return jsonResponse({ error: 'Teacher access does not match the existing student row.' }, 403);
+    }
 
     const email = buildStudentEmail(payload);
     const { data: created, error: createError } = await serviceClient.auth.admin.createUser({
@@ -115,12 +169,6 @@ serve(async (req) => {
         scope_value: '',
       }, { onConflict: 'auth_user_id,user_data_id' });
     if (accessError) throw accessError;
-
-    const { data: currentRow } = await serviceClient
-      .from(userDataTable)
-      .select('data')
-      .eq('id', userDataId)
-      .maybeSingle();
 
     if (currentRow?.data && typeof currentRow.data === 'object') {
       await serviceClient
