@@ -397,9 +397,16 @@ function renderGraphSection(container, user) {
     </div>`;
 
     const radarDiv = document.createElement('div');
-    const radarData = buildVisionRadarData(user, users, VISION_STAGES, isSystemUserId);
-    radarDiv.innerHTML = renderVisionRadarChart(radarData, { title: '👁️ ビジョン平均との差' });
-    graphGrid.appendChild(radarDiv.firstElementChild);
+    const myPageVisionUsers = currentUser ? { [currentUser]: user } : {};
+    const radarData = buildVisionRadarData(user, myPageVisionUsers, VISION_STAGES, isSystemUserId);
+    radarDiv.innerHTML = renderVisionRadarChart(radarData, { title: '👁️ ビジョンの記録' });
+    const myPageRadarCard = radarDiv.firstElementChild;
+    const myPageRadarBasis = myPageRadarCard?.querySelector('.vision-radar-head span');
+    if (myPageRadarBasis) myPageRadarBasis.textContent = '自分基準 100';
+    myPageRadarCard?.querySelectorAll('.vision-radar-summary span, .vision-radar-legend span, .vision-radar-note').forEach(element => {
+        element.textContent = element.textContent.replace(/平均/g, '自分基準');
+    });
+    if (myPageRadarCard) graphGrid.appendChild(myPageRadarCard);
 
     const weakDiv = document.createElement('div');
     weakDiv.className = 'record-graph-card';
