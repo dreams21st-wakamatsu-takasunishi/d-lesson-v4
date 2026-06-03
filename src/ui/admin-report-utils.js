@@ -83,14 +83,88 @@ function isAverageTargetUser(userId, user, isSystemUserId) {
     return Boolean(user.examRecords && typeof user.examRecords === 'object');
 }
 
+function getVisionRadarStageIds(group, visionStages) {
+    const stageIdSet = new Set((visionStages || []).map(stage => stage.id));
+    return group.stageIds.filter(stageId => stageIdSet.size === 0 || stageIdSet.has(stageId));
+}
+
+export function buildVisionRadarAverageSnapshot(allUsers = {}, visionStages = [], isSystemUserId = null) {
+    const averageUsers = Object.entries(allUsers || {})
+        .filter(([userId, row]) => isAverageTargetUser(userId, row, isSystemUserId))
+        .map(([, row]) => row);
+
+    const groups = VISION_RADAR_GROUPS.map(group => {
+        const stageIds = getVisionRadarStageIds(group, visionStages);
+        const classTimes = averageUsers.flatMap(row => collectVisionTimes(row.examRecords, stageIds));
+        const classAverage = average(classTimes);
+
+        return {
+            id: group.id,
+            label: group.label,
+            stageIds,
+            classAverage,
+            classRecordCount: classTimes.length,
+            totalRecordSlots: stageIds.length * VISION_RADAR_DIFFICULTY_SUFFIXES.length,
+            hasClassData: classTimes.length > 0
+        };
+    });
+
+    return {
+        version: 1,
+        groups,
+        maxScore: VISION_RADAR_MAX_SCORE,
+        averageScore: VISION_RADAR_AVERAGE_SCORE,
+        hasAnyClassData: groups.some(group => group.hasClassData)
+    };
+}
+
+export function buildVisionRadarDataFromAverageSnapshot(user, averageSnapshot = null, visionStages = []) {
+    const snapshotGroups = new Map((averageSnapshot?.groups || []).map(group => [group.id, group]));
+
+    const groups = VISION_RADAR_GROUPS.map(group => {
+        const stageIds = getVisionRadarStageIds(group, visionStages);
+        const snapshot = snapshotGroups.get(group.id) || {};
+        const userTimes = collectVisionTimes(user?.examRecords, stageIds);
+        const userAverage = average(userTimes);
+        const classAverageValue = Number(snapshot.classAverage);
+        const classAverage = Number.isFinite(classAverageValue) && classAverageValue > 0 ? classAverageValue : null;
+        const rawScore = userAverage && classAverage ? (classAverage / userAverage) * 100 : 0;
+        const score = clampRadarScore(rawScore);
+        const differenceSeconds = userAverage && classAverage ? userAverage - classAverage : null;
+        const classRecordCount = Number(snapshot.classRecordCount || 0);
+        const totalRecordSlots = Number(snapshot.totalRecordSlots || (stageIds.length * VISION_RADAR_DIFFICULTY_SUFFIXES.length));
+
+        return {
+            ...group,
+            stageIds,
+            score,
+            userAverage,
+            classAverage,
+            differenceSeconds,
+            completionCount: userTimes.length,
+            classRecordCount,
+            totalRecordSlots,
+            hasUserData: userTimes.length > 0,
+            hasClassData: classAverage !== null && classRecordCount > 0
+        };
+    });
+
+    return {
+        groups,
+        maxScore: VISION_RADAR_MAX_SCORE,
+        averageScore: VISION_RADAR_AVERAGE_SCORE,
+        hasAnyUserData: groups.some(group => group.hasUserData),
+        hasAnyClassData: groups.some(group => group.hasClassData)
+    };
+}
+
 export function buildVisionRadarData(user, allUsers = {}, visionStages = [], isSystemUserId = null) {
-    const stageIdSet = new Set(visionStages.map(stage => stage.id));
     const averageUsers = Object.entries(allUsers)
         .filter(([userId, row]) => isAverageTargetUser(userId, row, isSystemUserId))
         .map(([, row]) => row);
 
     const groups = VISION_RADAR_GROUPS.map(group => {
-        const stageIds = group.stageIds.filter(stageId => stageIdSet.size === 0 || stageIdSet.has(stageId));
+        const stageIds = getVisionRadarStageIds(group, visionStages);
         const userTimes = collectVisionTimes(user?.examRecords, stageIds);
         const classTimes = averageUsers.flatMap(row => collectVisionTimes(row.examRecords, stageIds));
         const userAverage = average(userTimes);

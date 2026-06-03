@@ -9,6 +9,7 @@ import {
 import {
     users,
     currentUser,
+    GLOBAL_SETTINGS_ID,
     canWriteCurrentUserRow,
     isSystemUserId,
     saveUsers
@@ -17,7 +18,11 @@ import { renderCertificateSection } from './certificates.js';
 import { renderPracticeHistorySection } from './practice-history.js';
 import { showCustomAlert } from './modal.js';
 import { getValidMistakeEntries, normalizeMistakeCount } from '../utils/weak-mistakes.js';
-import { buildVisionRadarData, renderVisionRadarChart } from './admin-report-utils.js';
+import {
+    buildVisionRadarData,
+    buildVisionRadarDataFromAverageSnapshot,
+    renderVisionRadarChart
+} from './admin-report-utils.js';
 
 const THEME_CATEGORY_RULES = [
     {
@@ -381,6 +386,16 @@ function renderTimeRecordsSection(container, user) {
     container.innerHTML = `${kbTimes}</div>${visionTimes}</div>`;
 }
 
+function getSavedVisionRadarData(user) {
+    const data = user?.visionRadarSnapshot?.data || user?.visionRadarSnapshot;
+    return data && Array.isArray(data.groups) ? data : null;
+}
+
+function getSharedVisionRadarAverageSnapshot() {
+    const snapshot = users?.[GLOBAL_SETTINGS_ID]?.visionRadarAverageSnapshot;
+    return snapshot && Array.isArray(snapshot.groups) ? snapshot : null;
+}
+
 function renderGraphSection(container, user) {
     container.innerHTML = '';
     const graphGrid = document.createElement('div');
@@ -397,15 +412,21 @@ function renderGraphSection(container, user) {
     </div>`;
 
     const radarDiv = document.createElement('div');
+    const sharedAverageSnapshot = getSharedVisionRadarAverageSnapshot();
+    const savedRadarData = sharedAverageSnapshot
+        ? buildVisionRadarDataFromAverageSnapshot(user, sharedAverageSnapshot, VISION_STAGES)
+        : getSavedVisionRadarData(user);
     const myPageVisionUsers = currentUser ? { [currentUser]: user } : {};
-    const radarData = buildVisionRadarData(user, myPageVisionUsers, VISION_STAGES, isSystemUserId);
-    radarDiv.innerHTML = renderVisionRadarChart(radarData, { title: '👁️ ビジョンの記録' });
+    const radarData = savedRadarData || buildVisionRadarData(user, myPageVisionUsers, VISION_STAGES, isSystemUserId);
+    radarDiv.innerHTML = renderVisionRadarChart(radarData, { title: savedRadarData ? '👁️ ビジョン平均との差' : '👁️ ビジョンの記録' });
     const myPageRadarCard = radarDiv.firstElementChild;
     const myPageRadarBasis = myPageRadarCard?.querySelector('.vision-radar-head span');
-    if (myPageRadarBasis) myPageRadarBasis.textContent = '自分基準 100';
-    myPageRadarCard?.querySelectorAll('.vision-radar-summary span, .vision-radar-legend span, .vision-radar-note').forEach(element => {
-        element.textContent = element.textContent.replace(/平均/g, '自分基準');
-    });
+    if (!savedRadarData && myPageRadarBasis) myPageRadarBasis.textContent = '自分基準 100';
+    if (!savedRadarData) {
+        myPageRadarCard?.querySelectorAll('.vision-radar-summary span, .vision-radar-legend span, .vision-radar-note').forEach(element => {
+            element.textContent = element.textContent.replace(/平均/g, '自分基準');
+        });
+    }
     if (myPageRadarCard) graphGrid.appendChild(myPageRadarCard);
 
     const weakDiv = document.createElement('div');

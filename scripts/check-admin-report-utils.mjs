@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 
 import {
   escapeHtml,
+  buildVisionRadarAverageSnapshot,
   buildVisionRadarData,
+  buildVisionRadarDataFromAverageSnapshot,
   getTopMistakeDetails,
   formatWeakKeyLabel,
   formatRecordSeconds,
@@ -104,5 +106,23 @@ assert.match(radarHtml, /vision-radar-card/);
 assert.match(radarHtml, /&lt;vision&gt;/);
 assert.match(radarHtml, /本人/);
 assert.match(radarHtml, /平均 100/);
+
+const averageSnapshot = buildVisionRadarAverageSnapshot(
+  visionUsers,
+  visionStages,
+  userId => userId === '__GLOBAL_SETTINGS__' || userId === 'Master_Debug'
+);
+assert.equal(averageSnapshot.groups.length, 5);
+assert.equal(averageSnapshot.hasAnyClassData, true);
+assert.ok(averageSnapshot.groups.find(group => group.id === 'find').classAverage > 0);
+const radarDataFromSnapshot = buildVisionRadarDataFromAverageSnapshot(
+  visionUsers.student_a,
+  averageSnapshot,
+  visionStages
+);
+assert.equal(
+  radarDataFromSnapshot.groups.find(group => group.id === 'find').score,
+  radarData.groups.find(group => group.id === 'find').score
+);
 
 console.log('Admin report utility check passed.');

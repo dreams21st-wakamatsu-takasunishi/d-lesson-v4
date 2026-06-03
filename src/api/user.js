@@ -267,6 +267,16 @@ function maybeEnterSingleStudentUser() {
     return true;
 }
 
+function pruneUsersToSingleStudentAccessIfNeeded() {
+    const studentUserId = getSingleStudentAccessUserId();
+    if (!studentUserId || !users?.[studentUserId]) return;
+
+    const scopedUsers = {};
+    if (users[GLOBAL_SETTINGS_ID]) scopedUsers[GLOBAL_SETTINGS_ID] = users[GLOBAL_SETTINGS_ID];
+    scopedUsers[studentUserId] = users[studentUserId];
+    users = scopedUsers;
+}
+
 function lessonAccessMatchesUserData(access, userId) {
     if (!access || !userId || access.role !== 'teacher') return false;
     const user = users?.[userId];
@@ -1331,11 +1341,13 @@ export async function loadUsers() {
             users = newUsers;
             normalizeUsersCollection();
             await loadCloudSettingsIfEnabled();
+            if (useRlsCloudSync) pruneUsersToSingleStudentAccessIfNeeded();
             localStorage.setItem(STORAGE_KEY, JSON.stringify(users)); 
         } else {
             if (useRlsCloudSync) {
                 users = {};
                 await loadCloudSettingsIfEnabled();
+                pruneUsersToSingleStudentAccessIfNeeded();
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(users));
             } else {
                 // If the cloud table is empty, keep local data.
@@ -1353,6 +1365,7 @@ export async function loadUsers() {
     
     if (!users || typeof users !== 'object') users = {};
     normalizeUsersCollection();
+    if (useRlsCloudSync) pruneUsersToSingleStudentAccessIfNeeded();
     applyCustomGlobalSettingsIfReady();
     if ((useRlsCloudSync || useLegacyCloudSync) && !cloudLoadFailed) {
         setSyncStatus(useRlsCloudSync ? 'rls synced' : 'synced');

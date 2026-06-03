@@ -14,10 +14,13 @@ import {
     getVisionDifficultySuffix
 } from './admin-dashboard-utils.js';
 import {
+    buildVisionRadarAverageSnapshot,
     buildVisionRadarData,
     escapeHtml,
     renderVisionRadarChart
 } from './admin-report-utils.js';
+
+let visionRadarAverageSnapshotSaveInProgress = false;
 
 function getStudentRows() {
     const rows = [];
@@ -48,6 +51,41 @@ function getStudentRows() {
     if (isDataFixed) saveUsers(false);
     rows.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
     return rows;
+}
+
+function getVisionRadarAverageSnapshotFingerprint(snapshot) {
+    return JSON.stringify({
+        groups: (snapshot?.groups || []).map(group => ({
+            id: group.id,
+            classAverage: Number.isFinite(group.classAverage) ? Number(group.classAverage.toFixed(3)) : null,
+            classRecordCount: group.classRecordCount,
+            totalRecordSlots: group.totalRecordSlots,
+            hasClassData: Boolean(group.hasClassData)
+        }))
+    });
+}
+
+function refreshVisionRadarAverageSnapshot(rows) {
+    if (!Array.isArray(rows) || rows.length === 0) return;
+    const averageUsers = Object.fromEntries(rows.map(row => [row.id, row.user]));
+    const snapshot = buildVisionRadarAverageSnapshot(averageUsers, VISION_STAGES, isSystemUserId);
+    const fingerprint = getVisionRadarAverageSnapshotFingerprint(snapshot);
+    const settings = users[GLOBAL_SETTINGS_ID] || (users[GLOBAL_SETTINGS_ID] = {});
+    if (settings.visionRadarAverageSnapshot?.fingerprint === fingerprint) return;
+
+    settings.visionRadarAverageSnapshot = {
+        ...snapshot,
+        source: 'admin-dashboard',
+        scope: 'all-visible-students',
+        updatedAt: new Date().toISOString(),
+        fingerprint
+    };
+
+    if (visionRadarAverageSnapshotSaveInProgress) return;
+    visionRadarAverageSnapshotSaveInProgress = true;
+    Promise.resolve(saveUsers(false)).finally(() => {
+        visionRadarAverageSnapshotSaveInProgress = false;
+    });
 }
 
 function updateSelectOptions(select, values, allLabel, currentValue = 'all') {
@@ -149,6 +187,7 @@ export function renderDashboardTable() {
         if (!tbody || !gradeSelect || !grpSelect || !sortSelect) return;
 
         const rows = getStudentRows();
+        refreshVisionRadarAverageSnapshot(rows);
         const currentGrade = gradeSelect.value || 'all';
         const currentGroup = grpSelect.value || 'all';
         const sortVal = sortSelect.value || 'name';
@@ -222,6 +261,7 @@ export function renderVisionDashboardTable() {
 
     const suffix = getVisionDifficultySuffix(diffSelect.value);
     const allRows = getStudentRows();
+    refreshVisionRadarAverageSnapshot(allRows);
     const list = getVisionFilteredRows(allRows);
     const averageByStage = {};
     VISION_STAGES.forEach(stage => {
