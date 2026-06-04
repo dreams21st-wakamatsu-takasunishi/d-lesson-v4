@@ -2,67 +2,43 @@
 
 ## 目的
 
-児童がDレッスンへ入るための `児童番号` と `あいことば` を、配布しやすいカード形式で印刷します。
+児童がDレッスンへ入るための `児童番号` と `あいことば` を、管理者画面から個別に印刷します。
 
-カードにはあいことばが含まれるため、出力ファイルと印刷物は名簿と同じ扱いで管理します。
+カードにはあいことばが含まれるため、印刷物は名簿と同じ扱いで管理します。
 
-## 1. CSVを用意する
+## 印刷手順
 
-先に `migration/student-login-accounts.csv` を作成し、Supabase Auth の `auth_user_id` まで入力しておきます。
+1. Dレッスンに管理者アカウントでログインする。
+2. `管理者用` を開く。
+3. `Auth連携` を開く。
+4. 対象児童の行にある `カード` を押す。
+5. 必要に応じて児童番号とあいことばを確認・入力する。
+6. 開いた印刷画面で `印刷` を押す。
 
-CSV確認:
+ブラウザが印刷画面を止めた場合は、Dレッスン公開URLまたはローカルURLのポップアップを許可してから、もう一度 `カード` を押します。
 
-```powershell
-npm.cmd run check:student-login-csv -- --mapping ".\migration\legacy-user-map.csv" --input ".\migration\student-login-accounts.csv" --domain "dlesson.example.com" --require-auth-user-id
-```
+## カードに載せるもの
 
-`dlesson.example.com` は実際に使っている児童ログイン用ドメインに置き換えます。
+- DレッスンURL
+- 児童名
+- 児童番号
+- あいことば
 
-## 2. 印刷用HTMLを作る
+## カードに載せないもの
 
-```powershell
-npm.cmd run build:student-login-cards -- --input ".\migration\student-login-accounts.csv" --output ".\migration\student-login-cards.html"
-```
+- Auth User ID
+- SupabaseのURL
+- 内部メールアドレス
+- 管理者情報
 
-公開URLもカードに印刷する場合:
-
-```powershell
-npm.cmd run build:student-login-cards -- --input ".\migration\student-login-accounts.csv" --output ".\migration\student-login-cards.html" --url "https://dreams21st-wakamatsu-takasunishi.github.io/d-lesson-v4/"
-```
-
-既定ではA4に6枚配置します。文字が大きく見やすく、公開URLを入れても枠からはみ出しにくい設定です。
-
-枚数を変える場合:
-
-```powershell
-npm.cmd run build:student-login-cards -- --input ".\migration\student-login-accounts.csv" --output ".\migration\student-login-cards.html" --cards-per-page 6
-```
-
-名前をカードに印刷したくない場合:
-
-```powershell
-npm.cmd run build:student-login-cards -- --input ".\migration\student-login-accounts.csv" --output ".\migration\student-login-cards.html" --hide-name
-```
-
-## 3. 印刷する
-
-1. `migration/student-login-cards.html` をブラウザで開く。
-2. 画面上の `印刷` ボタン、または `Ctrl + P` を押す。
-3. 用紙を `A4`、倍率を `既定` または `100%` にする。
-4. 余白が大きく崩れる場合は、ブラウザの印刷設定で `背景のグラフィック` をオンにする。
-
-## 4. 配布時の注意
+## 配布時の注意
 
 - 児童番号とあいことばは、本人だけに配る。
 - 予備カードは鍵のかかる場所で保管する。
 - 紛失した場合は、その児童の Supabase Auth パスワードを変更し、カードを再発行する。
 - 使わなくなったカードはそのまま捨てず、細かく破棄する。
 
-## 5. Gitに入れないもの
+## 補足
 
-次のファイルは児童情報・あいことばを含むため、Gitに入れません。
-
-- `migration/student-login-accounts.csv`
-- `migration/student-login-cards.html`
-
-`migration/` は `.gitignore` で除外済みです。
+`migration/student-login-accounts.csv` は、移行作業やAuth連携SQL作成のために使います。  
+現在のログインカード印刷は、CSVからHTMLを作る方式ではなく、Dレッスン管理者画面から対象児童ごとに作成します。

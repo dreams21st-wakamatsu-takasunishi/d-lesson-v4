@@ -11,7 +11,10 @@ import {
 } from '../api/user.js';
 import { showCustomAlert, showCustomConfirm } from './modal.js';
 import { recordAdminAudit } from './admin-audit.js';
-import { renderStudentLoginCardBuilder } from './student-login-cards.js';
+import {
+    openBlankStudentLoginCardPrintWindow,
+    openStudentLoginCardsPrintWindow
+} from './student-login-cards.js';
 import {
     buildAccessSql,
     getRoleAccessDataId,
@@ -189,6 +192,60 @@ async function createStudentAuthAccount(userDataId, inputId) {
     await renderAuthLinkingAdmin();
 }
 
+function openStudentLoginCardForUser(userDataId, defaultPasscode = '') {
+    const popup = openBlankStudentLoginCardPrintWindow();
+    if (!popup) {
+        showCustomAlert('印刷画面を開けませんでした。ブラウザのポップアップ許可を確認してください。');
+        return;
+    }
+
+    const user = users[userDataId];
+    if (!user) {
+        popup.close();
+        showCustomAlert('児童データが見つかりません。');
+        return;
+    }
+
+    const displayName = getUserDisplayName(userDataId);
+    const numberInput = window.prompt(`${displayName} さんの児童番号を入力してください。`, user.loginNumber || '');
+    if (numberInput === null) {
+        popup.close();
+        return;
+    }
+    const studentNumber = String(numberInput || '').replace(/\D/g, '');
+    if (!studentNumber) {
+        popup.close();
+        showCustomAlert('児童番号を入力してください。');
+        return;
+    }
+
+    const passcodeInput = window.prompt(`${displayName} さんのあいことばを入力してください。\n※あいことばはDレッスンに保存しません。`, defaultPasscode);
+    if (passcodeInput === null) {
+        popup.close();
+        return;
+    }
+    const passcode = String(passcodeInput || '').replace(/\D/g, '');
+    if (passcode.length < 6) {
+        popup.close();
+        showCustomAlert('あいことばは6けた以上の数字で入力してください。');
+        return;
+    }
+
+    if (user.loginNumber !== studentNumber) {
+        user.loginNumber = studentNumber;
+        void saveUsers(true);
+    }
+
+    openStudentLoginCardsPrintWindow([{
+        student_number: studentNumber,
+        display_name: displayName,
+        password: passcode
+    }], {
+        title: 'Dレッスン ログインカード',
+        cardsPerPage: 6
+    }, popup);
+}
+
 async function copyText(text) {
     try {
         await navigator.clipboard.writeText(text);
@@ -272,7 +329,6 @@ export async function renderAuthLinkingAdmin() {
     const body = document.getElementById('auth-link-student-tbody');
     if (!body) return;
     body.innerHTML = '';
-    renderStudentLoginCardBuilder();
 
     const list = Object.keys(users)
         .filter(userId => users[userId] && !users[userId].isMaster && !isSystemUserId(userId))
@@ -321,10 +377,17 @@ export async function renderAuthLinkingAdmin() {
 
         const copyBtn = document.createElement('button');
         copyBtn.className = 'btn-secondary';
-        copyBtn.style.cssText = 'font-size:13px; padding:6px 10px;';
+        copyBtn.style.cssText = 'font-size:13px; padding:6px 10px; margin-right:6px;';
         copyBtn.innerText = 'SQL';
         copyBtn.onclick = () => copyStudentAccessSql(item.id, inputId);
         actionTd.appendChild(copyBtn);
+
+        const cardBtn = document.createElement('button');
+        cardBtn.className = 'btn-secondary';
+        cardBtn.style.cssText = 'font-size:13px; padding:6px 10px;';
+        cardBtn.innerText = 'カード';
+        cardBtn.onclick = () => openStudentLoginCardForUser(item.id);
+        actionTd.appendChild(cardBtn);
         tr.appendChild(actionTd);
 
         body.appendChild(tr);

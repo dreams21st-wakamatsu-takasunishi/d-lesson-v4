@@ -60,9 +60,8 @@ Dレッスンでは、このIDと `user_data.id` を `lesson_user_access` で紐
 紛失時:
 
 1. 対象児童のSupabase Authパスワードを変更する。
-2. `student-login-accounts.csv` を更新する。
-3. カードを再発行する。
-4. 古いカードは使わないようにする。
+2. 管理者画面の `Auth連携` で対象児童のカードを再発行する。
+3. 古いカードは使わないようにする。
 
 詳しい印刷手順は [児童ログインカード印刷手順](../student-login-card-printing.md) を参照してください。
 
@@ -130,4 +129,3 @@ VITE_ALLOW_LEGACY_ADMIN_PASS=true
 - `migration/student-login-accounts.csv` などの認証情報入りファイルはGitに入れない。
 - 公開前に `npm.cmd run check:release` と `npm.cmd run check:public-latest` を実行する。
 - Supabase SQLでRLS検証を行う。
-

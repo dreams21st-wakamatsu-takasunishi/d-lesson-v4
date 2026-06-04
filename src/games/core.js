@@ -350,6 +350,11 @@ export function startGame(sid, mode, options = {}) {
 
     if (document.activeElement) document.activeElement.blur();
     els.playArea.innerHTML = ''; els.fbOverlay.style.display = 'none'; els.fbTime.style.display = 'none'; els.failOverlay.style.display = 'none'; els.ctxMenu.style.display = 'none';
+    els.playArea.style.display = 'flex';
+    els.playArea.style.justifyContent = 'center';
+    els.playArea.style.alignItems = 'center';
+    els.playArea.style.overflow = 'hidden';
+    els.playArea.style.overflowY = 'hidden';
     els.fbOverlay.classList.remove('certificate-earned-feedback');
     clearFeedbackActions();
     els.playArea.classList.toggle('vision-play-area', mode === 'vision');

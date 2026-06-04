@@ -4,6 +4,7 @@ import {
     getUserDisplayName,
     getPracticeLogs,
     formatPracticeActivity,
+    hasLessonRole,
     isSystemUserId
 } from '../api/user.js';
 import { STAGE_ORDER, VISION_STAGES, WORD_DATA } from '../data/constants.js';
@@ -14,6 +15,7 @@ import { recordAdminAudit } from './admin-audit.js';
 import {
     escapeHtml,
     buildVisionRadarData,
+    buildVisionRadarDataFromAverageSnapshot,
     formatRecordSeconds,
     getTopMistakeDetails,
     renderVisionRadarChart,
@@ -22,6 +24,19 @@ import {
 } from './admin-report-utils.js';
 
 const STUDENT_REPORT_PRINT_WINDOW_FEATURES = 'popup=yes,width=980,height=760,menubar=no,toolbar=no,location=no,status=no,scrollbars=yes,resizable=yes';
+
+function getSharedVisionRadarAverageSnapshot() {
+    const snapshot = users?.[GLOBAL_SETTINGS_ID]?.visionRadarAverageSnapshot;
+    return snapshot && Array.isArray(snapshot.groups) ? snapshot : null;
+}
+
+function buildReportVisionRadarData(user) {
+    const sharedAverageSnapshot = getSharedVisionRadarAverageSnapshot();
+    if (sharedAverageSnapshot && hasLessonRole('admin')) {
+        return buildVisionRadarDataFromAverageSnapshot(user, sharedAverageSnapshot, VISION_STAGES);
+    }
+    return buildVisionRadarData(user, users, VISION_STAGES, isSystemUserId);
+}
 
 function buildPracticeLogReportHtml(userId) {
     const logs = getPracticeLogs(userId).slice(0, 12);
@@ -99,7 +114,7 @@ function buildStudentReportHtml(userId) {
         </table>`
         : '<p style="color:#777; margin:0;">ビジョンのタイム記録はまだありません。</p>';
     const visionRadarHtml = renderVisionRadarChart(
-        buildVisionRadarData(user, users, VISION_STAGES, isSystemUserId),
+        buildReportVisionRadarData(user),
         { title: 'ビジョン平均との差', compact: true }
     );
 

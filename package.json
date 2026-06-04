@@ -30,7 +30,6 @@
     "check:student-login-csv": "node scripts/check-student-login-csv.mjs",
     "convert:legacy-users": "node scripts/convert-legacy-users.mjs",
     "build:student-login-csv": "node scripts/build-student-login-csv.mjs",
-    "build:student-login-cards": "node scripts/build-student-login-cards.mjs",
     "build:student-access-sql": "node scripts/build-student-access-sql.mjs",
     "build": "vite build",
     "preview": "vite preview"

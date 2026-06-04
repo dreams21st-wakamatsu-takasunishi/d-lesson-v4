@@ -2,61 +2,6 @@ import { showCustomAlert } from './modal.js';
 
 const DEFAULT_TITLE = 'Dレッスン ログインカード';
 const LOGIN_CARD_PRINT_WINDOW_FEATURES = 'popup=yes,width=1180,height=840,menubar=no,toolbar=no,location=no,status=no,scrollbars=yes,resizable=yes';
-const cardState = {
-    rows: [],
-    fileName: ''
-};
-
-function stripBom(text) {
-    return String(text || '').replace(/^\uFEFF/, '');
-}
-
-function parseCsvLine(line) {
-    const cells = [];
-    let value = '';
-    let inQuote = false;
-
-    for (let i = 0; i < line.length; i += 1) {
-        const char = line[i];
-        const next = line[i + 1];
-        if (char === '"' && inQuote && next === '"') {
-            value += '"';
-            i += 1;
-        } else if (char === '"') {
-            inQuote = !inQuote;
-        } else if (char === ',' && !inQuote) {
-            cells.push(value);
-            value = '';
-        } else {
-            value += char;
-        }
-    }
-
-    cells.push(value);
-    return cells;
-}
-
-function normalizeKey(key) {
-    const value = String(key || '').trim().toLowerCase();
-    if (['student_number', 'number', 'no', '児童番号'].includes(value)) return 'student_number';
-    if (['display_name', 'displayname', 'name', 'student_name', '児童名', '名前'].includes(value)) return 'display_name';
-    if (['password', 'passcode', 'あいことば', '合言葉'].includes(value)) return 'password';
-    return value;
-}
-
-function parseCsv(text) {
-    const lines = stripBom(text).split(/\r?\n/).filter(line => line.trim() !== '');
-    if (lines.length === 0) return [];
-    const headers = parseCsvLine(lines[0]).map(normalizeKey);
-    return lines.slice(1).map((line, index) => {
-        const cells = parseCsvLine(line);
-        const row = { __line: index + 2 };
-        headers.forEach((header, cellIndex) => {
-            row[header] = (cells[cellIndex] || '').trim();
-        });
-        return row;
-    });
-}
 
 function validateRows(rows) {
     const failures = [];
@@ -98,12 +43,12 @@ function getDefaultLoginUrl() {
     return url.toString();
 }
 
-function getCardOptions() {
+function normalizeCardOptions(options = {}) {
     return {
-        title: document.getElementById('student-card-title')?.value?.trim() || DEFAULT_TITLE,
-        loginUrl: document.getElementById('student-card-url')?.value?.trim() || getDefaultLoginUrl(),
-        hideName: Boolean(document.getElementById('student-card-hide-name')?.checked),
-        cardsPerPage: Number.parseInt(document.getElementById('student-card-per-page')?.value || '6', 10) || 6
+        title: options.title || DEFAULT_TITLE,
+        loginUrl: options.loginUrl ?? getDefaultLoginUrl(),
+        hideName: Boolean(options.hideName),
+        cardsPerPage: Number.parseInt(options.cardsPerPage || '6', 10) || 6
     };
 }
 
@@ -299,124 +244,35 @@ function buildPrintableHtml(rows, options) {
 </html>`;
 }
 
-function renderPreview() {
-    const preview = document.getElementById('student-card-preview');
-    const status = document.getElementById('student-card-status');
-    if (!preview || !status) return;
-
-    if (cardState.rows.length === 0) {
-        status.innerText = 'CSVを選ぶと、ここにカードのプレビューが表示されます。';
-        preview.innerHTML = '';
-        return;
-    }
-
-    const options = getCardOptions();
-    const sampleRows = cardState.rows.slice(0, 4);
-    status.innerText = `${cardState.fileName} から ${cardState.rows.length}人分を読み込みました。下は先頭${sampleRows.length}人のプレビューです。`;
-    preview.innerHTML = sampleRows.map(row => `
-        <div style="border:1px solid #94a3b8; border-radius:8px; background:#f8fafc; padding:10px; min-width:180px;">
-            <div style="font-weight:800; text-align:center; color:#0f172a;">${escapeHtml(options.title)}</div>
-            ${options.hideName ? '' : `<div style="font-size:13px; text-align:center; color:#334155; overflow-wrap:anywhere;">${escapeHtml(row.display_name || '')}</div>`}
-            <div style="display:grid; grid-template-columns:70px 1fr; gap:6px; align-items:center; margin-top:8px;">
-                <span style="font-size:12px; font-weight:800;">児童番号</span>
-                <strong style="border:1px solid #cbd5e1; border-radius:6px; background:#fff; padding:5px; text-align:center;">${escapeHtml(row.student_number)}</strong>
-                <span style="font-size:12px; font-weight:800;">あいことば</span>
-                <strong style="border:1px solid #cbd5e1; border-radius:6px; background:#fff; padding:5px; text-align:center; overflow-wrap:anywhere;">${escapeHtml(row.password)}</strong>
-            </div>
-        </div>
-    `).join('');
-}
-
-async function handleCsvInput(event) {
-    const file = event.target?.files?.[0];
-    if (!file) return;
+export function openStudentLoginCardsPrintWindow(rows, options = {}, targetWindow = null) {
+    const safeRows = Array.isArray(rows)
+        ? rows.map((row, index) => ({
+            __line: row.__line || index + 1,
+            student_number: String(row.student_number || '').trim(),
+            display_name: String(row.display_name || '').trim(),
+            password: String(row.password || '').trim()
+        }))
+        : [];
 
     try {
-        const rows = parseCsv(await file.text());
-        validateRows(rows);
-        cardState.rows = rows;
-        cardState.fileName = file.name;
-        renderPreview();
+        validateRows(safeRows);
     } catch (error) {
-        cardState.rows = [];
-        cardState.fileName = '';
-        renderPreview();
-        showCustomAlert(`児童ログインカードCSVを読み込めませんでした。\n${error.message}`);
-    }
-}
-
-function openPrintWindow() {
-    if (cardState.rows.length === 0) {
-        showCustomAlert('先に student-login-accounts.csv を選んでください。');
+        if (targetWindow) targetWindow.close();
+        showCustomAlert(`ログインカードを作成できません。\n${error.message}`);
         return;
     }
 
-    const popup = window.open('', '_blank', LOGIN_CARD_PRINT_WINDOW_FEATURES);
+    const popup = targetWindow || window.open('', '_blank', LOGIN_CARD_PRINT_WINDOW_FEATURES);
     if (!popup) {
         showCustomAlert('印刷画面を開けませんでした。ブラウザのポップアップ許可を確認してください。');
         return;
     }
 
     popup.document.open();
-    popup.document.write(buildPrintableHtml(cardState.rows, getCardOptions()));
+    popup.document.write(buildPrintableHtml(safeRows, normalizeCardOptions(options)));
     popup.document.close();
 }
 
-export function renderStudentLoginCardBuilder() {
-    const section = document.getElementById('admin-sec-auth-link');
-    if (!section) return;
-
-    let container = document.getElementById('student-login-card-builder');
-    if (!container) {
-        container = document.createElement('div');
-        container.id = 'student-login-card-builder';
-        section.appendChild(container);
-    }
-
-    container.style.cssText = 'width:100%; margin-top:16px;';
-    container.innerHTML = `
-        <div style="background:#fff7ed; border:1px solid #fdba74; border-radius:8px; padding:15px;">
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; margin-bottom:12px;">
-                <div>
-                    <div style="font-weight:800; color:#9a3412; font-size:16px;">児童ログインカード作成</div>
-                    <div style="font-size:13px; color:#7c2d12; line-height:1.5;">student-login-accounts.csv をこの画面で読み込み、印刷用カードを作成します。CSVはアップロードされず、このブラウザ内だけで使われます。</div>
-                </div>
-                <button id="student-card-print-btn" class="btn-primary" type="button" style="font-size:14px; padding:8px 12px; background:#ea580c;">印刷画面を開く</button>
-            </div>
-            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:10px; align-items:end;">
-                <label style="font-size:13px; font-weight:bold; color:#7c2d12;">CSVファイル
-                    <input id="student-card-csv-input" type="file" accept=".csv,text/csv" style="display:block; margin-top:6px; width:100%; font-size:13px;">
-                </label>
-                <label style="font-size:13px; font-weight:bold; color:#7c2d12;">カードタイトル
-                    <input id="student-card-title" type="text" value="${escapeHtml(DEFAULT_TITLE)}" style="box-sizing:border-box; display:block; margin-top:6px; width:100%; padding:8px; border:1px solid #fdba74; border-radius:6px;">
-                </label>
-                <label style="font-size:13px; font-weight:bold; color:#7c2d12;">カードに載せるURL
-                    <input id="student-card-url" type="text" value="${escapeHtml(getDefaultLoginUrl())}" style="box-sizing:border-box; display:block; margin-top:6px; width:100%; padding:8px; border:1px solid #fdba74; border-radius:6px;">
-                </label>
-                <label style="font-size:13px; font-weight:bold; color:#7c2d12;">A4 1ページの枚数
-                    <select id="student-card-per-page" style="box-sizing:border-box; display:block; margin-top:6px; width:100%; padding:8px; border:1px solid #fdba74; border-radius:6px;">
-                        <option value="4">4枚</option>
-                        <option value="6" selected>6枚</option>
-                        <option value="8">8枚</option>
-                    </select>
-                </label>
-                <label style="display:flex; gap:8px; align-items:center; font-size:13px; font-weight:bold; color:#7c2d12; padding-bottom:8px;">
-                    <input id="student-card-hide-name" type="checkbox">
-                    名前を印刷しない
-                </label>
-            </div>
-            <div id="student-card-status" style="margin-top:10px; font-size:13px; color:#7c2d12;">CSVを選ぶと、ここにカードのプレビューが表示されます。</div>
-            <div id="student-card-preview" style="margin-top:10px; display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px;"></div>
-        </div>
-    `;
-
-    document.getElementById('student-card-csv-input')?.addEventListener('change', handleCsvInput);
-    document.getElementById('student-card-print-btn')?.addEventListener('click', openPrintWindow);
-    ['student-card-title', 'student-card-url', 'student-card-per-page', 'student-card-hide-name'].forEach(id => {
-        const input = document.getElementById(id);
-        input?.addEventListener('input', renderPreview);
-        input?.addEventListener('change', renderPreview);
-    });
-
-    renderPreview();
+export function openBlankStudentLoginCardPrintWindow() {
+    return window.open('', '_blank', LOGIN_CARD_PRINT_WINDOW_FEATURES);
 }
