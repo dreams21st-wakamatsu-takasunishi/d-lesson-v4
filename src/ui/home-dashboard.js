@@ -1,4 +1,4 @@
-import { STAGE_ORDER, VISION_STAGES, WORD_STAGES } from '../data/constants.js';
+import { ALPHABET_READING_STAGES, STAGE_ORDER, VISION_STAGES, WORD_STAGES } from '../data/constants.js';
 import {
     users,
     currentUser,
@@ -67,6 +67,8 @@ export function updateHomeDashboard() {
 
     const maxKb = STAGE_ORDER.length;
     const kSeq = u.keyboardSequence || 0;
+    const alphabetSeq = Number(u.alphabetSequence || 0);
+    const maxAlphabet = ALPHABET_READING_STAGES.length;
     const kPct = Math.floor((kSeq / maxKb) * 100);
     const kbPctDisplay = document.getElementById('home-kb-pct');
     const kbBar = document.getElementById('home-kb-bar');
@@ -92,6 +94,13 @@ export function updateHomeDashboard() {
         btn.onclick = () => {
             homeUiHandlers.openMouseMenu();
             startGame(mLv + 1, 'mouse');
+        };
+    } else if (alphabetSeq < maxAlphabet) {
+        const nextAlphabet = ALPHABET_READING_STAGES[alphabetSeq];
+        btn.innerHTML = `<span class="recommend-main">🔤 ABCをおぼえる</span><span class="recommend-sub">${nextAlphabet.title} へすすむ</span>`;
+        btn.onclick = () => {
+            showScreen('screen-keyboard-menu');
+            startGame(nextAlphabet.id, 'keyboard');
         };
     } else if (kSeq < maxKb) {
         const nextId = STAGE_ORDER[kSeq];

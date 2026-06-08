@@ -1,4 +1,5 @@
 import {
+    ALPHABET_READING_STAGES,
     BLIND_STAGES,
     BRIDGE_STAGES,
     EXAMS,
@@ -11,6 +12,7 @@ export function getStageName(sid) {
     if (sid === 9888) return '[ID:9888] にがてとっくん';
 
     let st = KEYBOARD_STAGES.find(s => s.id === sid) ||
+        ALPHABET_READING_STAGES.find(s => s.id === sid) ||
         BLIND_STAGES.find(s => s.id === sid) ||
         BRIDGE_STAGES.find(s => s.id === sid) ||
         EXAMS.find(s => s.id === sid) ||

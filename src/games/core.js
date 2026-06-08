@@ -1,6 +1,8 @@
 import { users, currentUser, saveUsers, GLOBAL_SETTINGS_ID, getUserDisplayName, canWriteCurrentUserRow, recordPracticeActivity } from '../api/user.js';
 
 import {
+  ALPHABET_READING_STAGES,
+  ALPHABET_READING_NAMES,
   KEYBOARD_STAGES,
   VISION_STAGES,
   BLIND_STAGES,
@@ -37,6 +39,7 @@ let mainQueue =[], currentCount = 0, totalCount = 1;
 let totalKeysTyped = 0, missKeysTyped = 0, targetKey = '', isHomeReturn = false, pendingHome = null;
 let isHiragana = false, isWord = false, currHiraObj = null, activeRomajiList =[], currRomajiIdx = 0;
 let isExam = false, mistakeCount = 0, maxMistakes = 3, mistakeStats = {}, hasMissLimit = false;
+let isAlphabetReading = false;
 let timerInterval = null, startTime = 0, isTimeAttackMode = false;
 let cancelStartHandler = null; 
 let typedRomajiStr = "";
@@ -112,6 +115,10 @@ export const els = {
 
 function getPracticeTitle() {
     if (gameMode === 'mouse') return `マウス練習 M-${currentStage}`;
+    if (isAlphabetReading) {
+        const stage = ALPHABET_READING_STAGES.find(st => st.id === currentStage);
+        return `ABCをおぼえる ${stage ? stage.title : currentStage}`;
+    }
     if (gameMode === 'vision') {
         const stageId = String(currentStage).replace('_hard', '').replace('_easy', '');
         const stage = VISION_STAGES.find(st => st.id === stageId);
@@ -335,6 +342,7 @@ export function startGame(sid, mode, options = {}) {
     startTime = 0;
     
     isExam = EXAMS.some(ex => ex.id === sid) || [2101, 2102, 2103, 2104].includes(sid) || (sid >= 3200 && sid < 3300);
+    isAlphabetReading = mode === 'keyboard' && sid >= 9000 && sid < 9100;
     isHiragana = (sid >= 3000 && sid < 4000) || sid === 9888;
     isWord = (sid >= 4000 && sid < 5000);
     hasMissLimit = isExam;
@@ -495,6 +503,19 @@ function isTextInputQuestion() {
     return Boolean(currHiraObj) && (isHiragana || isWord || currentStage === 9888);
 }
 
+function speakAlphabetName(key) {
+    const reading = ALPHABET_READING_NAMES[key] || key;
+    if ('speechSynthesis' in window) {
+        speechSynthesis.cancel();
+        const speechText = key === 'O' ? 'オー。' : reading;
+        const msg = new SpeechSynthesisUtterance(speechText);
+        msg.lang = 'ja-JP';
+        msg.rate = key === 'O' ? 0.65 : 0.85;
+        speechSynthesis.speak(msg);
+    }
+    return reading;
+}
+
 function handleKeyDown(e) {
     if (typeof e.key !== 'string') return;
     if (isProcessing ||['Enter', 'Shift', 'Control', 'Alt', 'Meta', 'Tab', 'CapsLock', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
@@ -537,6 +558,11 @@ function handleKeyDown(e) {
     if (isCorrect) {
         totalKeysTyped++; SoundManager.playType();
         if (users[currentUser]) users[currentUser].totalKeysTyped = (users[currentUser].totalKeysTyped || 0) + 1; 
+        if (isAlphabetReading) {
+            const reading = speakAlphabetName(targetKey);
+            const hq = document.getElementById('romaji-hint');
+            if (hq) hq.innerHTML = `<span class="alphabet-reading-result">${targetKey} は ${reading}</span>`;
+        }
         if (isHomeReturn) { 
             mainQueue.shift(); currentCount++; updateProgress(); pendingHome = null; isProcessing = true; 
             setTimeout(() => { if (mainQueue.length === 0) markClear(); else nextKeyQ(); }, 200); return; 
@@ -685,7 +711,16 @@ function setupRomajiTable(sid) {
 
 function setupKeyboard(s) {
     renderKeyboard(); let pool =[];
-    if (s === 9888) { 
+    if (isAlphabetReading) {
+        const stage = ALPHABET_READING_STAGES.find(item => item.id === s);
+        const keys = stage ? stage.keys : [];
+        const raw = [];
+        keys.forEach(key => {
+            raw.push({ key, alphabetName: ALPHABET_READING_NAMES[key] || key });
+            raw.push({ key, alphabetName: ALPHABET_READING_NAMES[key] || key });
+        });
+        pool = shuffle(raw);
+    } else if (s === 9888) { 
         let mistakes = users[currentUser].globalMistakes || {};
         let sortedKeys = getTrainableMistakeEntries(mistakes, 8).map(item => item.key);
         let raw =[];
@@ -749,8 +784,13 @@ function nextKeyQ() {
     let item = mainQueue[0], isBlindItem = false;
     if (typeof item === 'object') { if (item.key) { targetKey = item.key; isBlindItem = !!item.blind; isHomeReturn = !!item.ret; currHiraObj = null; } else if (item.h) { currHiraObj = item; isBlindItem = !!item.blind; isHomeReturn = false; } } else { targetKey = item; isHomeReturn = false; currHiraObj = null; }
     const wrap = document.getElementById('keyboard-wrapper'); if (isBlindItem) { wrap.classList.add('blind-active'); els.instText.innerText = 'みないで うってみよう！'; } else { wrap.classList.remove('blind-active'); }
+    wrap.classList.toggle('alphabet-reading-active', isAlphabetReading);
     const isTextInputItem = Boolean(currHiraObj) && (isHiragana || isWord || currentStage === 9888);
-    if (isTextInputItem) {
+    if (isAlphabetReading) {
+        els.instText.innerText = 'おなじ かたちの キーを おしてね';
+        mq.innerHTML = `<span class="alphabet-question-letter">${targetKey}</span>`;
+        hq.innerHTML = '<span class="alphabet-reading-hint">できたら よみかたが きこえます</span>';
+    } else if (isTextInputItem) {
         if (currentStage === 9888) els.instText.innerText = 'にがて とっくん！'; else els.instText.innerText = isWord ? 'ローマじで ことばを うとう！' : 'したのローマじを みて おそう！';
         
         if (currRomajiIdx === 0 || activeRomajiList.length === 0) { 
@@ -839,7 +879,13 @@ export function markClear() {
             if (missKeysTyped === 0 && isExam && users[currentUser]) users[currentUser].hasPerfectClear = true;
 
             let isFirst = false;
-            if (currentStage !== 9888) {
+            if (isAlphabetReading) {
+                const idx = ALPHABET_READING_STAGES.findIndex(stage => stage.id === currentStage);
+                if (idx !== -1 && users[currentUser] && Number(users[currentUser].alphabetSequence || 0) <= idx) {
+                    users[currentUser].alphabetSequence = idx + 1;
+                    isFirst = true;
+                }
+            } else if (currentStage !== 9888) {
                 const idx = STAGE_ORDER.indexOf(currentStage);
                 if (idx !== -1 && users[currentUser] && users[currentUser].keyboardSequence <= idx) {
                     const previousSequence = Number(users[currentUser].keyboardSequence || 0);
@@ -880,7 +926,8 @@ export function markClear() {
                 }
             } else {
                 let cat = Math.floor(currentStage / 1000);
-                if (cat === 1) { coinGain = isFirst ? 100 : 10; }      
+                if (isAlphabetReading) { coinGain = isFirst ? 40 : 5; }
+                else if (cat === 1) { coinGain = isFirst ? 100 : 10; }      
                 else if (cat === 2) { coinGain = isFirst ? 150 : 20; } 
                 else if (cat === 3) { coinGain = isFirst ? 200 : 30; } 
                 else if (cat === 4) { coinGain = isFirst ? 250 : 50; } 
@@ -981,6 +1028,7 @@ function failExam() {
 function finishItemSuccess() {
     const cur = mainQueue.shift(); const nxt = mainQueue[0]; currRomajiIdx = 0; activeRomajiList =[];
     let delay = 500;
+    if (isAlphabetReading) delay = 900;
     if (cur && !cur.blind && nxt && nxt.blind && !nxt.ret && ((cur.key && cur.key === nxt.key) || (cur.h && cur.h === nxt.h))) {
         delay = 1500; 
         setTimeout(() => {

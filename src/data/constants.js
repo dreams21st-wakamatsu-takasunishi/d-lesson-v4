@@ -54,6 +54,44 @@ export const FINGER_MAP = {
 export const FINGER_HOME_MAP = {'l-pinky':'A','l-ring':'S','l-middle':'D','l-index':'F','r-index':'J','r-middle':'K','r-ring':'L','r-pinky':';','thumb':'SPACE'};
 export const COLOR_CLASS_MAP = {'thumb':'color-thumb','l-index':'color-index','r-index':'color-index','l-middle':'color-middle','r-middle':'color-middle','l-ring':'color-ring','r-ring':'color-ring','l-pinky':'color-pinky','r-pinky':'color-pinky'};
 
+export const ALPHABET_READING_STAGES = [
+    { id: 9001, title: 'ABC 1', keys: ['A', 'B', 'C', 'D', 'E', 'F'], sub: 'A〜Fを きいて おぼえる' },
+    { id: 9002, title: 'ABC 2', keys: ['G', 'H', 'I', 'J', 'K', 'L'], sub: 'G〜Lを きいて おぼえる' },
+    { id: 9003, title: 'ABC 3', keys: ['M', 'N', 'O', 'P', 'Q', 'R'], sub: 'M〜Rを きいて おぼえる' },
+    { id: 9004, title: 'ABC 4', keys: ['S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'], sub: 'S〜Zを きいて おぼえる' },
+    { id: 9005, title: 'ABC まぜこぜ', keys: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M'], sub: 'A〜Mを まぜて やってみる' },
+    { id: 9006, title: 'ABC チャレンジ', keys: ['N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'], sub: 'N〜Zを まぜて やってみる' }
+];
+
+export const ALPHABET_READING_NAMES = {
+    A: 'エー',
+    B: 'ビー',
+    C: 'シー',
+    D: 'ディー',
+    E: 'イー',
+    F: 'エフ',
+    G: 'ジー',
+    H: 'エイチ',
+    I: 'アイ',
+    J: 'ジェイ',
+    K: 'ケー',
+    L: 'エル',
+    M: 'エム',
+    N: 'エヌ',
+    O: 'オー',
+    P: 'ピー',
+    Q: 'キュー',
+    R: 'アール',
+    S: 'エス',
+    T: 'ティー',
+    U: 'ユー',
+    V: 'ブイ',
+    W: 'ダブリュー',
+    X: 'エックス',
+    Y: 'ワイ',
+    Z: 'ゼット'
+};
+
 export const KEYBOARD_STAGES =[
     {id:1001,keys:['F','J','SPACE'],title:'人差し指(ホーム)'},{id:1002,keys:['D','K','SPACE'],title:'中指(ホーム)'},{id:1003,keys:['S','L','SPACE'],title:'薬指(ホーム)'},{id:1004,keys:['A',';','SPACE'],title:'小指(ホーム)'},{id:1005,keys:['G','H','SPACE'],title:'人差し指(うち)'},
     {id:1006,keys:['R','U','SPACE'],title:'人差し指(うえ)'},{id:1007,keys:['E','I','SPACE'],title:'中指(うえ)'},{id:1008,keys:['W','O','SPACE'],title:'薬指(うえ)'},{id:1009,keys:['Q','P','SPACE'],title:'小指(うえ)'},{id:1010,keys:['T','Y','SPACE'],title:'人差し指(遠うえ)'},
@@ -149,6 +187,7 @@ export const STAGE_ORDER =[
 ];
 
 export const KB_CHAPTERS =[
+    {id:'alphabet',title:'ABCをおぼえる',stages:[9001,9002,9003,9004,9005,9006],bridge:null,exam:null},
     {id:'home',title:'ホームポジション編',stages:[1001,1002,1003,1004,1005],bridge:1051,exam:1101},
     {id:'top',title:'上の段編',stages:[1006,1007,1008,1009,1010],bridge:1052,exam:1102},
     {id:'bottom',title:'下の段編',stages:[1011,1012,1013,1014,1015],bridge:1053,exam:1103},

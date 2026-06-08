@@ -1,4 +1,5 @@
 import {
+    ALPHABET_READING_STAGES,
     KEYBOARD_STAGES,
     BLIND_STAGES,
     BRIDGE_STAGES,
@@ -20,6 +21,10 @@ import { startGame } from '../games/core.js';
 let currentKeyboardCategory = 'basic';
 
 const KEYBOARD_CHAPTER_GUIDE = {
+    alphabet: {
+        focus: 'ABCをおぼえる',
+        goal: 'ABCをみて、おなじキーをおします。できたら、よみかたがきこえます。'
+    },
     home: {
         focus: 'ホームポジション',
         goal: 'F/J から始めて、A/S/D/F/J/K/L/; を安定して押す練習です。'
@@ -113,6 +118,7 @@ export function goToKeyboardCategory() {
 
 function updateWeakTrainingEntryVisibility() {
     const card = document.getElementById('keyboard-weak-training-card');
+    const alphabetCard = document.getElementById('keyboard-alphabet-card');
     const grid = document.getElementById('keyboard-category-choice-grid');
     if (!card || !grid) return;
 
@@ -120,6 +126,15 @@ function updateWeakTrainingEntryVisibility() {
     const hasWeakTraining = Boolean(u && hasTrainableMistakes(u.globalMistakes));
     card.style.display = hasWeakTraining ? 'grid' : 'none';
     grid.classList.toggle('no-weak-training', !hasWeakTraining);
+
+    if (alphabetCard) {
+        const canUseAlphabet = Boolean(u && Number(u.mouseLevel || 0) >= 7);
+        alphabetCard.classList.toggle('keyboard-category-card-locked', !canUseAlphabet);
+        alphabetCard.setAttribute('aria-disabled', canUseAlphabet ? 'false' : 'true');
+        alphabetCard.onclick = canUseAlphabet
+            ? () => goToKeyboardMenu('alphabet')
+            : () => showCustomAlert('マウスれんしゅうを M-7 まで クリアすると、ABCをおぼえる れんしゅうが できます。');
+    }
 }
 
 export function goToKeyboardMenu(type) {
@@ -129,6 +144,7 @@ export function goToKeyboardMenu(type) {
     document.getElementById('kb-bottom-back-btn').style.display = 'block';
 
     let title = 'キーボードのれんしゅう';
+    if (type === 'alphabet') title = 'ABCをおぼえる';
     if (type === 'basic') title = 'きほんれんしゅう';
     if (type === 'blind') title = 'タッチタイピング';
     if (type === 'hiragana') title = 'ひらがなれんしゅう';
@@ -157,6 +173,8 @@ function renderKeyboardChapters() {
     if (currentKeyboardCategory === 'basic') {
         displayChapters = KB_CHAPTERS.filter(c => ['home', 'top', 'bottom', 'number'].includes(c.id));
         showMasterExam = 1999;
+    } else if (currentKeyboardCategory === 'alphabet') {
+        displayChapters = KB_CHAPTERS.filter(c => c.id === 'alphabet');
     } else if (currentKeyboardCategory === 'blind') {
         displayChapters = KB_CHAPTERS.filter(c => c.id === 'blind');
         showMasterExam = 2999;
@@ -169,10 +187,18 @@ function renderKeyboardChapters() {
     }
 
     const isUnlocked = (id) => {
+        if (currentKeyboardCategory === 'alphabet') {
+            const index = ALPHABET_READING_STAGES.findIndex(stage => stage.id === id);
+            return index === 0 || (index !== -1 && Number(u.alphabetSequence || 0) >= index);
+        }
         const x = STAGE_ORDER.indexOf(id);
         return x === 0 || (x !== -1 && seq >= x);
     };
     const isCleared = (id) => {
+        if (currentKeyboardCategory === 'alphabet') {
+            const index = ALPHABET_READING_STAGES.findIndex(stage => stage.id === id);
+            return index !== -1 && Number(u.alphabetSequence || 0) > index;
+        }
         const x = STAGE_ORDER.indexOf(id);
         return x !== -1 && seq > x;
     };
@@ -226,6 +252,7 @@ function renderKeyboardChapters() {
         btn.style.minHeight = '168px';
 
         let icon = '⌨️';
+        if (currentKeyboardCategory === 'alphabet') icon = '🔤';
         if (currentKeyboardCategory === 'basic') icon = '🅰️';
         if (currentKeyboardCategory === 'blind') icon = '🙈';
         if (currentKeyboardCategory === 'hiragana') icon = 'あ';
@@ -330,7 +357,15 @@ function getKeyboardStageDisplay(sid, index = 0) {
     let sub = '';
     let exCls = '';
 
-    if (sid >= 4000 && sid < 5000) {
+    if (sid >= 9000 && sid < 9100) {
+        const st = ALPHABET_READING_STAGES.find(s => s.id === sid);
+        if (st) {
+            title = `ABC-${index + 1}`;
+            keys = st.keys.join(' ');
+            sub = st.sub;
+            exCls = 'alphabet-reading';
+        }
+    } else if (sid >= 4000 && sid < 5000) {
         const st = WORD_DATA.find(s => s.id === sid);
         if (st) {
             keys = st.chars.slice(0, 1).map(c => c.h).join('');
@@ -440,14 +475,24 @@ export function renderKeyboardStages(chap) {
     if (!u) return;
     const seq = u.keyboardSequence || 0;
     const isUnlocked = (id) => {
+        if (currentKeyboardCategory === 'alphabet') {
+            const index = ALPHABET_READING_STAGES.findIndex(stage => stage.id === id);
+            return index === 0 || (index !== -1 && Number(u.alphabetSequence || 0) >= index);
+        }
         const x = STAGE_ORDER.indexOf(id);
         return x === 0 || (x !== -1 && seq >= x);
     };
     const isCleared = (id) => {
+        if (currentKeyboardCategory === 'alphabet') {
+            const index = ALPHABET_READING_STAGES.findIndex(stage => stage.id === id);
+            return index !== -1 && Number(u.alphabetSequence || 0) > index;
+        }
         const x = STAGE_ORDER.indexOf(id);
         return x !== -1 && seq > x;
     };
-    const targetId = STAGE_ORDER[seq];
+    const targetId = currentKeyboardCategory === 'alphabet'
+        ? ALPHABET_READING_STAGES[Math.min(Number(u.alphabetSequence || 0), ALPHABET_READING_STAGES.length - 1)]?.id
+        : STAGE_ORDER[seq];
 
     const grid = document.getElementById('kb-stage-grid');
     grid.innerHTML = '';
