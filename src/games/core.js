@@ -185,6 +185,19 @@ function getNextStageAfterClear() {
     }
 
     if (gameMode === 'keyboard' && currentStage !== 9888) {
+        if (isAlphabetReading) {
+            const idx = ALPHABET_READING_STAGES.findIndex(stage => stage.id === currentStage);
+            const nextStage = idx !== -1 ? ALPHABET_READING_STAGES[idx + 1] : null;
+            if (nextStage) {
+                return {
+                    label: 'つぎのステージへすすむ',
+                    detail: nextStage.title,
+                    run: () => startGame(nextStage.id, 'keyboard')
+                };
+            }
+            return null;
+        }
+
         const idx = STAGE_ORDER.indexOf(currentStage);
         const nextStage = idx !== -1 ? STAGE_ORDER[idx + 1] : null;
         if (nextStage) {
