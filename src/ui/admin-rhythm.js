@@ -189,6 +189,19 @@ function selectTimelineNoteByIndex(index) {
     renderDraftTimeline();
 }
 
+function deleteSelectedTimelineNote() {
+    const chart = getSelectedChart();
+    const index = chart.indexOf(selectedTimelineNote);
+    if (index < 0) {
+        updateDraftStatus('削除するノーツを選択してください。');
+        return;
+    }
+    chart.splice(index, 1);
+    selectedTimelineNote = chart[Math.min(index, chart.length - 1)] || null;
+    renderDraftTimeline();
+    updateDraftStatus('選択中のノーツを削除しました。');
+}
+
 function updateSelectedNotePanel() {
     const panel = document.getElementById('admin-rhythm-selected-note');
     if (!panel) return;
@@ -443,6 +456,7 @@ function renderDraftTimeline() {
     const playhead = document.getElementById('admin-rhythm-timeline-playhead');
     const timeLabel = document.getElementById('admin-rhythm-timeline-time');
     const track = document.getElementById('admin-rhythm-timeline-track');
+    const ruler = document.getElementById('admin-rhythm-timeline-ruler');
     if (!timeline) return;
 
     const audio = getAudioElement();
@@ -461,6 +475,15 @@ function renderDraftTimeline() {
         const selected = note === selectedTimelineNote ? ' is-selected' : '';
         return `<span class="admin-rhythm-timeline-note${selected}" data-note-index="${index}" style="left:${left}%;" title="${index + 1}こめ ${second.toFixed(2)}秒"></span>`;
     }).join('');
+    if (ruler) {
+        const tickStep = duration <= 15 ? 1 : duration <= 30 ? 2 : duration <= 60 ? 5 : duration <= 120 ? 10 : 15;
+        const ticks = [];
+        for (let second = 0; second <= duration + 0.001; second += tickStep) {
+            const left = Math.max(0, Math.min(100, (second / duration) * 100));
+            ticks.push(`<span class="admin-rhythm-timeline-tick" style="left:${left}%"><small>${Math.round(second)}秒</small></span>`);
+        }
+        ruler.innerHTML = ticks.join('');
+    }
 
     const currentSecond = Math.max(0, Number(audio?.currentTime) || 0);
     const playheadLeft = Math.max(0, Math.min(100, (currentSecond / duration) * 100));
@@ -1002,6 +1025,14 @@ function handleTimelineKeyboardNudge(event) {
         const currentIndex = Math.max(0, getSelectedNoteIndex());
         const nextIndex = event.key === 'ArrowUp' ? currentIndex - 1 : currentIndex + 1;
         selectTimelineNoteByIndex(nextIndex);
+        return;
+    }
+    if (event.key === 'Delete') {
+        const targetName = String(event.target?.tagName || '').toLowerCase();
+        if (['input', 'select', 'textarea'].includes(targetName) || event.target?.isContentEditable) return;
+        event.preventDefault();
+        event.stopPropagation();
+        deleteSelectedTimelineNote();
     }
 }
 
@@ -1042,6 +1073,7 @@ function bindAdminRhythmEvents() {
     document.querySelectorAll('[data-rhythm-nudge]').forEach(button => {
         button.addEventListener('click', () => nudgeSelectedTimelineNote(Number(button.dataset.rhythmNudge)));
     });
+    document.getElementById('admin-rhythm-delete-selected')?.addEventListener('click', deleteSelectedTimelineNote);
     document.getElementById('admin-rhythm-timeline-notes')?.addEventListener('pointerdown', startTimelineNoteDrag);
     document.getElementById('admin-rhythm-timeline-notes')?.addEventListener('click', event => {
         const noteEl = event.target.closest('.admin-rhythm-timeline-note');
@@ -1196,10 +1228,12 @@ export function renderAdminRhythmSongs() {
                         <button type="button" data-rhythm-nudge="-0.02">← 0.02秒</button>
                         <button type="button" data-rhythm-nudge="0.02">0.02秒 →</button>
                         <button type="button" data-rhythm-nudge="0.1">0.1秒 →</button>
+                        <button type="button" id="admin-rhythm-delete-selected" class="danger">選択中ノーツを削除</button>
                     </div>
                     <p class="admin-rhythm-timeline-help">青い丸を左右にドラッグすると、ノーツの位置を調整できます。</p>
                     <div class="admin-rhythm-timeline-scroll">
                         <div id="admin-rhythm-timeline-track" class="admin-rhythm-timeline-track">
+                            <div id="admin-rhythm-timeline-ruler" class="admin-rhythm-timeline-ruler"></div>
                             <div id="admin-rhythm-timeline-playhead" class="admin-rhythm-timeline-playhead"></div>
                             <div id="admin-rhythm-timeline-notes" class="admin-rhythm-timeline-notes"></div>
                         </div>

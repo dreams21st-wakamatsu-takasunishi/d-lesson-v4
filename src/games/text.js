@@ -505,7 +505,8 @@ function showTextResult() {
     const plainRef = rawRef.replace(/\{([^|]+)\|([^}]+)\}/g, '$1');
     const typed = typeBox.value;
     const refClean = plainRef.replace(/\r\n/g, '\n'); const typedClean = typed.replace(/\r\n/g, '\n');
-    let missCount = calcMissCount(refClean, typedClean); let totalCount = typedClean.length; let netCount = Math.max(0, totalCount - missCount);
+    const reviewAnalysis = buildTextReviewAnalysis(refClean, typedClean);
+    let missCount = reviewAnalysis.missCount; let totalCount = typedClean.length; let netCount = Math.max(0, totalCount - missCount);
 
     if (!users[currentUser].textRecords) users[currentUser].textRecords = {};
     let isNewRecord = false, prev = users[currentUser].textRecords[currentTextTask.id];
@@ -551,7 +552,7 @@ function showTextResult() {
     SoundManager.playClear(); createConfetti(users[currentUser]?.activeEffect || 'default');
 
     const sourceHtml = generateSourceHtml(refClean);
-    const reviewedInputHtml = generateReviewedInputHtml(refClean, typedClean);
+    const reviewedInputHtml = generateReviewedInputHtml(reviewAnalysis);
 
     const details = document.getElementById('text-result-details');
     details.innerHTML = `
@@ -615,8 +616,8 @@ export function backToMenuFromText() {
     showScreen('screen-text-menu');
 }
 
-function calcMissCount(ref, typed) {
-    if (typed.length === 0) return 0;
+function buildTextReviewAnalysis(ref, typed) {
+    if (typed.length === 0) return { missCount: 0, operations: [] };
     const N = ref.length, M = typed.length, dp = Array.from({length: N + 1}, () => Array(M + 1).fill(0));
     for (let i = 0; i <= N; i++) dp[i][0] = i; for (let j = 0; j <= M; j++) dp[0][j] = j;
     for (let i = 1; i <= N; i++) {
@@ -625,24 +626,70 @@ function calcMissCount(ref, typed) {
             dp[i][j] = Math.min( dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost );
         }
     }
-    let minMiss = Infinity; for (let i = 0; i <= N; i++) { if (dp[i][M] < minMiss) minMiss = dp[i][M]; }
-    return minMiss;
+    let minMiss = Infinity;
+    let bestRefEnd = 0;
+    for (let i = 0; i <= N; i++) {
+        if (dp[i][M] < minMiss) {
+            minMiss = dp[i][M];
+            bestRefEnd = i;
+        }
+    }
+
+    const operations = [];
+    let i = bestRefEnd;
+    let j = M;
+    while (i > 0 || j > 0) {
+        if (i > 0 && j > 0) {
+            const cost = ref[i - 1] === typed[j - 1] ? 0 : 1;
+            if (dp[i][j] === dp[i - 1][j - 1] + cost) {
+                operations.push({
+                    type: cost === 0 ? 'correct' : 'miss',
+                    typed: typed[j - 1],
+                    expected: ref[i - 1]
+                });
+                i--;
+                j--;
+                continue;
+            }
+        }
+        if (i > 0 && dp[i][j] === dp[i - 1][j] + 1) {
+            operations.push({
+                type: 'omitted',
+                typed: '',
+                expected: ref[i - 1]
+            });
+            i--;
+            continue;
+        }
+        if (j > 0 && dp[i][j] === dp[i][j - 1] + 1) {
+            operations.push({
+                type: 'miss',
+                typed: typed[j - 1],
+                expected: ''
+            });
+            j--;
+            continue;
+        }
+        break;
+    }
+    operations.reverse();
+    return { missCount: minMiss, operations };
 }
 
 function generateSourceHtml(ref) {
     return `<span class="diff-source">${formatReviewText(ref)}</span>`;
 }
 
-function generateReviewedInputHtml(ref, typed) {
-    if (!typed) return '<span class="diff-empty">入力はありません</span>';
-    const renderDiffChar = (str, className) => `<span class="${className}">${formatReviewText(str)}</span>`;
-    let reviewedHtml = '';
-    const typedLength = typed.length;
-    for (let i = 0; i < typedLength; i++) {
-        const className = typed[i] === ref[i] ? 'diff-correct' : 'diff-miss';
-        reviewedHtml += renderDiffChar(typed[i], className);
-    }
-    return reviewedHtml;
+function generateReviewedInputHtml(analysis) {
+    if (!analysis?.operations?.length) return '<span class="diff-empty">入力はありません</span>';
+    return analysis.operations.map(op => {
+        if (op.type === 'correct') return `<span class="diff-correct">${formatReviewText(op.typed)}</span>`;
+        if (op.type === 'omitted') {
+            return `<span class="diff-miss diff-omitted" title="ぬけています: ${escapeHtml(op.expected)}">${formatReviewText(op.expected)}</span>`;
+        }
+        const title = op.expected ? `正しくは: ${escapeHtml(op.expected)}` : 'よけいな入力です';
+        return `<span class="diff-miss" title="${title}">${formatReviewText(op.typed)}</span>`;
+    }).join('');
 }
 
 function formatReviewText(str) {

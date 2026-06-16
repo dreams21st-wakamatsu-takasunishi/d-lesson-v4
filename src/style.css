@@ -3640,6 +3640,7 @@ input[type="text"], input[type="date"], input[type="number"] { padding: 10px; fo
 .diff-source { color: #263238 !important; }
 .diff-correct { color: #1b5e20 !important; background: #e8f5e9; border-bottom: 2px solid #66bb6a; font-weight: 900; }
 .diff-miss { color: #c62828 !important; background: #ffebee; border-bottom: 2px solid #ef5350; font-weight: 900; }
+.diff-omitted { border: 1px dashed #ef5350; border-radius: 4px; padding: 0 2px; margin: 0 1px; }
 .diff-newline { color: #78909c !important; font-size: 0.9em; }
 .diff-empty { color: #78909c; font-weight: 900; }
 .legend-correct { color: #1b5e20; }
@@ -4884,7 +4885,7 @@ input[type="text"], input[type="date"], input[type="number"] { padding: 10px; fo
     position: relative;
     width: 200%;
     min-width: 1440px;
-    height: 148px;
+    height: 164px;
     border-radius: 22px;
     background:
         repeating-linear-gradient(90deg, rgba(38, 50, 56, 0.11) 0 2px, transparent 2px 8.333%),
@@ -4906,6 +4907,33 @@ input[type="text"], input[type="date"], input[type="number"] { padding: 10px; fo
     z-index: 1;
 }
 
+.admin-rhythm-timeline-ruler {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.admin-rhythm-timeline-tick {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: rgba(38, 50, 56, 0.12);
+    transform: translateX(-50%);
+}
+
+.admin-rhythm-timeline-tick small {
+    position: absolute;
+    top: 8px;
+    left: 6px;
+    min-width: 34px;
+    color: #607d8b;
+    font-size: 11px;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
 .admin-rhythm-timeline-playhead {
     position: absolute;
     top: 0;
@@ -4919,6 +4947,7 @@ input[type="text"], input[type="date"], input[type="number"] { padding: 10px; fo
 .admin-rhythm-timeline-notes {
     position: absolute;
     inset: 0;
+    z-index: 2;
 }
 
 .admin-rhythm-timeline-note {
@@ -4999,6 +5028,11 @@ input[type="text"], input[type="date"], input[type="number"] { padding: 10px; fo
     font-size: 13px;
     font-weight: 900;
     cursor: pointer;
+}
+
+.admin-rhythm-nudge-actions button.danger {
+    background: #ffebee;
+    color: #b71c1c;
 }
 
 .admin-rhythm-nudge-actions button:hover,
