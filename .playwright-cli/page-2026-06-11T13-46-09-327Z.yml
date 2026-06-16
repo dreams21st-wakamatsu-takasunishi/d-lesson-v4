@@ -1,0 +1,27 @@
+- generic [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - heading "Dレッスン" [level=1] [ref=e5]
+      - button "スタート" [ref=e6] [cursor=pointer]
+      - generic [ref=e7]: データを読み込み中...
+    - button "🚪 ログアウト" [ref=e9] [cursor=pointer]
+  - generic [ref=e11]:
+    - heading "Dレッスン ログイン" [level=2] [ref=e12]
+    - generic [ref=e13]:
+      - heading "児童ログイン" [level=3] [ref=e14]
+      - paragraph [ref=e15]: 児童番号とあいことばを入力してください。
+      - generic [ref=e16]:
+        - generic [ref=e17]:
+          - text: 児童番号
+          - textbox "児童番号" [active] [ref=e18]:
+            - /placeholder: "例: 1"
+        - generic [ref=e19]:
+          - text: あいことば
+          - generic [ref=e20]:
+            - textbox "あいことば 👀 みる" [ref=e21]:
+              - /placeholder: 6けた以上
+            - button "👀 みる" [ref=e22] [cursor=pointer]
+      - button "ログイン" [disabled] [ref=e23] [cursor=pointer]
+      - paragraph [ref=e24]: 先生または管理者のアカウントでログインしてください。
+    - group [ref=e25]:
+      - generic "先生・管理者ログイン" [ref=e26] [cursor=pointer]

@@ -6,6 +6,7 @@ import {
     openFreeTimeSite,
     openTypingRankingPage,
     saveTypingRankingNickname,
+    backFromMinigame,
     startMinigame,
     stopMinigame
 } from '../games/minigame.js';
@@ -65,7 +66,7 @@ export function registerAppGlobalHandlers() {
         closeStampOverlay, closeRewardOverlay,
         openTeacherMenu, openTeacherStatus, closeTeacherStatus,
 
-        startMinigame, stopMinigame, openExternalTypingSite, openFreeTimeSite, openTypingRankingPage, saveTypingRankingNickname,
+        startMinigame, stopMinigame, backFromMinigame, openExternalTypingSite, openFreeTimeSite, openTypingRankingPage, saveTypingRankingNickname,
         toggleRubyInPrep, toggleNaviInPrep, confirmStartTextPractice, closeTextPrepModal,
         submitTextPractice, closeTextResult, backToMenuFromText, setTextTaskFilter,
 

@@ -16,7 +16,7 @@ function getFocusableElements() {
     });
 }
 
-export function initFocusNavigation({ backToMenu, stopMinigame, backToMenuFromText }) {
+export function initFocusNavigation({ backToMenu, backFromMinigame, stopMinigame, backToMenuFromText }) {
     if (isFocusNavigationInitialized) return;
     isFocusNavigationInitialized = true;
 
@@ -29,8 +29,12 @@ export function initFocusNavigation({ backToMenu, stopMinigame, backToMenuFromTe
             if (activeScreen.id === 'screen-game') {
                 backToMenu(true);
             } else if (activeScreen.id === 'screen-minigame') {
-                stopMinigame(true);
-                showScreen('screen-minigame-menu');
+                if (backFromMinigame) {
+                    backFromMinigame(true);
+                } else {
+                    stopMinigame(true);
+                    showScreen('screen-minigame-menu');
+                }
             } else if (activeScreen.id === 'screen-text-game') {
                 backToMenuFromText();
             } else {

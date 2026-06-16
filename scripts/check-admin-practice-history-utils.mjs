@@ -11,22 +11,24 @@ assert.equal(getLocalDateKey('not-a-date'), '');
 
 const csv = buildPracticeHistoryCsv([
   {
+    dateKey: '2026-05-09',
     timeText: '09:30',
     name: 'Test Student',
     grade: '3',
     group: 'Monday,A',
+    category: 'practice',
     title: 'Mouse "M-1"',
     detail: 'click',
     amount: '1',
     coins: 50
   }
-], '2026-05-09');
+]);
 
 assert.equal(
   csv,
   [
-    'date,time,student_name,grade,group,practice,detail,amount,coins',
-    '2026-05-09,09:30,Test Student,3,"Monday,A","Mouse ""M-1""",click,1,50'
+    'date,time,student_name,grade,group,category,practice,detail,amount,coins',
+    '2026-05-09,09:30,Test Student,3,"Monday,A",practice,"Mouse ""M-1""",click,1,50'
   ].join('\r\n')
 );
 

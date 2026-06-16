@@ -24,6 +24,7 @@ import { createConfetti } from '../ui/reward.js';
 let mgInterval, mgSpawnInterval, mgTimeInterval, mgTime = 60, mgScore = 0, mgWords =[], mgActiveWord = null, cancelMgStartHandler = null;
 let currentMinigameType = 'meteor';
 let mgStartedAt = 0;
+let minigameReturnScreen = 'screen-minigame-menu';
 
 let dBoost = 1.0;
 let dLevel = 1;
@@ -32,6 +33,76 @@ let dChallengeWords = { 1:[], 2:[], 3:[], 4:[] };
 let dCurrentWordMissed = false;
 let rankingWarningShown = false;
 let lastTypingPromptByBucket = {};
+
+let rhythmAudioContext = null;
+let rhythmFrameId = null;
+let rhythmCountdownTimer = null;
+let rhythmStartDelayTimer = null;
+let rhythmSongEndTimer = null;
+let rhythmAudioStartTimer = null;
+let rhythmScheduledNodes = [];
+let rhythmExternalAudio = null;
+let rhythmCurrentSong = null;
+let rhythmLiveNotes = [];
+let rhythmStartTime = 0;
+let rhythmCurrentBeat = 0;
+let rhythmIsPlaying = false;
+let rhythmPerfectCount = 0;
+let rhythmGreatCount = 0;
+let rhythmGoodCount = 0;
+let rhythmMissCount = 0;
+let rhythmCombo = 0;
+let rhythmMaxCombo = 0;
+let rhythmLastFeedbackId = 0;
+let rhythmSelectedSongId = null;
+let rhythmCurrentDifficulty = 'normal';
+
+const RHYTHM_NOTE_WINDOW_BEATS = 0.38;
+const RHYTHM_PERFECT_WINDOW_BEATS = 0.13;
+const RHYTHM_GREAT_WINDOW_BEATS = 0.24;
+const RHYTHM_TARGET_X = 8;
+const RHYTHM_SCROLL_SPEED = 16.5;
+const RHYTHM_START_DELAY_MS = 1500;
+const RHYTHM_LEAD_IN_BEATS = 2;
+const RHYTHM_CUSTOM_SONGS_KEY = 'rhythmCustomSongs';
+
+const RHYTHM_DIFFICULTIES = {
+    easy: {
+        label: 'イージー',
+        description: '音は同じ。ノーツ少なめで合わせやすい',
+        bpmMultiplier: 1,
+        chartMode: 'easy',
+        hitWindowBeats: 0.50,
+        perfectWindowBeats: 0.18,
+        greatWindowBeats: 0.32,
+        scoreMultiplier: 0.85
+    },
+    normal: {
+        label: 'ノーマル',
+        description: '標準のノーツ数。いままでに近い難しさ',
+        bpmMultiplier: 1,
+        chartMode: 'normal',
+        hitWindowBeats: RHYTHM_NOTE_WINDOW_BEATS,
+        perfectWindowBeats: RHYTHM_PERFECT_WINDOW_BEATS,
+        greatWindowBeats: RHYTHM_GREAT_WINDOW_BEATS,
+        scoreMultiplier: 1
+    },
+    hard: {
+        label: 'ハード',
+        description: 'ノーツ多め。細かいリズムも出ます',
+        bpmMultiplier: 1,
+        chartMode: 'hard',
+        hitWindowBeats: 0.28,
+        perfectWindowBeats: 0.10,
+        greatWindowBeats: 0.19,
+        scoreMultiplier: 1.18
+    }
+};
+
+const RHYTHM_LANES = [
+    { id: 0, name: 'たいこ', emoji: '🥁', soundType: 'drum' }
+];
+
 
 const TYPING_RANKING_TABLE = 'lesson_typing_rankings';
 const TYPING_RANKING_TOP_LIMIT = 5;
@@ -104,11 +175,25 @@ function openTrackedExternalSite(site, options) {
 }
 
 function getCurrentMinigameModeKey() {
+    if (currentMinigameType === 'rhythm') return 'rhythm';
     return currentMinigameType === 'd_challenge' ? 'd_challenge' : 'meteor';
 }
 
 function getCurrentMinigameTitle() {
+    if (currentMinigameType === 'rhythm') {
+        return rhythmCurrentSong
+            ? `リズムゲーム ${rhythmCurrentSong.title} ${getRhythmDifficultyConfig().label}`
+            : 'ぽんぽんリズム';
+    }
     return currentMinigameType === 'd_challenge' ? 'Dチャレンジ' : 'タイピングゲーム';
+}
+
+function getCurrentMinigameActivityCategory() {
+    return currentMinigameType === 'rhythm' ? 'free-time' : 'minigame';
+}
+
+function getCurrentMinigameActivityTitle() {
+    return currentMinigameType === 'rhythm' ? `じゆうじかん ${getCurrentMinigameTitle()}` : getCurrentMinigameTitle();
 }
 
 function canUseCloudTypingRanking() {
@@ -600,14 +685,838 @@ function updateBoostGauge() {
     }
 }
 
+function getRhythmAudioContext() {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return null;
+    if (!rhythmAudioContext) rhythmAudioContext = new AudioContextClass();
+    if (rhythmAudioContext.state === 'suspended') {
+        void rhythmAudioContext.resume();
+    }
+    return rhythmAudioContext;
+}
+
+function createRhythmGain(ctx, startAt, gainValue, duration, attack = 0.01) {
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, startAt);
+    gain.gain.linearRampToValueAtTime(gainValue, startAt + attack);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
+    return gain;
+}
+
+function playRhythmOscillator({
+    frequency,
+    startAt,
+    duration,
+    type = 'sine',
+    gainValue = 0.08,
+    attack = 0.01,
+    frequencyEnd = null
+}) {
+    const ctx = getRhythmAudioContext();
+    if (!ctx) return;
+
+    const oscillator = ctx.createOscillator();
+    const gain = createRhythmGain(ctx, startAt, gainValue, duration, attack);
+    oscillator.type = type;
+    oscillator.frequency.setValueAtTime(frequency, startAt);
+    if (frequencyEnd) {
+        oscillator.frequency.exponentialRampToValueAtTime(frequencyEnd, startAt + duration);
+    }
+    oscillator.connect(gain);
+    gain.connect(ctx.destination);
+    oscillator.start(startAt);
+    oscillator.stop(startAt + duration + 0.02);
+}
+
+function playRhythmNoise(startAt, duration, gainValue, filterType, frequency) {
+    const ctx = getRhythmAudioContext();
+    if (!ctx) return;
+
+    const bufferSize = Math.max(1, Math.floor(ctx.sampleRate * duration));
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+        data[i] = Math.random() * 2 - 1;
+    }
+
+    const source = ctx.createBufferSource();
+    const filter = ctx.createBiquadFilter();
+    const gain = createRhythmGain(ctx, startAt, gainValue, duration, 0.004);
+    source.buffer = buffer;
+    filter.type = filterType;
+    filter.frequency.setValueAtTime(frequency, startAt);
+    source.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    source.start(startAt);
+}
+
+function playRhythmKick(startAt) {
+    playRhythmOscillator({
+        frequency: 150,
+        frequencyEnd: 50,
+        startAt,
+        duration: 0.18,
+        type: 'sine',
+        gainValue: 0.18,
+        attack: 0.002
+    });
+}
+
+function playRhythmMelody(frequency, startAt, gainValue = 0.075) {
+    playRhythmOscillator({
+        frequency,
+        startAt,
+        duration: 0.24,
+        type: 'sine',
+        gainValue,
+        attack: 0.01
+    });
+}
+
+function playRhythmMissSound() {
+    const ctx = getRhythmAudioContext();
+    if (!ctx) return;
+    const startAt = ctx.currentTime + 0.005;
+    playRhythmOscillator({
+        frequency: 160,
+        frequencyEnd: 80,
+        startAt,
+        duration: 0.2,
+        type: 'sawtooth',
+        gainValue: 0.09,
+        attack: 0.004
+    });
+}
+
+function stopRhythmScheduledAudio() {
+    rhythmScheduledNodes.forEach((node) => {
+        try {
+            node.stop();
+        } catch {
+            // Already stopped.
+        }
+    });
+    rhythmScheduledNodes = [];
+}
+
+function stopRhythmExternalAudio() {
+    if (rhythmAudioStartTimer) {
+        clearTimeout(rhythmAudioStartTimer);
+        rhythmAudioStartTimer = null;
+    }
+    if (!rhythmExternalAudio) return;
+    try {
+        rhythmExternalAudio.pause();
+        rhythmExternalAudio.currentTime = 0;
+    } catch {
+        // The audio element may be in a browser-controlled state.
+    }
+    rhythmExternalAudio = null;
+}
+
+function getRhythmNoteFrequency(noteName) {
+    const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    const match = /^([A-G]#?)([0-9])$/.exec(noteName);
+    if (!match) return 440;
+    const noteIndex = notes.indexOf(match[1]);
+    const octave = Number(match[2]);
+    const midi = 12 * (octave + 1) + noteIndex;
+    return 440 * Math.pow(2, (midi - 69) / 12);
+}
+
+function scheduleRhythmMelody(song, delaySeconds = 0) {
+    const ctx = getRhythmAudioContext();
+    if (!ctx || !song) return;
+    if (song.audioUrl) return;
+
+    stopRhythmScheduledAudio();
+    const beatSeconds = 60 / song.bpm;
+    const audioStart = ctx.currentTime + delaySeconds + 0.08;
+    (song.melody || []).forEach(([noteName, durationBeats, beat]) => {
+        const frequency = getRhythmNoteFrequency(noteName);
+        const startAt = audioStart + beat * beatSeconds;
+        const duration = Math.max(0.08, durationBeats * beatSeconds * 0.9);
+        const oscillator = ctx.createOscillator();
+        const gain = createRhythmGain(ctx, startAt, 0.06, duration, 0.015);
+        oscillator.type = 'triangle';
+        oscillator.frequency.setValueAtTime(frequency, startAt);
+        oscillator.connect(gain);
+        gain.connect(ctx.destination);
+        oscillator.start(startAt);
+        oscillator.stop(startAt + duration + 0.02);
+        rhythmScheduledNodes.push(oscillator);
+    });
+}
+
+function playRhythmInstrument(soundType) {
+    const ctx = getRhythmAudioContext();
+    if (!ctx) return;
+    const startAt = ctx.currentTime + 0.005;
+    if (soundType === 'drum') {
+        playRhythmKick(startAt);
+        return;
+    }
+    if (soundType === 'bell') {
+        playRhythmMelody(987.77, startAt, 0.1);
+        playRhythmMelody(1975.54, startAt + 0.02, 0.045);
+        return;
+    }
+    if (soundType === 'frog') {
+        playRhythmMelody(261.63, startAt, 0.09);
+        playRhythmMelody(329.63, startAt + 0.08, 0.055);
+        return;
+    }
+    playRhythmKick(startAt);
+}
+
+function playRhythmUiSound(kind = 'click') {
+    const ctx = getRhythmAudioContext();
+    if (!ctx) return;
+    const startAt = ctx.currentTime + 0.005;
+    if (kind === 'success') {
+        playRhythmMelody(523.25, startAt, 0.08);
+        playRhythmMelody(659.25, startAt + 0.08, 0.08);
+        playRhythmMelody(783.99, startAt + 0.16, 0.08);
+        return;
+    }
+    playRhythmMelody(600, startAt, 0.04);
+}
+
+function stopRhythmRuntime() {
+    document.removeEventListener('keydown', mgHandleKey);
+    if (rhythmFrameId) {
+        cancelAnimationFrame(rhythmFrameId);
+        rhythmFrameId = null;
+    }
+    if (rhythmCountdownTimer) {
+        clearInterval(rhythmCountdownTimer);
+        rhythmCountdownTimer = null;
+    }
+    if (rhythmStartDelayTimer) {
+        clearTimeout(rhythmStartDelayTimer);
+        rhythmStartDelayTimer = null;
+    }
+    if (rhythmSongEndTimer) {
+        clearTimeout(rhythmSongEndTimer);
+        rhythmSongEndTimer = null;
+    }
+    rhythmIsPlaying = false;
+    stopRhythmScheduledAudio();
+    stopRhythmExternalAudio();
+}
+
+function resetRhythmState() {
+    stopRhythmRuntime();
+    rhythmCurrentSong = null;
+    rhythmLiveNotes = [];
+    rhythmStartTime = 0;
+    rhythmCurrentBeat = 0;
+    rhythmPerfectCount = 0;
+    rhythmGreatCount = 0;
+    rhythmGoodCount = 0;
+    rhythmMissCount = 0;
+    rhythmCombo = 0;
+    rhythmMaxCombo = 0;
+    rhythmLastFeedbackId = 0;
+    rhythmSelectedSongId = null;
+    rhythmCurrentDifficulty = 'normal';
+    mgScore = 0;
+}
+
+function getRhythmDifficultyConfig(difficultyKey = rhythmCurrentDifficulty) {
+    return RHYTHM_DIFFICULTIES[difficultyKey] || RHYTHM_DIFFICULTIES.normal;
+}
+
+function getRhythmCustomSongSettings() {
+    const songs = users?.[GLOBAL_SETTINGS_ID]?.[RHYTHM_CUSTOM_SONGS_KEY];
+    return Array.isArray(songs) ? songs : [];
+}
+
+function normalizeRhythmCustomSongForMenu(song) {
+    if (!song || typeof song !== 'object') return null;
+    const id = String(song.id || '').trim();
+    const title = String(song.title || '').trim();
+    const audioUrl = String(song.audioUrl || '').trim();
+    if (!id || !title || !audioUrl || song.visible === false) return null;
+    const bpm = Math.max(40, Math.min(240, Number(song.bpm) || 100));
+    const charts = song.charts && typeof song.charts === 'object' ? song.charts : {};
+    const durationSeconds = Math.max(0, Number(song.durationSeconds) || 0);
+    const durationBeats = durationSeconds > 0 ? durationSeconds * bpm / 60 : 0;
+    return {
+        id,
+        title,
+        emoji: song.emoji || '🎵',
+        bpm,
+        difficulty: song.difficulty || '管理者作成',
+        description: song.description || '先生が追加したリズム曲です。',
+        audioUrl,
+        storageBucket: song.storageBucket || '',
+        storagePath: song.storagePath || '',
+        charts,
+        durationSeconds,
+        durationBeats,
+        melody: [],
+        notes: []
+    };
+}
+
+function getAllRhythmSongs() {
+    const customSongs = getRhythmCustomSongSettings()
+        .map(normalizeRhythmCustomSongForMenu)
+        .filter(Boolean);
+    return customSongs;
+}
+
+function getDefaultRhythmSongId() {
+    return getAllRhythmSongs()[0]?.id || '';
+}
+
+function getRhythmBaseSong(songId) {
+    const songs = getAllRhythmSongs();
+    return songs.find(song => song.id === songId) || songs[0] || null;
+}
+
+function getRhythmBaseBeats(notes) {
+    const beats = notes
+        .map(note => Number(note[0]))
+        .filter(beat => Number.isFinite(beat));
+    return [...new Set(beats)].sort((a, b) => a - b);
+}
+
+function addRhythmBeatIfSpaced(beats, beat, minGap = 0.38) {
+    if (!Number.isFinite(beat)) return;
+    const rounded = Math.round(beat * 1000) / 1000;
+    if (beats.some(existing => Math.abs(existing - rounded) < minGap)) return;
+    beats.push(rounded);
+}
+
+function buildEasyRhythmBeats(baseBeats) {
+    const easyBeats = [];
+    baseBeats.forEach((beat, index) => {
+        const isFirst = index === 0;
+        const isLast = index === baseBeats.length - 1;
+        const farEnough = easyBeats.length === 0 || beat - easyBeats[easyBeats.length - 1] >= 1.45;
+        if (isFirst || isLast || farEnough) easyBeats.push(beat);
+    });
+
+    if (easyBeats.length >= 8 || baseBeats.length <= 8) return easyBeats;
+    return baseBeats.filter((_, index) => index % 2 === 0);
+}
+
+function buildHardRhythmBeats(baseBeats) {
+    const hardBeats = [...baseBeats];
+    baseBeats.forEach((beat, index) => {
+        const nextBeat = baseBeats[index + 1];
+        if (!Number.isFinite(nextBeat)) return;
+        const gap = nextBeat - beat;
+        if (gap >= 2.8) {
+            addRhythmBeatIfSpaced(hardBeats, beat + 1);
+            addRhythmBeatIfSpaced(hardBeats, nextBeat - 1);
+        } else if (gap >= 1.35) {
+            addRhythmBeatIfSpaced(hardBeats, beat + gap / 2);
+        } else if (gap >= 0.95 && index % 4 === 1) {
+            addRhythmBeatIfSpaced(hardBeats, beat + 0.5, 0.34);
+        }
+    });
+    return hardBeats.sort((a, b) => a - b);
+}
+
+function buildRhythmChartNotes(song, config, difficultyKey) {
+    const customChart = Array.isArray(song?.charts?.[difficultyKey]) ? song.charts[difficultyKey] : null;
+    if (customChart && customChart.length > 0) {
+        return customChart
+            .map((note, index) => {
+                const beat = Array.isArray(note)
+                    ? Number(note[0])
+                    : Number(note.beat ?? (Number(note.timeMs) / 1000) * (Number(song.bpm) || 100) / 60);
+                if (!Number.isFinite(beat)) return null;
+                return {
+                    id: `${song.id}-${difficultyKey}-${index}-${Math.round(beat * 1000)}`,
+                    beat,
+                    laneId: 0,
+                    hit: false,
+                    miss: false,
+                    result: ''
+                };
+            })
+            .filter(Boolean)
+            .sort((a, b) => a.beat - b.beat);
+    }
+
+    const baseBeats = getRhythmBaseBeats(song.notes || []);
+    let beats = baseBeats;
+    if (config.chartMode === 'easy') beats = buildEasyRhythmBeats(baseBeats);
+    if (config.chartMode === 'hard') beats = buildHardRhythmBeats(baseBeats);
+    return beats.map((beat, index) => ({
+        id: `${song.id}-${difficultyKey}-${index}-${beat}`,
+        beat,
+        laneId: 0,
+        hit: false,
+        miss: false,
+        result: ''
+    }));
+}
+
+function normalizeRhythmSong(song, difficultyKey = rhythmCurrentDifficulty) {
+    const config = getRhythmDifficultyConfig(difficultyKey);
+    const chartNotes = buildRhythmChartNotes(song, config, difficultyKey);
+    const noteBeats = chartNotes.map(note => note.beat);
+    const melodyEndBeats = (song.melody || []).map(note => Number(note[2]) + Number(note[1])).filter(Number.isFinite);
+    const durationBeats = Number(song.durationBeats) || 0;
+    const totalBeats = Math.max(4, durationBeats, ...noteBeats, ...melodyEndBeats) + 3;
+    const baseBpm = Math.max(40, Math.min(240, Number(song.bpm) || 100));
+    return {
+        ...song,
+        baseBpm,
+        bpm: Math.round(baseBpm * config.bpmMultiplier),
+        playDifficultyKey: difficultyKey,
+        playDifficultyLabel: config.label,
+        totalBeats,
+        notes: chartNotes
+    };
+}
+
+function getRhythmSong(songId, difficultyKey = rhythmCurrentDifficulty) {
+    const baseSong = getRhythmBaseSong(songId);
+    return baseSong ? normalizeRhythmSong(baseSong, difficultyKey) : null;
+}
+
+function getRhythmSongDuration(song) {
+    if (!song) return 0;
+    return song.totalBeats * (60 / song.bpm);
+}
+
+function getRhythmLeadInSeconds(song) {
+    if (!song) return 0;
+    return RHYTHM_LEAD_IN_BEATS * (60 / song.bpm);
+}
+
+function getRhythmTotalDuration(song) {
+    return getRhythmLeadInSeconds(song) + getRhythmSongDuration(song);
+}
+
+function setupRhythmGameArea() {
+    resetRhythmState();
+    mgTime = 0;
+    updateMgHud();
+    const mgArea = document.getElementById('minigame-area');
+    const songs = getAllRhythmSongs();
+    if (!songs.length) {
+        mgArea.innerHTML = `
+            <div class="rhythm-song-menu">
+                <div class="rhythm-song-empty">
+                    <strong>リズム曲がまだありません</strong>
+                    <span>管理者メニューの「リズム曲の作成」から曲を追加してください。</span>
+                </div>
+            </div>
+        `;
+        return;
+    }
+    mgArea.innerHTML = `
+        <div class="rhythm-song-menu">
+            <div class="rhythm-song-hero">
+                <div class="rhythm-song-eyebrow">ぽんぽんリズム</div>
+                <h2>曲をえらんで、むずかしさを決めよう</h2>
+                <p>マークが左のたいこに重なったら、F・J・スペース、またはクリックでポン。</p>
+            </div>
+            <div class="rhythm-song-grid">
+                ${songs.map(song => `
+                    <button class="rhythm-song-card rhythm-song-card-${song.id}" type="button" data-rhythm-song="${song.id}">
+                        <span class="rhythm-song-emoji">${song.emoji}</span>
+                        <span class="rhythm-song-title">${escapeHtml(song.title)}</span>
+                        <span class="rhythm-song-meta">おすすめ: ${escapeHtml(song.difficulty)}</span>
+                        <span class="rhythm-song-desc">${escapeHtml(song.description)}</span>
+                        <span class="rhythm-song-play">むずかしさをえらぶ</span>
+                    </button>
+                `).join('')}
+            </div>
+        </div>
+    `;
+    mgArea.querySelectorAll('[data-rhythm-song]').forEach(button => {
+        button.addEventListener('click', () => showRhythmDifficultySelect(button.dataset.rhythmSong));
+    });
+}
+
+function showRhythmDifficultySelect(songId) {
+    stopRhythmRuntime();
+    const baseSong = getRhythmBaseSong(songId);
+    if (!baseSong) {
+        setupRhythmGameArea();
+        return;
+    }
+    rhythmSelectedSongId = baseSong.id;
+    mgScore = 0;
+    mgTime = 0;
+    updateMgHud();
+    const mgArea = document.getElementById('minigame-area');
+    if (!mgArea) return;
+
+    mgArea.innerHTML = `
+        <div class="rhythm-difficulty-menu">
+            <div class="rhythm-difficulty-hero">
+                <button class="rhythm-board-back" type="button" id="rhythm-back-to-songs">曲をえらびなおす</button>
+                <div class="rhythm-difficulty-song">
+                    <span>${baseSong.emoji}</span>
+                    <strong>${escapeHtml(baseSong.title)}</strong>
+                    <small>${escapeHtml(baseSong.description)}</small>
+                </div>
+            </div>
+            <div class="rhythm-difficulty-grid">
+                ${Object.entries(RHYTHM_DIFFICULTIES).map(([key, config]) => {
+                    const previewSong = normalizeRhythmSong(baseSong, key);
+                    return `
+                        <button class="rhythm-difficulty-card rhythm-difficulty-${key}" type="button" data-rhythm-difficulty="${key}">
+                            <span class="rhythm-difficulty-label">${escapeHtml(config.label)}</span>
+                            <span class="rhythm-difficulty-desc">${escapeHtml(config.description)}</span>
+                            <span class="rhythm-difficulty-bpm">${previewSong.notes.length}こ</span>
+                        </button>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+    `;
+
+    document.getElementById('rhythm-back-to-songs')?.addEventListener('click', setupRhythmGameArea);
+    mgArea.querySelectorAll('[data-rhythm-difficulty]').forEach(button => {
+        button.addEventListener('click', () => startRhythmSong(baseSong.id, button.dataset.rhythmDifficulty));
+    });
+}
+
+function renderRhythmBoard() {
+    const mgArea = document.getElementById('minigame-area');
+    const song = rhythmCurrentSong;
+    if (!mgArea || !song) return;
+
+    mgArea.innerHTML = `
+        <div class="rhythm-board">
+            <div class="rhythm-board-header">
+                <button class="rhythm-board-back" type="button" id="rhythm-song-back">曲をえらびなおす</button>
+                <div class="rhythm-song-now">
+                    <span>${song.emoji}</span>
+                    <strong>${escapeHtml(song.title)}</strong>
+                    <small>${escapeHtml(song.playDifficultyLabel)}</small>
+                </div>
+                <div class="rhythm-score-pill">スコア <strong id="rhythm-score">${mgScore}</strong></div>
+            </div>
+            <div class="rhythm-stage" id="rhythm-stage">
+                <div class="rhythm-target">
+                    <button class="rhythm-target-drum" type="button" id="rhythm-hit-button">🥁</button>
+                    <span class="rhythm-target-label">ここでポン</span>
+                </div>
+                <div class="rhythm-note-layer" id="rhythm-note-layer" aria-hidden="true"></div>
+                <div class="rhythm-feedback" id="rhythm-feedback">3</div>
+                <div class="rhythm-countdown" id="rhythm-countdown">3</div>
+                <div class="rhythm-mascot" id="rhythm-mascot">${song.emoji}</div>
+            </div>
+            <div class="rhythm-bottom-panel">
+                <div class="rhythm-stat">コンボ <strong id="rhythm-combo">0</strong></div>
+                <div class="rhythm-stat">最高 <strong id="rhythm-max-combo">0</strong></div>
+                <div class="rhythm-stat">ミス <strong id="rhythm-miss">0</strong></div>
+                <div class="rhythm-hit-guide">F / J / スペース / クリック</div>
+            </div>
+        </div>
+    `;
+
+    document.getElementById('rhythm-song-back')?.addEventListener('click', setupRhythmGameArea);
+    document.getElementById('rhythm-hit-button')?.addEventListener('click', triggerRhythmHitAction);
+    document.getElementById('rhythm-stage')?.addEventListener('pointerdown', (event) => {
+        if (event.target.closest('button')) return;
+        triggerRhythmHitAction();
+    });
+}
+
+function startRhythmSong(songId, difficultyKey = rhythmCurrentDifficulty) {
+    stopRhythmRuntime();
+    rhythmSelectedSongId = songId;
+    rhythmCurrentDifficulty = difficultyKey;
+    rhythmCurrentSong = getRhythmSong(songId, difficultyKey);
+    if (!rhythmCurrentSong) {
+        setupRhythmGameArea();
+        return;
+    }
+    rhythmLiveNotes = rhythmCurrentSong.notes;
+    rhythmPerfectCount = 0;
+    rhythmGreatCount = 0;
+    rhythmGoodCount = 0;
+    rhythmMissCount = 0;
+    rhythmCombo = 0;
+    rhythmMaxCombo = 0;
+    rhythmCurrentBeat = 0;
+    mgScore = 0;
+    mgStartedAt = 0;
+    mgTime = Math.ceil(getRhythmTotalDuration(rhythmCurrentSong));
+    updateMgHud();
+    renderRhythmBoard();
+    startRhythmCountdown(3);
+}
+
+function startRhythmCountdown(count) {
+    const countdownEl = document.getElementById('rhythm-countdown');
+    let currentCount = count;
+    if (countdownEl) {
+        countdownEl.style.display = 'flex';
+        countdownEl.textContent = currentCount;
+    }
+    playRhythmUiSound('click');
+    rhythmCountdownTimer = setInterval(() => {
+        currentCount--;
+        if (currentCount > 0) {
+            if (countdownEl) countdownEl.textContent = currentCount;
+            playRhythmUiSound('click');
+            return;
+        }
+
+        clearInterval(rhythmCountdownTimer);
+        rhythmCountdownTimer = null;
+        if (countdownEl) countdownEl.textContent = 'よーい';
+        playRhythmUiSound('success');
+        rhythmStartDelayTimer = setTimeout(() => {
+            rhythmStartDelayTimer = null;
+            if (countdownEl) {
+                countdownEl.textContent = 'スタート';
+                setTimeout(() => {
+                    if (countdownEl) countdownEl.style.display = 'none';
+                }, 360);
+            }
+            beginRhythmSong();
+        }, RHYTHM_START_DELAY_MS);
+    }, 760);
+}
+
+function beginRhythmSong() {
+    if (!rhythmCurrentSong) return;
+    const leadInSeconds = getRhythmLeadInSeconds(rhythmCurrentSong);
+    rhythmIsPlaying = true;
+    rhythmStartTime = performance.now() + leadInSeconds * 1000;
+    mgStartedAt = Date.now();
+    document.addEventListener('keydown', mgHandleKey);
+    scheduleRhythmMelody(rhythmCurrentSong, leadInSeconds);
+    if (rhythmCurrentSong.audioUrl) {
+        rhythmExternalAudio = new Audio(rhythmCurrentSong.audioUrl);
+        rhythmExternalAudio.preload = 'auto';
+        rhythmExternalAudio.currentTime = 0;
+        rhythmAudioStartTimer = setTimeout(() => {
+            rhythmAudioStartTimer = null;
+            rhythmExternalAudio?.play().catch(error => {
+                console.warn('リズム音源の再生に失敗しました:', error);
+                showRhythmFeedback('音が出ません', 'wait');
+            });
+        }, leadInSeconds * 1000);
+    }
+
+    const duration = getRhythmTotalDuration(rhythmCurrentSong);
+    mgTimeInterval = setInterval(() => {
+        const elapsed = (performance.now() - rhythmStartTime) / 1000;
+        mgTime = Math.max(0, Math.ceil(duration - elapsed));
+        updateMgHud();
+    }, 250);
+    rhythmSongEndTimer = setTimeout(() => endMinigame(), duration * 1000 + 320);
+    rhythmFrameId = requestAnimationFrame(tickRhythmFrame);
+}
+
+function tickRhythmFrame() {
+    if (!rhythmIsPlaying || !rhythmCurrentSong) return;
+
+    const elapsedSeconds = (performance.now() - rhythmStartTime) / 1000;
+    rhythmCurrentBeat = elapsedSeconds * (rhythmCurrentSong.bpm / 60);
+
+    rhythmLiveNotes.forEach(note => {
+        if (!note.hit && !note.miss && rhythmCurrentBeat - note.beat > getRhythmDifficultyConfig().hitWindowBeats) {
+            registerRhythmNoteMiss(note);
+        }
+    });
+
+    renderRhythmNotes();
+    rhythmFrameId = requestAnimationFrame(tickRhythmFrame);
+}
+
+function renderRhythmNotes() {
+    const layer = document.getElementById('rhythm-note-layer');
+    if (!layer || !rhythmCurrentSong) return;
+    const visibleNotes = rhythmLiveNotes.filter(note => (
+        !note.hit
+        && !note.miss
+        && note.beat - rhythmCurrentBeat > -0.45
+        && note.beat - rhythmCurrentBeat < 4.9
+    ));
+
+    layer.innerHTML = visibleNotes.map(note => {
+        const lane = RHYTHM_LANES[0];
+        const beatDistance = note.beat - rhythmCurrentBeat;
+        const left = RHYTHM_TARGET_X + beatDistance * RHYTHM_SCROLL_SPEED;
+        const anticipation = beatDistance > 0 && beatDistance < 1.2 ? ' is-near' : '';
+        return `
+            <div class="rhythm-note rhythm-note-${lane.id}${anticipation}"
+                style="left:${left}%; top:50%">
+                <span>${lane.emoji}</span>
+            </div>
+        `;
+    }).join('');
+
+    updateRhythmPanel();
+}
+
+function updateRhythmPanel() {
+    const scoreEl = document.getElementById('rhythm-score');
+    if (scoreEl) scoreEl.textContent = mgScore;
+    const comboEl = document.getElementById('rhythm-combo');
+    if (comboEl) comboEl.textContent = rhythmCombo;
+    const maxComboEl = document.getElementById('rhythm-max-combo');
+    if (maxComboEl) maxComboEl.textContent = rhythmMaxCombo;
+    const missEl = document.getElementById('rhythm-miss');
+    if (missEl) missEl.textContent = rhythmMissCount;
+}
+
+function showRhythmFeedback(message, type = 'good') {
+    const feedback = document.getElementById('rhythm-feedback');
+    const mascot = document.getElementById('rhythm-mascot');
+    if (!feedback) return;
+    const feedbackId = ++rhythmLastFeedbackId;
+    feedback.textContent = message;
+    feedback.className = `rhythm-feedback is-${type} is-visible`;
+    if (mascot) mascot.className = `rhythm-mascot is-${type}`;
+    setTimeout(() => {
+        if (feedbackId !== rhythmLastFeedbackId) return;
+        feedback.classList.remove('is-visible');
+        if (mascot) mascot.className = 'rhythm-mascot';
+    }, 320);
+}
+
+function registerRhythmNoteMiss(note) {
+    note.miss = true;
+    rhythmMissCount++;
+    rhythmCombo = 0;
+    playRhythmMissSound();
+    showRhythmFeedback('ミス', 'miss');
+    updateRhythmPanel();
+}
+
+function getNearestRhythmNote() {
+    const candidates = rhythmLiveNotes.filter(note => !note.hit && !note.miss);
+    if (candidates.length === 0) return null;
+    return candidates.reduce((best, note) => {
+        if (!best) return note;
+        return Math.abs(note.beat - rhythmCurrentBeat) < Math.abs(best.beat - rhythmCurrentBeat) ? note : best;
+    }, null);
+}
+
+function triggerRhythmHitAction() {
+    if (!rhythmCurrentSong) return;
+    if (!rhythmIsPlaying) {
+        playRhythmUiSound('click');
+        return;
+    }
+
+    const note = getNearestRhythmNote();
+    if (!note) {
+        playRhythmInstrument('drum');
+        return;
+    }
+
+    const diff = Math.abs(note.beat - rhythmCurrentBeat);
+    const difficulty = getRhythmDifficultyConfig();
+    if (diff > difficulty.hitWindowBeats) {
+        playRhythmInstrument('drum');
+        showRhythmFeedback(diff > 0 ? 'まって' : 'おそい', 'wait');
+        return;
+    }
+
+    note.hit = true;
+    rhythmCombo++;
+    rhythmMaxCombo = Math.max(rhythmMaxCombo, rhythmCombo);
+
+    let scoreAdd = 60;
+    let feedback = 'OK';
+    let type = 'good';
+    if (diff <= difficulty.perfectWindowBeats) {
+        rhythmPerfectCount++;
+        scoreAdd = 160;
+        feedback = 'ぴったり';
+        type = 'perfect';
+    } else if (diff <= difficulty.greatWindowBeats) {
+        rhythmGreatCount++;
+        scoreAdd = 110;
+        feedback = 'いいね';
+        type = 'great';
+    } else {
+        rhythmGoodCount++;
+    }
+
+    mgScore += Math.round((scoreAdd + Math.min(80, rhythmCombo * 4)) * difficulty.scoreMultiplier);
+    playRhythmInstrument(RHYTHM_LANES[0].soundType);
+    showRhythmFeedback(feedback, type);
+    renderRhythmNotes();
+    updateMgHud();
+}
+
+function handleRhythmKey(key) {
+    if (!['F', 'J', ' ', 'SPACEBAR'].includes(key)) return;
+    triggerRhythmHitAction();
+}
+
+function hideMinigameResultOverlay() {
+    const overlay = document.getElementById('mg-result-overlay');
+    if (overlay) overlay.style.display = 'none';
+    const board = document.getElementById('mg-ranking-board');
+    if (board) board.style.display = 'none';
+}
+
+function renderRhythmResult(isNewRecord) {
+    const board = document.getElementById('mg-ranking-board');
+    if (!board) return;
+    const totalNotes = rhythmLiveNotes.length || 1;
+    const hitNotes = rhythmPerfectCount + rhythmGreatCount + rhythmGoodCount;
+    const hitRate = Math.round((hitNotes / totalNotes) * 100);
+    const stars = hitRate >= 90 ? '★★★' : hitRate >= 70 ? '★★' : hitRate >= 45 ? '★' : 'もういちど';
+    board.style.display = 'block';
+    board.style.width = 'min(680px, 94vw)';
+    board.innerHTML = `
+        <div class="rhythm-result-board">
+            <h3>${isNewRecord ? 'しんきろく！' : 'リズムけっか'}</h3>
+            <div class="rhythm-result-song">${rhythmCurrentSong?.emoji || '♪'} ${escapeHtml(rhythmCurrentSong?.title || 'ぽんぽんリズム')} / ${escapeHtml(getRhythmDifficultyConfig().label)}</div>
+            <div class="rhythm-result-stars">${escapeHtml(stars)}</div>
+            <div class="rhythm-result-grid">
+                <span>スコア</span><strong>${mgScore}</strong>
+                <span>ぴったり</span><strong>${rhythmPerfectCount}</strong>
+                <span>いいね</span><strong>${rhythmGreatCount}</strong>
+                <span>OK</span><strong>${rhythmGoodCount}</strong>
+                <span>ミス</span><strong>${rhythmMissCount}</strong>
+                <span>最高コンボ</span><strong>${rhythmMaxCombo}</strong>
+            </div>
+            <div class="rhythm-result-actions">
+                <button type="button" id="rhythm-result-retry">もういちど</button>
+                <button type="button" id="rhythm-result-difficulty">むずかしさをえらぶ</button>
+                <button type="button" id="rhythm-result-songs">曲をえらぶ</button>
+            </div>
+        </div>
+    `;
+
+    document.getElementById('rhythm-result-retry')?.addEventListener('click', () => {
+        hideMinigameResultOverlay();
+        startRhythmSong(rhythmCurrentSong?.id || rhythmSelectedSongId || getDefaultRhythmSongId(), rhythmCurrentDifficulty);
+    });
+    document.getElementById('rhythm-result-difficulty')?.addEventListener('click', () => {
+        hideMinigameResultOverlay();
+        showRhythmDifficultySelect(rhythmCurrentSong?.id || rhythmSelectedSongId || getDefaultRhythmSongId());
+    });
+    document.getElementById('rhythm-result-songs')?.addEventListener('click', () => {
+        hideMinigameResultOverlay();
+        setupRhythmGameArea();
+    });
+}
+
 export function startMinigame(type) {
     SoundManager.init(); if (document.activeElement) document.activeElement.blur();
     showScreen('screen-minigame');
     currentMinigameType = type || 'meteor';
+    minigameReturnScreen = currentMinigameType === 'rhythm' ? 'screen-free-time-menu' : 'screen-minigame-menu';
 
     document.getElementById('mg-result-overlay').style.display = 'none';
     const mgArea = document.getElementById('minigame-area');
     mgArea.innerHTML = '';
+    mgArea.classList.remove('d-challenge-mode', 'rhythm-mode');
+    document.getElementById('mg-ranking-board').style.display = 'none';
 
     if (currentMinigameType === 'd_challenge') {
         mgArea.classList.add('d-challenge-mode');
@@ -616,10 +1525,23 @@ export function startMinigame(type) {
         initDChallengeWords();
         dBoost = 1.0; dLevel = 1; dClearedWords = 0;
         updateBoostGauge();
+    } else if (currentMinigameType === 'rhythm') {
+        mgArea.classList.add('rhythm-mode');
+        document.getElementById('boost-gauge-container').style.display = 'none';
+        document.getElementById('mg-score-label').innerHTML = `リズム: <span id="mg-score">0</span>`;
+        setupRhythmGameArea();
     } else {
-        mgArea.classList.remove('d-challenge-mode');
         document.getElementById('boost-gauge-container').style.display = 'none';
         document.getElementById('mg-score-label').innerHTML = `スコア: <span id="mg-score">0</span>`;
+    }
+
+    if (currentMinigameType === 'rhythm') {
+        mgWords = [];
+        mgActiveWord = null;
+        mgStartedAt = 0;
+        const overlay = document.getElementById('mg-start-overlay');
+        if (overlay) overlay.style.display = 'none';
+        return;
     }
 
     mgTime = 60; mgScore = 0; mgWords =[]; mgActiveWord = null; mgStartedAt = 0; updateMgHud();
@@ -670,14 +1592,17 @@ export function startMinigame(type) {
 }
 
 function recordMinigameInterrupt(shouldRecord) {
-    const wasRunning = Boolean(mgTimeInterval || mgSpawnInterval || mgInterval);
+    const wasRunning = Boolean(mgTimeInterval || mgSpawnInterval || mgInterval || rhythmFrameId || rhythmCountdownTimer || rhythmSongEndTimer || rhythmIsPlaying);
     if (!shouldRecord || !wasRunning || !mgStartedAt || !canWriteCurrentUserRow()) return;
     const elapsed = Math.max(0, (Date.now() - mgStartedAt) / 1000);
+    const rhythmDetail = currentMinigameType === 'rhythm'
+        ? ` / ${rhythmCurrentSong?.title || '曲未選択'} / ${getRhythmDifficultyConfig().label} / コンボ ${rhythmMaxCombo} / ミス ${rhythmMissCount}`
+        : '';
     recordPracticeActivity({
-        category: 'minigame',
-        title: getCurrentMinigameTitle(),
+        category: getCurrentMinigameActivityCategory(),
+        title: getCurrentMinigameActivityTitle(),
         detail: '中断',
-        amount: `スコア ${mgScore}点 / 経過 ${elapsed.toFixed(0)}秒`,
+        amount: `スコア ${mgScore}点 / 経過 ${elapsed.toFixed(0)}秒${rhythmDetail}`,
         coins: 0
     });
     saveUsers(false);
@@ -692,8 +1617,14 @@ export function stopMinigame(recordInterrupt = false) {
         cancelMgStartHandler = null;
     }
     clearInterval(mgTimeInterval); clearInterval(mgSpawnInterval); clearInterval(mgInterval);
+    stopRhythmRuntime();
     mgTimeInterval = null; mgSpawnInterval = null; mgInterval = null;
     document.removeEventListener('keydown', mgHandleKey);
+}
+
+export function backFromMinigame(recordInterrupt = false) {
+    stopMinigame(recordInterrupt);
+    showScreen(minigameReturnScreen);
 }
 
 function endMinigame() {
@@ -705,7 +1636,10 @@ function endMinigame() {
     const canSaveResult = canWriteCurrentUserRow();
     if (!u.examRecords) u.examRecords = {};
 
-    if (currentMinigameType === 'd_challenge') {
+    if (currentMinigameType === 'rhythm') {
+        let prev = u.examRecords['mg_rhythm'] || u.rhythmHighscore || 0;
+        if (canSaveResult && mgScore > prev) { u.examRecords['mg_rhythm'] = mgScore; u.rhythmHighscore = mgScore; isNewRecord = true; }
+    } else if (currentMinigameType === 'd_challenge') {
         let prev = u.examRecords['mg_d_challenge'] || u.dChallengeHighscore || 0;
         if (canSaveResult && mgScore > prev) { u.examRecords['mg_d_challenge'] = mgScore; u.dChallengeHighscore = mgScore; isNewRecord = true; }
     } else {
@@ -715,30 +1649,49 @@ function endMinigame() {
 
     if (canSaveResult) {
         recordPracticeActivity({
-            category: 'minigame',
-            title: getCurrentMinigameTitle(),
+            category: getCurrentMinigameActivityCategory(),
+            title: getCurrentMinigameActivityTitle(),
             detail: isNewRecord ? '新記録' : '練習完了',
-            amount: `スコア ${mgScore}点`,
+            amount: currentMinigameType === 'rhythm'
+                ? `スコア ${mgScore}点 / ${rhythmCurrentSong?.title || 'ぽんぽんリズム'} / ${getRhythmDifficultyConfig().label} / ぴったり ${rhythmPerfectCount} / いいね ${rhythmGreatCount} / OK ${rhythmGoodCount} / コンボ ${rhythmMaxCombo} / ミス ${rhythmMissCount}`
+                : `スコア ${mgScore}点`,
             coins: 0
         });
         saveUsers(false);
     }
 
     const modeKey = getCurrentMinigameModeKey();
-    const localRanking = getLocalMinigameRanking(modeKey);
-    renderMinigameRanking(localRanking, {
-        sourceLabel: 'この端末のランキング',
-        status: canUseCloudTypingRanking() ? '匿名ランキングを更新中です。' : 'この画面で読める範囲だけ表示しています。',
-        isNewRecord
-    });
-    if (canSaveResult && canUseCloudTypingRanking()) {
-        refreshCloudMinigameRanking(modeKey, mgScore, isNewRecord);
+    if (currentMinigameType === 'rhythm') {
+        renderRhythmResult(isNewRecord);
+    } else {
+        const localRanking = getLocalMinigameRanking(modeKey);
+        renderMinigameRanking(localRanking, {
+            sourceLabel: 'この端末のランキング',
+            status: canUseCloudTypingRanking() ? '匿名ランキングを更新中です。' : 'この画面で読める範囲だけ表示しています。',
+            isNewRecord
+        });
+        if (canSaveResult && canUseCloudTypingRanking()) {
+            refreshCloudMinigameRanking(modeKey, mgScore, isNewRecord);
+        }
+    }
+    const resultBackButton = document.getElementById('mg-result-back');
+    if (resultBackButton) {
+        resultBackButton.style.display = currentMinigameType === 'rhythm' ? 'none' : '';
     }
     document.getElementById('mg-result-overlay').style.display = 'flex';
     createConfetti();
 }
 
-function updateMgHud() { document.getElementById('mg-score').innerText = mgScore; document.getElementById('mg-time').innerText = `のこり: ${mgTime}秒`; }
+function updateMgHud() {
+    document.getElementById('mg-score').innerText = mgScore;
+    const timeEl = document.getElementById('mg-time');
+    if (!timeEl) return;
+    if (currentMinigameType === 'rhythm' && !rhythmCurrentSong) {
+        timeEl.innerText = '曲をえらぶ';
+    } else {
+        timeEl.innerText = `のこり: ${mgTime}秒`;
+    }
+}
 
 function spawnMgWordMeteor() {
     const wordData = getRandomMinigameWord();
@@ -764,7 +1717,10 @@ function mgHandleKey(e) {
 
     let k = e.key.toUpperCase();
 
-    if (currentMinigameType === 'd_challenge') {
+    if (currentMinigameType === 'rhythm') {
+        e.preventDefault();
+        handleRhythmKey(k);
+    } else if (currentMinigameType === 'd_challenge') {
         if (!mgActiveWord) return;
         let isCorrect = false; let validPatterns = mgActiveWord.romajiList.filter(r => r[mgActiveWord.idx] === k);
         if (validPatterns.length > 0) { mgActiveWord.romajiList = validPatterns; mgActiveWord.idx++; isCorrect = true; }

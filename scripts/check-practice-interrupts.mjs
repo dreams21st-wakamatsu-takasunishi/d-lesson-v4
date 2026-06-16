@@ -69,7 +69,7 @@ assertIncludes(htmlSource, 'onclick="backToMenu(true)"', 'Core game quit button 
 assertIncludes(htmlSource, 'onclick="backToMenuFromText()"', 'Text practice quit button records interruption');
 assertIncludes(
   htmlSource,
-  'onclick="stopMinigame(true); showScreen(\'screen-minigame-menu\')"',
+  'onclick="backFromMinigame(true)"',
   'Typing game quit button records interruption'
 );
 

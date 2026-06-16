@@ -93,6 +93,9 @@
                 <button class="category-btn" onclick="showAdminSection('admin-sec-custom')" style="background-color:#9C27B0; width:260px;">
                     <span style="font-size:50px;">🎨</span><span style="font-size:20px; font-weight:bold; margin-top:10px;">ごほうびの作成</span>
                 </button>
+                <button class="category-btn" onclick="showAdminSection('admin-sec-rhythm')" style="background-color:#00897B; width:260px;">
+                    <span style="font-size:50px;">🎵</span><span style="font-size:20px; font-weight:bold; margin-top:10px;">リズム曲の作成</span>
+                </button>
                 <button class="category-btn" onclick="showAdminSection('admin-sec-backup')" style="background-color:#607D8B; width:260px;">
                     <span style="font-size:50px;">💾</span><span style="font-size:20px; font-weight:bold; margin-top:10px;">バックアップ</span>
                 </button>
@@ -509,6 +512,12 @@
                     <button class="btn-danger" onclick="openCustomManager()">🗑️ 作ったものを削除する</button>
                 </div>
 
+                <div id="admin-sec-rhythm" class="admin-section" style="display:none; width:100%; flex-direction:column; align-items:center; gap:16px;">
+                    <h3 style="margin-top:0;">🎵 リズム曲の作成</h3>
+                    <p style="margin:0; color:#546e7a; font-size:14px;">音声ファイルを登録し、F・J・スペースまたはクリックでノーツを作成します。</p>
+                    <div id="admin-rhythm-container" style="width:100%;"></div>
+                </div>
+
                 <div id="admin-sec-backup" class="admin-section" style="display:none; flex-direction:column; align-items:center; gap:20px;">
                     <h3 style="margin-top:0;">💾 データのバックアップと復元</h3>
                     <p style="color:#d32f2f; font-weight:bold; background:#ffebee; padding:10px; border-radius:8px;">
@@ -877,6 +886,11 @@
             <h2>じゆうじかん</h2>
             <p>外部サイトを開いた時間と閉じた時間を記録します。</p>
             <div class="free-time-menu-layout">
+                <button class="free-time-site-button free-time-rhythm-button" onclick="startMinigame('rhythm')">
+                    <span class="minigame-sub-icon">♪</span>
+                    <span class="minigame-sub-main">リズムゲーム</span>
+                    <span class="minigame-sub-note">曲にあわせてポンとおす</span>
+                </button>
                 <button class="free-time-site-button" onclick="openFreeTimeSite('youtube')">
                     <span class="minigame-sub-icon">▶</span>
                     <span class="minigame-sub-main">YouTube</span>
@@ -1083,7 +1097,7 @@
                 </div>
             </div>
         </div>
-        <button class="btn-secondary bottom-back-btn" onclick="stopMinigame(true); showScreen('screen-minigame-menu')">やめる</button>
+        <button class="btn-secondary bottom-back-btn" onclick="backFromMinigame(true)">やめる</button>
         <div id="mg-start-overlay" style="position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); display:none; flex-direction:column; justify-content:center; align-items:center; z-index:150;">
             <div style="font-size: 50px; color: #fff; font-weight: bold; text-shadow: 2px 2px 4px #000; animation: pulse 1.5s infinite;">スペースキーをおして スタート！</div>
         </div>
@@ -1091,7 +1105,7 @@
             <div style="font-size:60px; color:#fff; font-weight:bold; margin-bottom:20px;">タイムアップ！</div>
             <div id="mg-final-score" style="font-size:80px; color:#ffeb3b; font-weight:bold; margin-bottom:20px;">スコア: 1000</div>
             <div id="mg-ranking-board" style="background:#fff; padding:20px; border-radius:10px; width:400px; text-align:center; margin-bottom:30px; display:none;"></div>
-            <button class="btn-primary" onclick="stopMinigame(); showScreen('screen-minigame-menu')">もどる</button>
+            <button id="mg-result-back" class="btn-primary" onclick="backFromMinigame(false)">もどる</button>
         </div>
     </div>
 

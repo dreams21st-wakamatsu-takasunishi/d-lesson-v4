@@ -76,6 +76,9 @@ import {
     saveTypingRankingNicknameBlockWords
 } from './admin-ranking-settings.js';
 import {
+    renderAdminRhythmSongs
+} from './admin-rhythm.js';
+import {
     linkRoleAuthUser,
     linkStudentAuthUser,
     copyStudentAccessSql,
@@ -120,6 +123,7 @@ export {
     renderCampusAdmin,
     renderOpsGuideAdmin,
     renderTypingRankingSettingsAdmin,
+    renderAdminRhythmSongs,
     saveTypingRankingNicknameBlockWords,
     copyInternalIdCheckGuide,
     copyDeviceHandoffChecklist,
@@ -216,6 +220,7 @@ function adminShellCallbacks() {
         renderAdminAuditLog,
         renderOpsGuideAdmin,
         renderTypingRankingSettingsAdmin,
+        renderAdminRhythmSongs,
         updateAdminUserTable,
         renderAdminTextTasks,
         renderTicketAdmin

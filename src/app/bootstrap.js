@@ -1,7 +1,7 @@
 import { loadUsers } from '../api/user.js';
 import { backToMenu, setMenuRefreshHandlers } from '../games/core.js';
 import { setGachaUiHandlers } from '../games/gacha.js';
-import { stopMinigame } from '../games/minigame.js';
+import { backFromMinigame, stopMinigame } from '../games/minigame.js';
 import { backToMenuFromText } from '../games/text.js';
 import { initAudio } from '../utils/sound.js';
 import { goToRecords } from '../ui/app-navigation.js';
@@ -38,6 +38,7 @@ export function initApp({ buildCommit = 'local' } = {}) {
 
     initFocusNavigation({
         backToMenu,
+        backFromMinigame,
         stopMinigame,
         backToMenuFromText
     });

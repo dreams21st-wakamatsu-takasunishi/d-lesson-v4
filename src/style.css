@@ -2507,9 +2507,20 @@ input[type="text"], input[type="date"], input[type="number"] { padding: 10px; fo
     color: #004d40;
 }
 
+.free-time-rhythm-button {
+    border-color: #ffb74d;
+    background: #fff8e1 !important;
+    color: #bf360c;
+}
+
 .free-time-site-button .minigame-sub-icon,
 .free-time-site-button .minigame-sub-main {
     color: #00695c !important;
+}
+
+.free-time-rhythm-button .minigame-sub-icon,
+.free-time-rhythm-button .minigame-sub-main {
+    color: #e65100 !important;
 }
 
 .minigame-sub-icon {
@@ -3756,6 +3767,1571 @@ input[type="text"], input[type="date"], input[type="number"] { padding: 10px; fo
 .falling-word { position: absolute; font-size: 28px; font-weight: bold; color: white; background: rgba(0,0,0,0.7); padding: 5px 15px; border-radius: 10px; border: 2px solid #fff; white-space: nowrap; text-align: center; }
 .falling-word .typed { color: #FFeb3b !important; }
 #mg-hud { display: flex; justify-content: space-between; width: 100%; padding: 10px 20px; font-size: 24px; font-weight: bold; background: #fff; border-radius: 15px; margin-bottom: 10px; box-sizing: border-box; border: 3px solid #ccc; box-shadow: 0 4px 0 #ccc;}
+
+#minigame-area.rhythm-mode {
+    background: linear-gradient(180deg, #fff8e1 0%, #f3fbff 100%);
+    border-color: #ffb74d;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #263238;
+}
+
+.rhythm-game {
+    width: min(820px, 92%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    text-align: center;
+}
+
+.rhythm-instruction {
+    width: 100%;
+    padding: 14px 18px;
+    border-radius: 18px;
+    background: #fff;
+    border: 3px solid #b3e5fc;
+    color: #01579b;
+    font-size: clamp(22px, 2vw, 34px);
+    font-weight: 900;
+    box-shadow: 0 5px 0 #b0bec5;
+    box-sizing: border-box;
+}
+
+.rhythm-beat-lane {
+    display: grid;
+    grid-template-columns: repeat(4, 70px);
+    gap: 12px;
+    justify-content: center;
+    align-items: center;
+}
+
+.rhythm-beat-dot {
+    width: 58px;
+    height: 58px;
+    border-radius: 999px;
+    border: 3px solid #b0bec5;
+    background: #fff;
+    box-shadow: 0 5px 0 #b0bec5;
+    color: #607d8b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    font-weight: 900;
+}
+
+.rhythm-beat-dot.is-current {
+    background: #fff176;
+    border-color: #f9a825;
+    color: #263238;
+    transform: translateY(4px);
+    box-shadow: 0 1px 0 #b0bec5;
+}
+
+.rhythm-beat-dot.is-next {
+    background: #fff8e1;
+    border-color: #ffb300;
+    color: #e65100;
+    box-shadow: 0 5px 0 #ffcc80, 0 0 14px rgba(255, 179, 0, 0.4);
+}
+
+.rhythm-beat-dot.is-downbeat {
+    border-color: #ffb74d;
+}
+
+.rhythm-pre-cue {
+    min-width: min(360px, 100%);
+    min-height: 58px;
+    padding: 8px 18px;
+    border-radius: 18px;
+    border: 3px solid #cfd8dc;
+    background: #fff;
+    box-shadow: 0 5px 0 #b0bec5;
+    color: #78909c;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    font-size: 24px;
+    font-weight: 900;
+    box-sizing: border-box;
+}
+
+.rhythm-pre-cue strong {
+    min-width: 70px;
+    padding: 3px 16px;
+    border-radius: 14px;
+    background: #eceff1;
+    color: #37474f;
+    font-size: 38px;
+    line-height: 1.1;
+}
+
+.rhythm-pre-cue.is-active {
+    border-color: #ffb300;
+    background: #fff8e1;
+    color: #e65100;
+    box-shadow: 0 5px 0 #ffcc80, 0 0 18px rgba(255, 179, 0, 0.38);
+}
+
+.rhythm-pre-cue.is-active strong {
+    background: #ffb300;
+    color: #263238;
+}
+
+.rhythm-beat-card {
+    width: min(440px, 100%);
+    min-height: 190px;
+    border-radius: 24px;
+    border: 5px solid #26a69a;
+    background: #fff;
+    box-shadow: 0 8px 0 #80cbc4;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    transition: transform 0.08s ease, border-color 0.08s ease, background-color 0.08s ease;
+}
+
+.rhythm-beat-card.is-active {
+    transform: scale(1.02);
+}
+
+.rhythm-beat-card.is-hit {
+    border-color: #43a047;
+    background: #e8f5e9;
+}
+
+.rhythm-beat-card.is-miss {
+    border-color: #ef5350;
+    background: #ffebee;
+}
+
+.rhythm-beat-card.is-now {
+    border-color: #43a047;
+    background: #f1f8e9;
+    transform: scale(1.04);
+    box-shadow: 0 10px 0 #66bb6a, 0 0 28px rgba(76, 175, 80, 0.45);
+}
+
+.rhythm-now-badge {
+    min-width: 140px;
+    padding: 6px 18px;
+    border-radius: 999px;
+    background: #eceff1;
+    color: #546e7a;
+    font-size: 24px;
+    font-weight: 900;
+}
+
+.rhythm-now-badge.is-now {
+    background: #43a047;
+    color: #fff;
+    animation: rhythmNowPulse 0.36s ease both;
+}
+
+.rhythm-beat-label {
+    font-size: 22px;
+    font-weight: 900;
+    color: #546e7a;
+}
+
+.rhythm-beat-key {
+    font-size: clamp(86px, 10vw, 150px);
+    line-height: 1;
+    font-weight: 900;
+    color: #263238;
+}
+
+.rhythm-key-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(160px, 240px));
+    gap: 28px;
+    justify-content: center;
+    width: 100%;
+}
+
+.rhythm-key-pad {
+    min-height: 110px;
+    border-radius: 18px;
+    border: 4px solid #b0bec5;
+    background: #fff;
+    box-shadow: 0 7px 0 #90a4ae;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 56px;
+    font-weight: 900;
+    color: #263238;
+}
+
+.rhythm-key-pad.is-active {
+    border-color: #ff9800;
+    background: #fff3e0;
+    color: #e65100;
+}
+
+.rhythm-key-pad.is-pre {
+    border-color: #ffb300;
+    background: #fff8e1;
+    color: #e65100;
+    box-shadow: 0 7px 0 #ffcc80, 0 0 18px rgba(255, 179, 0, 0.32);
+}
+
+.rhythm-key-pad.is-now {
+    border-color: #43a047;
+    background: #e8f5e9;
+    color: #1b5e20;
+    transform: scale(1.06);
+    box-shadow: 0 10px 0 #66bb6a, 0 0 24px rgba(76, 175, 80, 0.45);
+}
+
+.rhythm-status-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 14px;
+    color: #37474f;
+    font-size: 22px;
+    font-weight: 900;
+}
+
+.rhythm-status-row div {
+    min-width: 140px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: #fff;
+    border: 2px solid #cfd8dc;
+}
+
+.rhythm-message {
+    min-height: 42px;
+    font-size: 26px;
+    font-weight: 900;
+    color: #00695c;
+}
+
+.rhythm-result-board h3 {
+    margin: 0 0 12px;
+    color: #e65100;
+    font-size: 26px;
+}
+
+.rhythm-result-grid {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px 18px;
+    align-items: center;
+    text-align: left;
+    font-size: 18px;
+    color: #263238;
+}
+
+.rhythm-result-grid strong {
+    font-size: 24px;
+    color: #00695c;
+    text-align: right;
+}
+
+@keyframes rhythmNowPulse {
+    0% { transform: scale(0.82); }
+    70% { transform: scale(1.12); }
+    100% { transform: scale(1); }
+}
+
+.rhythm-song-menu,
+.rhythm-difficulty-menu {
+    width: min(1080px, 94%);
+}
+
+.rhythm-board {
+    width: min(1360px, 98%);
+}
+
+.rhythm-song-menu,
+.rhythm-difficulty-menu {
+    display: grid;
+    gap: 18px;
+}
+
+.rhythm-song-hero {
+    padding: 18px 22px;
+    border: 3px solid #90caf9;
+    border-radius: 18px;
+    background: #fff;
+    box-shadow: 0 5px 0 #bbdefb;
+    text-align: center;
+}
+
+.rhythm-song-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 140px;
+    padding: 5px 14px;
+    border-radius: 999px;
+    background: #e3f2fd;
+    color: #1565c0;
+    font-weight: 900;
+    margin-bottom: 8px;
+}
+
+.rhythm-song-hero h2 {
+    margin: 0 0 8px;
+    color: #0d47a1;
+    font-size: clamp(26px, 2.6vw, 40px);
+}
+
+.rhythm-song-hero p {
+    margin: 0;
+    color: #37474f;
+    font-size: clamp(18px, 1.5vw, 24px);
+    font-weight: 800;
+}
+
+.rhythm-song-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(176px, 1fr));
+    gap: 14px;
+}
+
+.rhythm-song-empty {
+    display: grid;
+    justify-items: center;
+    gap: 10px;
+    padding: 32px 20px;
+    border: 3px dashed #90caf9;
+    border-radius: 18px;
+    background: #fff;
+    color: #37474f;
+    text-align: center;
+    font-weight: 900;
+}
+
+.rhythm-song-empty strong {
+    color: #0d47a1;
+    font-size: clamp(24px, 2.3vw, 34px);
+}
+
+.rhythm-song-empty span {
+    font-size: clamp(16px, 1.4vw, 22px);
+}
+
+.rhythm-song-card {
+    min-height: 170px;
+    padding: 12px 10px;
+    border: 4px solid #ffb300;
+    border-radius: 22px;
+    background: #fff;
+    box-shadow: 0 7px 0 #ffcc80;
+    color: #263238;
+    display: grid;
+    gap: 8px;
+    align-content: center;
+    justify-items: center;
+    cursor: pointer;
+}
+
+.rhythm-song-card:hover,
+.rhythm-song-card:focus-visible {
+    transform: translateY(-2px);
+    box-shadow: 0 9px 0 #ffcc80, 0 0 0 4px rgba(33, 150, 243, 0.2);
+}
+
+.rhythm-song-emoji {
+    font-size: 40px;
+}
+
+.rhythm-song-title {
+    font-size: 20px;
+    font-weight: 900;
+    color: #0d47a1;
+}
+
+.rhythm-song-meta {
+    font-size: 14px;
+    font-weight: 800;
+    color: #546e7a;
+}
+
+.rhythm-song-desc {
+    min-height: 2.4em;
+    color: #37474f;
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.rhythm-song-play {
+    margin-top: 4px;
+    padding: 7px 18px;
+    border-radius: 999px;
+    background: #43a047;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 900;
+}
+
+.rhythm-difficulty-hero {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 14px;
+    align-items: center;
+    padding: 16px;
+    border: 3px solid #90caf9;
+    border-radius: 18px;
+    background: #fff;
+    box-shadow: 0 5px 0 #bbdefb;
+}
+
+.rhythm-difficulty-song {
+    display: grid;
+    justify-items: center;
+    gap: 4px;
+    color: #0d47a1;
+}
+
+.rhythm-difficulty-song span {
+    font-size: 48px;
+}
+
+.rhythm-difficulty-song strong {
+    font-size: clamp(26px, 2.4vw, 38px);
+    font-weight: 900;
+}
+
+.rhythm-difficulty-song small {
+    color: #37474f;
+    font-size: 17px;
+    font-weight: 800;
+}
+
+.rhythm-difficulty-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(220px, 1fr));
+    gap: 18px;
+}
+
+.rhythm-difficulty-card {
+    min-height: 190px;
+    padding: 18px;
+    border-radius: 22px;
+    border: 4px solid #90caf9;
+    background: #fff;
+    box-shadow: 0 7px 0 #bbdefb;
+    color: #263238;
+    display: grid;
+    gap: 8px;
+    justify-items: center;
+    align-content: center;
+    cursor: pointer;
+}
+
+.rhythm-difficulty-card:hover,
+.rhythm-difficulty-card:focus-visible {
+    transform: translateY(-2px);
+    box-shadow: 0 9px 0 #bbdefb, 0 0 0 4px rgba(33, 150, 243, 0.2);
+}
+
+.rhythm-difficulty-easy {
+    border-color: #66bb6a;
+    box-shadow: 0 7px 0 #a5d6a7;
+}
+
+.rhythm-difficulty-normal {
+    border-color: #42a5f5;
+}
+
+.rhythm-difficulty-hard {
+    border-color: #ef5350;
+    box-shadow: 0 7px 0 #ef9a9a;
+}
+
+.rhythm-difficulty-label {
+    font-size: 30px;
+    font-weight: 900;
+    color: #0d47a1;
+}
+
+.rhythm-difficulty-desc {
+    min-height: 2.6em;
+    font-size: 18px;
+    font-weight: 800;
+    color: #37474f;
+    text-align: center;
+}
+
+.rhythm-difficulty-bpm {
+    padding: 5px 18px;
+    border-radius: 999px;
+    background: #fff8e1;
+    color: #e65100;
+    font-size: 18px;
+    font-weight: 900;
+}
+
+.rhythm-board {
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    gap: 14px;
+    height: min(720px, 96%);
+    min-height: 560px;
+}
+
+.rhythm-board-header {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 12px;
+    align-items: center;
+}
+
+.rhythm-board-back,
+.rhythm-score-pill {
+    min-height: 48px;
+    padding: 8px 16px;
+    border-radius: 14px;
+    border: 3px solid #b0bec5;
+    background: #fff;
+    color: #263238;
+    font-weight: 900;
+    box-shadow: 0 4px 0 #b0bec5;
+}
+
+.rhythm-board-back {
+    cursor: pointer;
+}
+
+.rhythm-song-now {
+    min-height: 58px;
+    padding: 8px 16px;
+    border-radius: 16px;
+    border: 3px solid #b3e5fc;
+    background: #fff;
+    color: #01579b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    box-shadow: 0 4px 0 #b0bec5;
+}
+
+.rhythm-song-now span {
+    font-size: 30px;
+}
+
+.rhythm-song-now strong {
+    font-size: 24px;
+}
+
+.rhythm-song-now small {
+    color: #546e7a;
+    font-size: 15px;
+    font-weight: 900;
+}
+
+.rhythm-stage {
+    position: relative;
+    min-height: 380px;
+    border: 4px dashed #90a4ae;
+    border-radius: 24px;
+    background:
+        linear-gradient(90deg, rgba(255, 193, 7, 0.12) 0 12%, transparent 12%),
+        linear-gradient(180deg, #fff 0%, #f9fdff 100%);
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.rhythm-stage::before {
+    content: "";
+    position: absolute;
+    left: 8%;
+    right: 7%;
+    top: 50%;
+    height: 14px;
+    border-radius: 999px;
+    background:
+        linear-gradient(90deg, rgba(255, 179, 0, 0.34), rgba(66, 165, 245, 0.18)),
+        repeating-linear-gradient(90deg, rgba(38, 50, 56, 0.12) 0 10px, transparent 10px 24px);
+    transform: translateY(-50%);
+    z-index: 1;
+}
+
+.rhythm-target {
+    position: absolute;
+    left: 8%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 4;
+    display: grid;
+    justify-items: center;
+    gap: 8px;
+}
+
+.rhythm-target::before {
+    content: "";
+    position: absolute;
+    top: -220px;
+    bottom: -220px;
+    left: 50%;
+    width: 4px;
+    background: rgba(255, 152, 0, 0.55);
+    transform: translateX(-50%);
+}
+
+.rhythm-target-drum {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: 104px;
+    height: 104px;
+    padding: 0;
+    border-radius: 999px;
+    border: 5px solid #ffb300;
+    background: #fff8e1;
+    box-shadow: 0 7px 0 #ffcc80;
+    color: transparent;
+    font-size: 0;
+    line-height: 1;
+    text-align: center;
+    cursor: pointer;
+}
+
+.rhythm-target-drum::before {
+    content: "🥁";
+    display: block;
+    color: initial;
+    font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+    font-size: 50px;
+    line-height: 1;
+    transform: translateY(-1px);
+}
+
+.rhythm-target-label {
+    position: relative;
+    z-index: 1;
+    padding: 5px 14px;
+    border-radius: 999px;
+    background: #ffb300;
+    color: #263238;
+    font-size: 18px;
+    font-weight: 900;
+}
+
+.rhythm-note-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.rhythm-note {
+    position: absolute;
+    width: 76px;
+    height: 76px;
+    border-radius: 999px;
+    border: 4px solid #42a5f5;
+    background: #fff;
+    box-shadow: 0 6px 0 #90caf9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform: translate(-50%, -50%);
+    transition: box-shadow 0.1s ease, border-color 0.1s ease, background-color 0.1s ease;
+}
+
+.rhythm-note span {
+    font-size: 38px;
+}
+
+.rhythm-note.is-near {
+    border-color: #ff9800;
+    background: #fff8e1;
+    box-shadow: 0 6px 0 #ffcc80, 0 0 22px rgba(255, 152, 0, 0.36);
+}
+
+.rhythm-feedback {
+    position: absolute;
+    left: 50%;
+    top: 16px;
+    transform: translateX(-50%) scale(0.8);
+    min-width: 180px;
+    padding: 8px 22px;
+    border-radius: 999px;
+    background: rgba(38, 50, 56, 0.92);
+    color: #fff;
+    font-size: 32px;
+    font-weight: 900;
+    text-align: center;
+    opacity: 0;
+    z-index: 7;
+}
+
+.rhythm-feedback.is-visible {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+}
+
+.rhythm-feedback.is-perfect,
+.rhythm-feedback.is-great {
+    background: #2e7d32;
+}
+
+.rhythm-feedback.is-good,
+.rhythm-feedback.is-wait {
+    background: #f9a825;
+    color: #263238;
+}
+
+.rhythm-feedback.is-miss {
+    background: #c62828;
+}
+
+.rhythm-countdown {
+    position: absolute;
+    inset: 0;
+    z-index: 9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.75);
+    color: #0d47a1;
+    font-size: clamp(72px, 9vw, 140px);
+    font-weight: 900;
+}
+
+.rhythm-mascot {
+    position: absolute;
+    right: 8%;
+    bottom: 10%;
+    font-size: 66px;
+    filter: drop-shadow(0 6px 0 rgba(0,0,0,0.12));
+}
+
+.rhythm-mascot.is-perfect,
+.rhythm-mascot.is-great,
+.rhythm-mascot.is-good {
+    animation: rhythmMascotPop 0.28s ease both;
+}
+
+.rhythm-mascot.is-miss {
+    animation: rhythmMascotShake 0.28s ease both;
+}
+
+.rhythm-bottom-panel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.rhythm-stat,
+.rhythm-hit-guide {
+    min-height: 42px;
+    padding: 7px 16px;
+    border-radius: 999px;
+    border: 2px solid #cfd8dc;
+    background: #fff;
+    color: #37474f;
+    font-size: 18px;
+    font-weight: 900;
+}
+
+.rhythm-hit-guide {
+    color: #01579b;
+    background: #e3f2fd;
+    border-color: #90caf9;
+}
+
+.rhythm-result-song {
+    margin-bottom: 8px;
+    color: #1565c0;
+    font-size: 20px;
+    font-weight: 900;
+    text-align: center;
+}
+
+.rhythm-result-stars {
+    margin-bottom: 10px;
+    color: #ff9800;
+    font-size: 32px;
+    font-weight: 900;
+    text-align: center;
+    letter-spacing: 0;
+}
+
+.rhythm-result-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.rhythm-result-actions button {
+    min-width: 150px;
+    min-height: 44px;
+    padding: 8px 16px;
+    border-radius: 14px;
+    border: 0;
+    background: #ffb300;
+    color: #263238;
+    box-shadow: 0 5px 0 #c68400;
+    font-size: 17px;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.rhythm-result-actions button:hover,
+.rhythm-result-actions button:focus-visible {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 0 #c68400;
+}
+
+.admin-rhythm-layout {
+    display: grid;
+    grid-template-columns: minmax(920px, 2fr) minmax(280px, 0.45fr);
+    gap: 18px;
+    width: min(1760px, 99.5%);
+    margin: 0 auto;
+    align-items: start;
+}
+
+.admin-rhythm-menu {
+    display: grid;
+    gap: 16px;
+    width: min(1440px, 98%);
+    margin: 0 auto;
+}
+
+.admin-rhythm-menu-hero,
+.admin-rhythm-menu-section {
+    box-sizing: border-box;
+    width: 100%;
+    border: 1px solid #cfd8dc;
+    border-radius: 14px;
+    background: #fff;
+    padding: 18px;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+
+.admin-rhythm-menu-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 18px;
+    align-items: center;
+    background: linear-gradient(180deg, #f8fbfd 0%, #ffffff 100%);
+}
+
+.admin-rhythm-menu-hero h4,
+.admin-rhythm-menu-section h4 {
+    margin: 0 0 6px;
+    color: #00695c;
+    font-size: 22px;
+}
+
+.admin-rhythm-menu-hero p,
+.admin-rhythm-menu-section p {
+    margin: 0;
+    color: #546e7a;
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1.6;
+}
+
+.admin-rhythm-primary-action,
+.admin-rhythm-editor-head button {
+    min-height: 46px;
+    border: 0;
+    border-radius: 12px;
+    padding: 9px 18px;
+    background: #00897b;
+    color: #fff;
+    box-shadow: 0 4px 0 #00695c;
+    font-size: 16px;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.admin-rhythm-section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e3edf3;
+}
+
+.admin-rhythm-section-head span {
+    display: inline-grid;
+    place-items: center;
+    min-width: 72px;
+    min-height: 32px;
+    border-radius: 999px;
+    background: #e0f2f1;
+    color: #00695c;
+    font-size: 14px;
+    font-weight: 900;
+}
+
+.admin-rhythm-layout-editor {
+    display: block;
+    width: min(1760px, 99.5%);
+}
+
+.admin-rhythm-editor-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e3edf3;
+    color: #00695c;
+    font-size: 16px;
+    font-weight: 900;
+}
+
+.admin-rhythm-editor-head button {
+    min-height: 38px;
+    background: #607d8b;
+    box-shadow: 0 4px 0 #455a64;
+    font-size: 14px;
+}
+
+.admin-rhythm-editor,
+.admin-rhythm-list {
+    box-sizing: border-box;
+    width: 100%;
+    border: 1px solid #cfd8dc;
+    border-radius: 12px;
+    background: #fff;
+    padding: 16px;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+
+.admin-rhythm-editor h4,
+.admin-rhythm-list h4 {
+    margin: 0 0 10px;
+    color: #00695c;
+    font-size: 20px;
+}
+
+.admin-rhythm-note,
+.admin-rhythm-storage-note {
+    margin: 0 0 12px;
+    color: #546e7a;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.admin-rhythm-form-grid {
+    display: grid;
+    grid-template-columns: minmax(220px, 1.4fr) minmax(90px, 0.45fr) minmax(150px, 0.7fr);
+    gap: 10px;
+}
+
+.admin-rhythm-form-grid label,
+.admin-rhythm-wide-label {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    color: #263238;
+    font-size: 13px;
+    font-weight: 900;
+}
+
+.admin-rhythm-form-grid input,
+.admin-rhythm-form-grid select,
+.admin-rhythm-wide-label input {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 40px;
+    border: 1px solid #b0bec5;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 15px;
+}
+
+.admin-rhythm-wide-label {
+    margin-top: 10px;
+}
+
+#admin-rhythm-audio {
+    width: 100%;
+    margin-top: 12px;
+}
+
+.admin-rhythm-note-counts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 10px 0;
+}
+
+.admin-rhythm-note-count {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: #eceff1;
+    color: #455a64;
+    font-size: 13px;
+    font-weight: 900;
+}
+
+.admin-rhythm-note-count.is-active {
+    background: #e0f2f1;
+    color: #00695c;
+    outline: 2px solid #4db6ac;
+}
+
+.admin-rhythm-timeline {
+    display: grid;
+    gap: 10px;
+    margin: 10px 0 14px;
+    padding: 14px;
+    border: 2px solid #d6e2ea;
+    border-radius: 16px;
+    background: #f8fbfd;
+}
+
+.admin-rhythm-timeline-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    color: #37474f;
+    font-size: 13px;
+    font-weight: 900;
+}
+
+.admin-rhythm-timeline-head small {
+    color: #607d8b;
+    font-size: 12px;
+}
+
+.admin-rhythm-timeline-tools {
+    display: grid;
+    grid-template-columns: auto minmax(260px, 1fr) auto auto auto;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    border: 1px solid #d6e2ea;
+    border-radius: 12px;
+    background: #ffffff;
+}
+
+.admin-rhythm-timeline-tools label {
+    display: grid;
+    grid-template-columns: auto minmax(180px, 1fr);
+    align-items: center;
+    gap: 8px;
+    color: #455a64;
+    font-size: 12px;
+    font-weight: 900;
+}
+
+.admin-rhythm-timeline-tools input {
+    width: 100%;
+}
+
+.admin-rhythm-timeline-tools strong {
+    min-width: 48px;
+    text-align: center;
+    color: #00695c;
+    font-size: 13px;
+}
+
+.admin-rhythm-timeline-tools button {
+    min-height: 34px;
+    border: 0;
+    border-radius: 8px;
+    padding: 6px 10px;
+    background: #1565c0;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.admin-rhythm-timeline-tools button:last-child {
+    background: #78909c;
+}
+
+.admin-rhythm-timeline-help {
+    margin: -2px 0 2px;
+    color: #607d8b;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.admin-rhythm-timeline-scroll {
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0 0 10px;
+    overscroll-behavior-x: contain;
+    scrollbar-color: #90a4ae #eef5fa;
+}
+
+.admin-rhythm-timeline-track {
+    position: relative;
+    width: 200%;
+    min-width: 1440px;
+    height: 148px;
+    border-radius: 22px;
+    background:
+        repeating-linear-gradient(90deg, rgba(38, 50, 56, 0.11) 0 2px, transparent 2px 8.333%),
+        linear-gradient(180deg, #ffffff 0%, #eef5fa 100%);
+    border: 2px solid #cfd8dc;
+    overflow: hidden;
+}
+
+.admin-rhythm-timeline-track::before {
+    content: "";
+    position: absolute;
+    left: 18px;
+    right: 18px;
+    top: 50%;
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(21, 101, 192, 0.12);
+    transform: translateY(-50%);
+    z-index: 1;
+}
+
+.admin-rhythm-timeline-playhead {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: #ff9800;
+    transform: translateX(-50%);
+    z-index: 3;
+}
+
+.admin-rhythm-timeline-notes {
+    position: absolute;
+    inset: 0;
+}
+
+.admin-rhythm-timeline-note {
+    position: absolute;
+    top: 50%;
+    width: 42px;
+    height: 42px;
+    box-sizing: border-box;
+    border-radius: 999px;
+    background: #1565c0;
+    border: 5px solid #ffffff;
+    box-shadow: 0 4px 0 rgba(0,0,0,0.22), 0 0 0 2px rgba(21, 101, 192, 0.14);
+    transform: translate(-50%, -50%);
+    z-index: 2;
+    cursor: grab;
+    touch-action: none;
+}
+
+.admin-rhythm-timeline-note.is-dragging {
+    background: #ff9800;
+    border-color: #ffffff;
+    cursor: grabbing;
+    z-index: 5;
+    box-shadow: 0 4px 0 rgba(0,0,0,0.22), 0 0 0 2px rgba(255, 152, 0, 0.14);
+}
+
+.admin-rhythm-timeline-note.is-selected {
+    background: #1565c0;
+    border-color: #ff9800;
+    z-index: 4;
+    box-shadow: 0 4px 0 rgba(0,0,0,0.22), 0 0 0 2px rgba(255, 152, 0, 0.14);
+}
+
+.admin-rhythm-selected-note {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr);
+    gap: 8px;
+    align-items: center;
+    padding: 10px 12px;
+    border: 1px solid #d6e2ea;
+    border-radius: 12px;
+    background: #fff;
+    color: #37474f;
+    font-weight: 900;
+}
+
+.admin-rhythm-selected-note strong {
+    color: #00695c;
+    font-size: 14px;
+}
+
+.admin-rhythm-selected-note span {
+    min-width: 86px;
+    text-align: center;
+    color: #e65100;
+    font-size: 18px;
+}
+
+.admin-rhythm-selected-note small {
+    color: #607d8b;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.admin-rhythm-nudge-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.admin-rhythm-nudge-actions button {
+    min-height: 34px;
+    border: 0;
+    border-radius: 999px;
+    padding: 6px 12px;
+    background: #e3f2fd;
+    color: #0d47a1;
+    font-size: 13px;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.admin-rhythm-nudge-actions button:hover,
+.admin-rhythm-nudge-actions button:focus-visible {
+    outline: 3px solid rgba(33, 150, 243, 0.28);
+}
+
+.admin-rhythm-preview-panel {
+    display: grid;
+    gap: 10px;
+    margin: 12px 0;
+    padding: 12px;
+    border: 2px solid #d6e2ea;
+    border-radius: 14px;
+    background: #f8fbfd;
+}
+
+.admin-rhythm-preview-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.admin-rhythm-preview-head strong,
+.admin-rhythm-preview-head small {
+    display: block;
+}
+
+.admin-rhythm-preview-head strong {
+    color: #00695c;
+    font-size: 16px;
+}
+
+.admin-rhythm-preview-head small {
+    color: #607d8b;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.admin-rhythm-preview-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.admin-rhythm-preview-actions button {
+    min-height: 36px;
+    border: 0;
+    border-radius: 8px;
+    padding: 7px 12px;
+    background: #1565c0;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.admin-rhythm-preview-actions button:last-child {
+    background: #78909c;
+}
+
+.admin-rhythm-test-hud {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px;
+    border: 1px solid #d6e2ea;
+    border-radius: 12px;
+    background: #fff;
+}
+
+.admin-rhythm-test-hud span,
+.admin-rhythm-test-hud em {
+    min-height: 32px;
+    padding: 5px 12px;
+    border-radius: 999px;
+    background: #f1f6fa;
+    color: #37474f;
+    font-size: 13px;
+    font-style: normal;
+    font-weight: 900;
+}
+
+.admin-rhythm-test-hud strong {
+    color: #00695c;
+    font-size: 15px;
+}
+
+.admin-rhythm-test-hud em {
+    min-width: 150px;
+    text-align: center;
+    color: #607d8b;
+}
+
+.admin-rhythm-test-hud em.is-visible {
+    background: #fff8e1;
+    color: #e65100;
+}
+
+.admin-rhythm-play-preview {
+    min-height: 250px;
+    border-width: 3px;
+    border-radius: 18px;
+}
+
+.admin-rhythm-play-preview .rhythm-target-drum {
+    width: 78px;
+    height: 78px;
+    border-width: 4px;
+}
+
+.admin-rhythm-play-preview .rhythm-target-drum::before {
+    font-size: 38px;
+    transform: translateY(-1px);
+}
+
+.admin-rhythm-play-preview .rhythm-target-label {
+    font-size: 15px;
+    padding: 4px 12px;
+}
+
+.admin-rhythm-play-preview .rhythm-note {
+    width: 58px;
+    height: 58px;
+    border-width: 3px;
+}
+
+.admin-rhythm-play-preview .rhythm-note span {
+    font-size: 30px;
+}
+
+.admin-rhythm-play-preview .rhythm-countdown {
+    font-size: clamp(42px, 7vw, 90px);
+    color: #00695c;
+}
+
+.admin-rhythm-record-actions,
+.admin-rhythm-save-actions,
+.admin-rhythm-song-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.admin-rhythm-record-actions button,
+.admin-rhythm-save-actions button,
+.admin-rhythm-song-actions button {
+    min-height: 38px;
+    border: 0;
+    border-radius: 8px;
+    padding: 7px 12px;
+    background: #eceff1;
+    color: #263238;
+    font-size: 14px;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.admin-rhythm-save-actions button.primary,
+.admin-rhythm-record-actions button:first-child {
+    background: #00897b;
+    color: #fff;
+}
+
+.admin-rhythm-song-actions button.danger {
+    background: #c62828;
+    color: #fff;
+}
+
+.admin-rhythm-tap-pad {
+    width: 100%;
+    min-height: 76px;
+    margin: 12px 0 8px;
+    border: 3px solid #ffb300;
+    border-radius: 16px;
+    background: #fff8e1;
+    color: #263238;
+    box-shadow: 0 5px 0 #ffcc80;
+    font-size: 26px;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.admin-rhythm-tap-pad.is-hit {
+    animation: adminRhythmTap 0.18s ease both;
+}
+
+.admin-rhythm-status {
+    min-height: 22px;
+    color: #00695c;
+    font-size: 13px;
+    font-weight: 900;
+}
+
+.admin-rhythm-song-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+    align-items: center;
+    border: 1px solid #dbe3ef;
+    border-radius: 10px;
+    padding: 10px;
+    margin-bottom: 10px;
+    background: #f8fbfd;
+}
+
+.admin-rhythm-song-main {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 10px;
+    align-items: center;
+}
+
+.admin-rhythm-song-emoji {
+    display: grid;
+    place-items: center;
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
+    background: #e0f2f1;
+    font-size: 24px;
+}
+
+.admin-rhythm-song-main strong,
+.admin-rhythm-song-main small,
+.admin-rhythm-song-main span {
+    display: block;
+}
+
+.admin-rhythm-song-main strong {
+    color: #263238;
+    font-size: 16px;
+}
+
+.admin-rhythm-song-main small,
+.admin-rhythm-song-main span {
+    color: #607d8b;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.admin-rhythm-empty {
+    border: 1px dashed #b0bec5;
+    border-radius: 10px;
+    padding: 20px;
+    color: #78909c;
+    text-align: center;
+    font-weight: 900;
+}
+
+@keyframes adminRhythmTap {
+    0% { transform: scale(1); }
+    50% { transform: scale(0.98); background: #ffe082; }
+    100% { transform: scale(1); }
+}
+
+@keyframes rhythmMascotPop {
+    0% { transform: scale(0.86); }
+    70% { transform: scale(1.15); }
+    100% { transform: scale(1); }
+}
+
+@keyframes rhythmMascotShake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-8px); }
+    75% { transform: translateX(8px); }
+}
+
+@media (max-width: 1100px) {
+    .admin-rhythm-layout,
+    .admin-rhythm-layout-editor,
+    .admin-rhythm-menu {
+        width: 98%;
+    }
+
+    .admin-rhythm-menu-hero,
+    .admin-rhythm-form-grid,
+    .admin-rhythm-timeline-tools,
+    .admin-rhythm-selected-note,
+    .admin-rhythm-song-row {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-rhythm-menu-hero {
+        justify-items: stretch;
+    }
+
+    .admin-rhythm-primary-action {
+        width: 100%;
+    }
+
+    .admin-rhythm-preview-head,
+    .admin-rhythm-editor-head,
+    .admin-rhythm-section-head {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .admin-rhythm-preview-actions {
+        justify-content: stretch;
+    }
+
+    .admin-rhythm-preview-actions button {
+        flex: 1 1 160px;
+    }
+}
+
+@media (max-width: 900px) {
+    .rhythm-song-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .rhythm-difficulty-grid {
+        grid-template-columns: 1fr;
+    }
+    .rhythm-difficulty-hero {
+        grid-template-columns: 1fr;
+    }
+    .rhythm-board-header {
+        grid-template-columns: 1fr;
+    }
+    .rhythm-board {
+        height: auto;
+        min-height: 560px;
+    }
+    .rhythm-song-now {
+        flex-wrap: wrap;
+    }
+}
 
 .typing-ranking-page {
     justify-content: flex-start;

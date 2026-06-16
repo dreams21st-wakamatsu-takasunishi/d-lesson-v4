@@ -39,6 +39,7 @@ export function showAdminSection(sectionId, callbacks = {}) {
     if (sectionId === 'admin-sec-dashboard') getCallback(callbacks, 'switchDashTab')('basic');
     if (sectionId === 'admin-sec-practice-history') getCallback(callbacks, 'renderPracticeHistoryAdmin')();
     if (sectionId === 'admin-sec-auth-link') getCallback(callbacks, 'renderAuthLinkingAdmin')();
+    if (sectionId === 'admin-sec-rhythm') getCallback(callbacks, 'renderAdminRhythmSongs')();
     if (sectionId === 'admin-sec-backup') getCallback(callbacks, 'renderAdminAuditLog')();
     if (sectionId === 'admin-sec-ops-guide') {
         getCallback(callbacks, 'renderOpsGuideAdmin')();
@@ -59,6 +60,7 @@ function openAdminScreen(callbacks = {}) {
     getCallback(callbacks, 'renderTicketAdmin')();
     getCallback(callbacks, 'renderPracticeHistoryAdmin')();
     getCallback(callbacks, 'renderTypingRankingSettingsAdmin')();
+    getCallback(callbacks, 'renderAdminRhythmSongs')();
     backToAdminMenu();
     showScreen('screen-admin');
 }

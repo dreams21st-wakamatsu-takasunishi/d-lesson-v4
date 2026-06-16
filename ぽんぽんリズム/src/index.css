@@ -1,0 +1,28 @@
+@import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "M PLUS Rounded 1c", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+/* Custom bounce and shake animation keyframes */
+@keyframes cute-bounce {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-10px) scale(1.05); }
+}
+
+@keyframes cute-shake {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-5deg); }
+  75% { transform: rotate(5deg); }
+}
+
+.animate-cute-bounce {
+  animation: cute-bounce 2s infinite ease-in-out;
+}
+
+.animate-cute-shake {
+  animation: cute-shake 0.5s infinite ease-in-out;
+}
+

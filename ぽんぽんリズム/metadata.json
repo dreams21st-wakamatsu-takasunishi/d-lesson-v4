@@ -1,0 +1,6 @@
+{
+  "name": "ぽんぽんリズム",
+  "description": "子どもが楽しく遊びながらリズム感を身につけられる、かわいくて直感的な音楽リズムゲーム。タッチやキーボードで簡単に遊べます！",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
