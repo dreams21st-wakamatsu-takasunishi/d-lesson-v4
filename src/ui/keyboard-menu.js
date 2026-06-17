@@ -360,10 +360,10 @@ function getKeyboardStageDisplay(sid, index = 0) {
     if (sid >= 9000 && sid < 9100) {
         const st = ALPHABET_READING_STAGES.find(s => s.id === sid);
         if (st) {
-            title = `ABC-${index + 1}`;
-            keys = st.keys.join(' ');
+            title = st.title;
+            keys = st.type === 'choice' ? '3つから えらぶ' : st.keys.join(' ');
             sub = st.sub;
-            exCls = 'alphabet-reading';
+            exCls = st.type === 'choice' ? 'alphabet-reading alphabet-choice-stage' : 'alphabet-reading';
         }
     } else if (sid >= 4000 && sid < 5000) {
         const st = WORD_DATA.find(s => s.id === sid);

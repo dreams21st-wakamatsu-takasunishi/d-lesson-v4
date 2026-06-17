@@ -39,7 +39,7 @@ let mainQueue =[], currentCount = 0, totalCount = 1;
 let totalKeysTyped = 0, missKeysTyped = 0, targetKey = '', isHomeReturn = false, pendingHome = null;
 let isHiragana = false, isWord = false, currHiraObj = null, activeRomajiList =[], currRomajiIdx = 0;
 let isExam = false, mistakeCount = 0, maxMistakes = 3, mistakeStats = {}, hasMissLimit = false;
-let isAlphabetReading = false;
+let isAlphabetReading = false, isAlphabetChoice = false, alphabetChoiceCurrent = null;
 let timerInterval = null, startTime = 0, isTimeAttackMode = false;
 let cancelStartHandler = null; 
 let typedRomajiStr = "";
@@ -355,7 +355,10 @@ export function startGame(sid, mode, options = {}) {
     startTime = 0;
     
     isExam = EXAMS.some(ex => ex.id === sid) || [2101, 2102, 2103, 2104].includes(sid) || (sid >= 3200 && sid < 3300);
-    isAlphabetReading = mode === 'keyboard' && sid >= 9000 && sid < 9100;
+    const alphabetStage = mode === 'keyboard' ? ALPHABET_READING_STAGES.find(stage => stage.id === sid) : null;
+    isAlphabetReading = Boolean(alphabetStage);
+    isAlphabetChoice = alphabetStage?.type === 'choice';
+    alphabetChoiceCurrent = null;
     isHiragana = (sid >= 3000 && sid < 4000) || sid === 9888;
     isWord = (sid >= 4000 && sid < 5000);
     hasMissLimit = isExam;
@@ -529,6 +532,89 @@ function speakAlphabetName(key) {
     return reading;
 }
 
+function getAlphabetStage() {
+    return ALPHABET_READING_STAGES.find(stage => stage.id === currentStage) || null;
+}
+
+function buildAlphabetChoiceQuestion(stage, previousKey = '') {
+    const keys = Array.isArray(stage?.keys) ? stage.keys : [];
+    const targetPool = keys.filter(key => key !== previousKey);
+    const targetKey = shuffle([...(targetPool.length ? targetPool : keys)])[0] || 'A';
+    const distractors = shuffle(keys.filter(key => key !== targetKey)).slice(0, 2);
+    const choices = shuffle([targetKey, ...distractors]);
+    return {
+        targetKey,
+        reading: ALPHABET_READING_NAMES[targetKey] || targetKey,
+        choices
+    };
+}
+
+function speakAlphabetChoiceQuestion(question) {
+    if (!question || !('speechSynthesis' in window)) return;
+    speechSynthesis.cancel();
+    const msg = new SpeechSynthesisUtterance(`${question.reading}はどれでしょう。`);
+    msg.lang = 'ja-JP';
+    msg.rate = 0.82;
+    speechSynthesis.speak(msg);
+}
+
+function renderAlphabetChoiceQuestion(question) {
+    const mq = document.getElementById('main-q');
+    const hq = document.getElementById('romaji-hint');
+    if (!mq || !hq || !question) return;
+    hq.innerHTML = '<span class="alphabet-reading-hint">よみを きいて、えらぼう</span>';
+    mq.innerHTML = `
+        <div class="alphabet-choice-panel">
+            <div class="alphabet-choice-question">${question.reading}はどれでしょう？</div>
+            <div class="alphabet-choice-options">
+                ${question.choices.map(choice => `<button type="button" class="alphabet-choice-button" data-choice="${choice}">${choice}</button>`).join('')}
+            </div>
+        </div>
+    `;
+    mq.querySelectorAll('.alphabet-choice-button').forEach(button => {
+        button.addEventListener('click', () => handleAlphabetChoiceAnswer(button.dataset.choice));
+    });
+}
+
+function handleAlphabetChoiceAnswer(answerKey) {
+    if (!isAlphabetChoice || isProcessing || !alphabetChoiceCurrent) return false;
+    if (!alphabetChoiceCurrent.choices.includes(answerKey)) return false;
+
+    const button = document.querySelector(`.alphabet-choice-button[data-choice="${answerKey}"]`);
+    const hq = document.getElementById('romaji-hint');
+    const correct = answerKey === alphabetChoiceCurrent.targetKey;
+
+    if (correct) {
+        totalKeysTyped++;
+        SoundManager.playType();
+        if (users[currentUser]) users[currentUser].totalKeysTyped = (users[currentUser].totalKeysTyped || 0) + 1;
+        if (button) button.classList.add('is-correct');
+        if (hq) hq.innerHTML = `<span class="alphabet-reading-result">${answerKey} は ${alphabetChoiceCurrent.reading}</span>`;
+        mainQueue.shift();
+        currentCount++;
+        updateProgress();
+        isProcessing = true;
+        setTimeout(() => {
+            if (mainQueue.length === 0) markClear();
+            else nextKeyQ();
+        }, 650);
+        return true;
+    }
+
+    missKeysTyped++;
+    updateAlphabetChoiceStatus();
+    SoundManager.playError();
+    if (button) button.classList.add('is-wrong');
+    if (users[currentUser]) {
+        if (!users[currentUser].globalMistakes) users[currentUser].globalMistakes = {};
+        users[currentUser].globalMistakes[alphabetChoiceCurrent.targetKey] = normalizeMistakeCount(users[currentUser].globalMistakes[alphabetChoiceCurrent.targetKey]) + 1;
+    }
+    if (hq) hq.innerHTML = '<span class="alphabet-choice-reset">もういちど、べつの もんだい</span>';
+    isProcessing = true;
+    setTimeout(nextKeyQ, 900);
+    return true;
+}
+
 function handleKeyDown(e) {
     if (typeof e.key !== 'string') return;
     if (isProcessing ||['Enter', 'Shift', 'Control', 'Alt', 'Meta', 'Tab', 'CapsLock', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
@@ -561,6 +647,11 @@ function handleKeyDown(e) {
     const el = document.querySelector(`.key[data-key="${chk}"]`);
     if (el) { el.classList.add('pressed'); setTimeout(() => el.classList.remove('pressed'), 150); }
 
+    if (isAlphabetChoice) {
+        handleAlphabetChoiceAnswer(upper);
+        return;
+    }
+
     let isCorrect = false;
     let inputChar = (k === ' ') ? ' ' : upper; 
     if (textInputQuestion) {
@@ -569,7 +660,8 @@ function handleKeyDown(e) {
     } else { isCorrect = (targetKey === 'SPACE' ? k === ' ' : upper === targetKey); }
 
     if (isCorrect) {
-        totalKeysTyped++; SoundManager.playType();
+        totalKeysTyped++;
+        if (!isAlphabetReading) SoundManager.playType();
         if (users[currentUser]) users[currentUser].totalKeysTyped = (users[currentUser].totalKeysTyped || 0) + 1; 
         if (isAlphabetReading) {
             const reading = speakAlphabetName(targetKey);
@@ -617,6 +709,14 @@ function handleKeyDown(e) {
 export function updateProgress() {
     let p = 0; if (totalCount > 0) p = Math.min(100, Math.floor((currentCount / totalCount) * 100));
     els.progressFill.style.width = p + '%'; els.progressText.innerText = p + '%';
+    updateAlphabetChoiceStatus();
+}
+
+function updateAlphabetChoiceStatus() {
+    if (!els.missCounter || !isAlphabetChoice) return;
+    els.missCounter.style.display = 'inline-block';
+    els.missCounter.classList.remove('status-danger');
+    els.missCounter.innerText = `せいかい: ${currentCount} / ${totalCount}　ミス: ${missKeysTyped}`;
 }
 
 function setupMouse(s) {
@@ -727,12 +827,17 @@ function setupKeyboard(s) {
     if (isAlphabetReading) {
         const stage = ALPHABET_READING_STAGES.find(item => item.id === s);
         const keys = stage ? stage.keys : [];
-        const raw = [];
-        keys.forEach(key => {
-            raw.push({ key, alphabetName: ALPHABET_READING_NAMES[key] || key });
-            raw.push({ key, alphabetName: ALPHABET_READING_NAMES[key] || key });
-        });
-        pool = shuffle(raw);
+        if (stage?.type === 'choice') {
+            const targetCount = Number(stage.target || 8);
+            pool = Array.from({ length: targetCount }, () => ({ alphabetChoice: true }));
+        } else {
+            const raw = [];
+            keys.forEach(key => {
+                raw.push({ key, alphabetName: ALPHABET_READING_NAMES[key] || key });
+                raw.push({ key, alphabetName: ALPHABET_READING_NAMES[key] || key });
+            });
+            pool = shuffle(raw);
+        }
     } else if (s === 9888) { 
         let mistakes = users[currentUser].globalMistakes || {};
         let sortedKeys = getTrainableMistakeEntries(mistakes, 8).map(item => item.key);
@@ -794,9 +899,25 @@ function nextTask() {
 
 function nextKeyQ() {
     isProcessing = false; const mq = document.getElementById('main-q'), hq = document.getElementById('romaji-hint'); mq.innerText = ''; hq.innerText = ''; if (mainQueue.length === 0) return;
+    const wrap = document.getElementById('keyboard-wrapper');
+    wrap.classList.toggle('alphabet-reading-active', isAlphabetReading);
+    wrap.classList.toggle('alphabet-choice-active', isAlphabetChoice);
+    if (isAlphabetChoice) {
+        const stage = getAlphabetStage();
+        alphabetChoiceCurrent = buildAlphabetChoiceQuestion(stage, alphabetChoiceCurrent?.targetKey);
+        targetKey = alphabetChoiceCurrent.targetKey;
+        currHiraObj = null;
+        isHomeReturn = false;
+        wrap.classList.remove('blind-active');
+        els.instText.innerText = 'よみを きいて、ただしい もじを えらぼう';
+        renderAlphabetChoiceQuestion(alphabetChoiceCurrent);
+        clearKeyboardVisuals();
+        speakAlphabetChoiceQuestion(alphabetChoiceCurrent);
+        return;
+    }
     let item = mainQueue[0], isBlindItem = false;
     if (typeof item === 'object') { if (item.key) { targetKey = item.key; isBlindItem = !!item.blind; isHomeReturn = !!item.ret; currHiraObj = null; } else if (item.h) { currHiraObj = item; isBlindItem = !!item.blind; isHomeReturn = false; } } else { targetKey = item; isHomeReturn = false; currHiraObj = null; }
-    const wrap = document.getElementById('keyboard-wrapper'); if (isBlindItem) { wrap.classList.add('blind-active'); els.instText.innerText = 'みないで うってみよう！'; } else { wrap.classList.remove('blind-active'); }
+    if (isBlindItem) { wrap.classList.add('blind-active'); els.instText.innerText = 'みないで うってみよう！'; } else { wrap.classList.remove('blind-active'); }
     wrap.classList.toggle('alphabet-reading-active', isAlphabetReading);
     const isTextInputItem = Boolean(currHiraObj) && (isHiragana || isWord || currentStage === 9888);
     if (isAlphabetReading) {
@@ -1063,7 +1184,16 @@ function renderKeyboard() {
     w.innerHTML += `<div id="hands-display"><div class="hand left"><div class="finger f-pinky" data-finger="l-pinky"></div><div class="finger f-ring" data-finger="l-ring"></div><div class="finger f-middle" data-finger="l-middle"></div><div class="finger f-index" data-finger="l-index"></div><div class="finger f-thumb" data-finger="thumb"></div></div><div class="hand right"><div class="finger f-thumb" data-finger="thumb"></div><div class="finger f-index" data-finger="r-index"></div><div class="finger f-middle" data-finger="r-middle"></div><div class="finger f-ring" data-finger="r-ring"></div><div class="finger f-pinky" data-finger="r-pinky"></div></div></div>`; els.playArea.appendChild(w);
 }
 
-function updateVisuals() { const fn = targetKey === 'SPACE' ? 'thumb' : FINGER_MAP[targetKey]; const cl = COLOR_CLASS_MAP[fn]; document.querySelectorAll('.key').forEach(k => { k.className = 'key' + (k.classList.contains('space') ? ' space' : ''); if (k.dataset.key === (targetKey === 'SPACE' ? ' ' : targetKey)) { k.classList.add('target'); if (cl) k.classList.add(cl); } }); document.querySelectorAll('.finger').forEach(f => { f.className = f.className.replace(/ active| color-\w+/g, ''); if (f.dataset.finger === fn) { f.classList.add('active'); if (cl) f.classList.add(cl); } }); }
+function clearKeyboardVisuals() {
+    document.querySelectorAll('.key').forEach(k => {
+        k.className = 'key' + (k.classList.contains('space') ? ' space' : '');
+    });
+    document.querySelectorAll('.finger').forEach(f => {
+        f.className = f.className.replace(/ active| color-\w+/g, '');
+    });
+}
+
+function updateVisuals() { if (isAlphabetChoice) { clearKeyboardVisuals(); return; } const fn = targetKey === 'SPACE' ? 'thumb' : FINGER_MAP[targetKey]; const cl = COLOR_CLASS_MAP[fn]; document.querySelectorAll('.key').forEach(k => { k.className = 'key' + (k.classList.contains('space') ? ' space' : ''); if (k.dataset.key === (targetKey === 'SPACE' ? ' ' : targetKey)) { k.classList.add('target'); if (cl) k.classList.add(cl); } }); document.querySelectorAll('.finger').forEach(f => { f.className = f.className.replace(/ active| color-\w+/g, ''); if (f.dataset.finger === fn) { f.classList.add('active'); if (cl) f.classList.add(cl); } }); }
 
 function updRomaji() { let h = ''; let target = activeRomajiList[0]; for (let i = 0; i < target.length; i++) { let dispChar = target[i] === ' ' ? '␣' : target[i]; if (i < currRomajiIdx) h += `<span class="romaji-done">${dispChar}</span>`; else if (i === currRomajiIdx) h += `<span class="romaji-current">${dispChar}</span>`; else h += `<span>${dispChar}</span>`; } document.getElementById('romaji-hint').innerHTML = h; }
 

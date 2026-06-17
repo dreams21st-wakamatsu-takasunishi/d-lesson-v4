@@ -55,12 +55,18 @@ export const FINGER_HOME_MAP = {'l-pinky':'A','l-ring':'S','l-middle':'D','l-ind
 export const COLOR_CLASS_MAP = {'thumb':'color-thumb','l-index':'color-index','r-index':'color-index','l-middle':'color-middle','r-middle':'color-middle','l-ring':'color-ring','r-ring':'color-ring','l-pinky':'color-pinky','r-pinky':'color-pinky'};
 
 export const ALPHABET_READING_STAGES = [
-    { id: 9001, title: 'ABC 1', keys: ['A', 'B', 'C', 'D', 'E', 'F'], sub: 'A〜Fを きいて おぼえる' },
-    { id: 9002, title: 'ABC 2', keys: ['G', 'H', 'I', 'J', 'K', 'L'], sub: 'G〜Lを きいて おぼえる' },
-    { id: 9003, title: 'ABC 3', keys: ['M', 'N', 'O', 'P', 'Q', 'R'], sub: 'M〜Rを きいて おぼえる' },
-    { id: 9004, title: 'ABC 4', keys: ['S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'], sub: 'S〜Zを きいて おぼえる' },
-    { id: 9005, title: 'ABC まぜこぜ', keys: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M'], sub: 'A〜Mを まぜて やってみる' },
-    { id: 9006, title: 'ABC チャレンジ', keys: ['N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'], sub: 'N〜Zを まぜて やってみる' }
+    { id: 9001, title: 'ABC 1', type: 'read', keys: ['A', 'B', 'C', 'D', 'E', 'F'], sub: 'A〜Fを きいて おぼえる' },
+    { id: 9051, title: 'ABC 1 えらぶ', type: 'choice', target: 8, keys: ['A', 'B', 'C', 'D', 'E', 'F'], sub: 'A〜Fの よみを えらぶ' },
+    { id: 9002, title: 'ABC 2', type: 'read', keys: ['G', 'H', 'I', 'J', 'K', 'L'], sub: 'G〜Lを きいて おぼえる' },
+    { id: 9052, title: 'ABC 2 えらぶ', type: 'choice', target: 8, keys: ['G', 'H', 'I', 'J', 'K', 'L'], sub: 'G〜Lの よみを えらぶ' },
+    { id: 9003, title: 'ABC 3', type: 'read', keys: ['M', 'N', 'O', 'P', 'Q', 'R'], sub: 'M〜Rを きいて おぼえる' },
+    { id: 9053, title: 'ABC 3 えらぶ', type: 'choice', target: 8, keys: ['M', 'N', 'O', 'P', 'Q', 'R'], sub: 'M〜Rの よみを えらぶ' },
+    { id: 9004, title: 'ABC 4', type: 'read', keys: ['S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'], sub: 'S〜Zを きいて おぼえる' },
+    { id: 9054, title: 'ABC 4 えらぶ', type: 'choice', target: 10, keys: ['S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'], sub: 'S〜Zの よみを えらぶ' },
+    { id: 9005, title: 'ABC まぜこぜ', type: 'read', keys: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M'], sub: 'A〜Mを まぜて やってみる' },
+    { id: 9055, title: 'ABC まぜこぜ えらぶ', type: 'choice', target: 10, keys: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M'], sub: 'A〜Mの よみを えらぶ' },
+    { id: 9006, title: 'ABC チャレンジ', type: 'read', keys: ['N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'], sub: 'N〜Zを まぜて やってみる' },
+    { id: 9056, title: 'ABC チャレンジ えらぶ', type: 'choice', target: 10, keys: ['N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'], sub: 'N〜Zの よみを えらぶ' }
 ];
 
 export const ALPHABET_READING_NAMES = {
@@ -187,7 +193,7 @@ export const STAGE_ORDER =[
 ];
 
 export const KB_CHAPTERS =[
-    {id:'alphabet',title:'ABCをおぼえる',stages:[9001,9002,9003,9004,9005,9006],bridge:null,exam:null},
+    {id:'alphabet',title:'ABCをおぼえる',stages: ALPHABET_READING_STAGES.map(stage => stage.id),bridge:null,exam:null},
     {id:'home',title:'ホームポジション編',stages:[1001,1002,1003,1004,1005],bridge:1051,exam:1101},
     {id:'top',title:'上の段編',stages:[1006,1007,1008,1009,1010],bridge:1052,exam:1102},
     {id:'bottom',title:'下の段編',stages:[1011,1012,1013,1014,1015],bridge:1053,exam:1103},
