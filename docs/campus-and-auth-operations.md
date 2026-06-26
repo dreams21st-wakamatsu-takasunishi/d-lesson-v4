@@ -100,7 +100,6 @@ npx.cmd supabase functions deploy public-register-student --use-api
 npx.cmd supabase secrets set PUBLIC_STUDENT_REGISTRATION_ENABLED=true
 npx.cmd supabase secrets set PUBLIC_STUDENT_CAMPUS_ID=public
 npx.cmd supabase secrets set PUBLIC_STUDENT_GROUP=public
-npx.cmd supabase secrets set PUBLIC_REGISTER_PASSWORD_MIN_LENGTH=8
 npx.cmd supabase secrets set LESSON_USER_DATA_TABLE=user_data
 ```
 

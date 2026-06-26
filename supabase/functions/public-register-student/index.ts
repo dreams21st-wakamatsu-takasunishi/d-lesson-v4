@@ -161,13 +161,9 @@ serve(async (req) => {
     const displayName = sanitizeDisplayName(payload.displayName);
     const email = String(payload.email || '').trim().toLowerCase();
     const password = String(payload.password || '');
-    const minPasswordLength = Number.parseInt(Deno.env.get('PUBLIC_REGISTER_PASSWORD_MIN_LENGTH') || '8', 10);
 
     if (!displayName) return jsonResponse({ error: 'ニックネームを入力してください。' }, 400);
     if (!isValidEmail(email)) return jsonResponse({ error: 'メールアドレスを確認してください。' }, 400);
-    if (password.length < minPasswordLength) {
-      return jsonResponse({ error: `パスワードは${minPasswordLength}文字以上で入力してください。` }, 400);
-    }
 
     const userDataId = createUserDataId();
     const {

@@ -49,8 +49,6 @@ const STUDENT_LOGIN_PASSCODE_MAX_LENGTH = parseEnvInteger(import.meta.env.VITE_S
 const STUDENT_IDLE_LOGOUT_DEFAULT_MINUTES = parseEnvInteger(import.meta.env.VITE_STUDENT_IDLE_LOGOUT_MINUTES, 20, 0, 240);
 const ENABLE_PUBLIC_STUDENT_REGISTRATION = import.meta.env.VITE_ENABLE_PUBLIC_STUDENT_REGISTRATION !== 'false';
 const PUBLIC_STUDENT_REGISTRATION_FUNCTION = import.meta.env.VITE_PUBLIC_STUDENT_REGISTRATION_FUNCTION || 'public-register-student';
-const PUBLIC_REGISTER_PASSWORD_MIN_LENGTH = parseEnvInteger(import.meta.env.VITE_PUBLIC_REGISTER_PASSWORD_MIN_LENGTH, 8, 6, 64);
-const AUTH_EMAIL_MAX_LENGTH = 254;
 
 export const STORAGE_KEY = 'pc_practice_v5_split';
 const GUEST_STORAGE_KEY = `${STORAGE_KEY}_guest_session`;
@@ -880,7 +878,7 @@ function buildStaffAuthFormHtml(isPrimary = false) {
             <p class="auth-panel-copy">登録済みユーザー、先生、管理者はこちらから入ります。</p>
             <label class="auth-field-label">
                 メールアドレス
-                <input id="supabase-auth-email" class="auth-text-input" type="email" inputmode="email" autocomplete="username" maxlength="${AUTH_EMAIL_MAX_LENGTH}" spellcheck="false" required>
+                <input id="supabase-auth-email" class="auth-text-input" type="email" inputmode="email" autocomplete="username" spellcheck="false" required>
             </label>
             <label class="auth-field-label">
                 パスワード
@@ -903,15 +901,15 @@ function buildPublicRegisterPanelHtml() {
             </label>
             <label class="auth-field-label">
                 メールアドレス
-                <input id="public-register-email" class="auth-text-input" type="email" inputmode="email" autocomplete="username" maxlength="${AUTH_EMAIL_MAX_LENGTH}" spellcheck="false" required>
+                <input id="public-register-email" class="auth-text-input" type="email" inputmode="email" autocomplete="username" spellcheck="false" required>
             </label>
             <label class="auth-field-label">
                 パスワード
-                <input id="public-register-password" class="auth-text-input" type="password" autocomplete="new-password" minlength="${PUBLIC_REGISTER_PASSWORD_MIN_LENGTH}" required>
+                <input id="public-register-password" class="auth-text-input" type="password" autocomplete="new-password" required>
             </label>
             <label class="auth-field-label">
                 パスワードをもう一度
-                <input id="public-register-password-confirm" class="auth-text-input" type="password" autocomplete="new-password" minlength="${PUBLIC_REGISTER_PASSWORD_MIN_LENGTH}" required>
+                <input id="public-register-password-confirm" class="auth-text-input" type="password" autocomplete="new-password" required>
             </label>
             <button id="public-register-submit" class="btn-primary auth-submit" type="submit">登録する</button>
         </form>
@@ -1381,14 +1379,6 @@ async function handlePublicRegisterFormSubmit(event) {
     }
     if (!email || !password) {
         setAuthGateMessage('メールアドレスとパスワードを入力してください。', true);
-        return;
-    }
-    if (email.length > AUTH_EMAIL_MAX_LENGTH) {
-        setAuthGateMessage(`メールアドレスは${AUTH_EMAIL_MAX_LENGTH}文字以内で入力してください。`, true);
-        return;
-    }
-    if (password.length < PUBLIC_REGISTER_PASSWORD_MIN_LENGTH) {
-        setAuthGateMessage(`パスワードは${PUBLIC_REGISTER_PASSWORD_MIN_LENGTH}文字以上で入力してください。`, true);
         return;
     }
     if (password !== confirm) {
