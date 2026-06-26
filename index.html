@@ -295,6 +295,12 @@
                         <div style="flex:1; display:flex; flex-direction:column; gap:10px;">
                             <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; background:#f5f5f5; border:1px solid #ddd; border-radius:8px; padding:10px;">
                                 <input type="search" id="admin-user-search" placeholder="名前・ID・グループで検索" oninput="updateAdminUserTable()" style="flex:1; min-width:180px; padding:8px; font-size:14px; border:1px solid #ccc; border-radius:6px; margin:0;">
+                                <select id="admin-user-account-type-filter" onchange="updateAdminUserTable()" style="min-width:130px; padding:8px; font-size:14px; border:1px solid #ccc; border-radius:6px; margin:0;">
+                                    <option value="classroom">教室ユーザー</option>
+                                    <option value="public">公開登録のみ</option>
+                                    <option value="guest">ゲストのみ</option>
+                                    <option value="all">すべての種別</option>
+                                </select>
                                 <select id="admin-user-grade-filter" onchange="updateAdminUserTable()" style="min-width:120px; padding:8px; font-size:14px; border:1px solid #ccc; border-radius:6px; margin:0;">
                                     <option value="all">すべての学年</option>
                                 </select>

@@ -5,9 +5,12 @@ import {
     getCampusList,
     getCampusName,
     getUserCampusId,
+    getUserAccountType,
+    getUserAccountTypeLabel,
     normalizeCampusId,
     getUserDisplayName,
     isSystemUserId,
+    USER_ACCOUNT_TYPES,
     userDisplayNameExists
 } from '../api/user.js';
 import { STAGE_ORDER } from '../data/constants.js';
@@ -19,7 +22,7 @@ function runUserChanged(options) {
     if (typeof options?.onUserChanged === 'function') options.onUserChanged();
 }
 
-function updateAdminFilterSelect(select, values, allLabel, currentValue) {
+function updateAdminFilterSelect(select, values, allLabel, currentValue, getLabel = value => value) {
     if (!select) return;
     select.innerHTML = '';
 
@@ -32,11 +35,22 @@ function updateAdminFilterSelect(select, values, allLabel, currentValue) {
         if (!value) return;
         const opt = document.createElement('option');
         opt.value = value;
-        opt.innerText = value;
+        opt.innerText = getLabel(value);
         select.appendChild(opt);
     });
 
     select.value = values.includes(currentValue) ? currentValue : 'all';
+}
+
+function renderAccountTypeBadge(accountType) {
+    const label = getUserAccountTypeLabel(accountType);
+    const styles = {
+        [USER_ACCOUNT_TYPES.CLASSROOM]: 'background:#e0f2fe; color:#075985; border:1px solid #7dd3fc;',
+        [USER_ACCOUNT_TYPES.PUBLIC]: 'background:#fff7ed; color:#9a3412; border:1px solid #fdba74;',
+        [USER_ACCOUNT_TYPES.GUEST]: 'background:#f1f5f9; color:#475569; border:1px solid #cbd5e1;'
+    };
+    const style = styles[accountType] || styles[USER_ACCOUNT_TYPES.CLASSROOM];
+    return `<span style="display:inline-flex; align-items:center; justify-content:center; min-width:64px; padding:3px 7px; border-radius:999px; font-size:12px; font-weight:800; ${style}">${label}</span>`;
 }
 
 export function updateAdminUserTable(options = {}) {
@@ -45,20 +59,29 @@ export function updateAdminUserTable(options = {}) {
     tbody.innerHTML = '';
 
     const headerRow = document.querySelector('#admin-user-table thead tr');
+    if (headerRow && !headerRow.querySelector('[data-account-type-header="true"]')) {
+        const th = document.createElement('th');
+        th.dataset.accountTypeHeader = 'true';
+        th.style.cssText = 'padding:8px; border:1px solid #ddd;';
+        th.innerText = '種別';
+        headerRow.insertBefore(th, headerRow.children[4] || null);
+    }
     if (headerRow && !headerRow.querySelector('[data-campus-header="true"]')) {
         const th = document.createElement('th');
         th.dataset.campusHeader = 'true';
         th.style.cssText = 'padding:8px; border:1px solid #ddd;';
         th.innerText = '校舎';
-        headerRow.insertBefore(th, headerRow.children[4] || null);
+        headerRow.insertBefore(th, headerRow.children[5] || null);
     }
 
     const searchInput = document.getElementById('admin-user-search');
+    const accountTypeFilter = document.getElementById('admin-user-account-type-filter');
     const gradeFilter = document.getElementById('admin-user-grade-filter');
     const campusFilter = document.getElementById('admin-user-campus-filter');
     const groupFilter = document.getElementById('admin-user-group-filter');
     const countLabel = document.getElementById('admin-user-count');
     const searchText = (searchInput?.value || '').trim().toLowerCase();
+    const selectedAccountType = accountTypeFilter?.value || USER_ACCOUNT_TYPES.CLASSROOM;
     const selectedGrade = gradeFilter?.value || 'all';
     const selectedCampus = campusFilter?.value || 'all';
     const selectedGroup = groupFilter?.value || 'all';
@@ -74,12 +97,20 @@ export function updateAdminUserTable(options = {}) {
                 id: userId,
                 name: getUserDisplayName(userId),
                 grade,
+                accountType: getUserAccountType(userId),
                 campusId: getUserCampusId(users[userId]),
                 group: users[userId].group || '',
                 user: users[userId]
             };
         });
 
+    updateAdminFilterSelect(
+        accountTypeFilter,
+        [USER_ACCOUNT_TYPES.CLASSROOM, USER_ACCOUNT_TYPES.PUBLIC, USER_ACCOUNT_TYPES.GUEST],
+        'すべての種別',
+        selectedAccountType,
+        getUserAccountTypeLabel
+    );
     const grades = sortGrades(Array.from(new Set(list.map(item => item.grade).filter(Boolean))));
     const campusIds = Array.from(new Set([DEFAULT_CAMPUS_ID, ...list.map(item => item.campusId).filter(Boolean)]));
     updateAdminFilterSelect(campusFilter, campusIds, 'すべての校舎', selectedCampus);
@@ -93,11 +124,12 @@ export function updateAdminUserTable(options = {}) {
     updateAdminFilterSelect(groupFilter, groups, 'すべてのグループ', selectedGroup);
 
     list = list.filter(item => {
+        if (accountTypeFilter && accountTypeFilter.value !== 'all' && item.accountType !== accountTypeFilter.value) return false;
         if (gradeFilter && gradeFilter.value !== 'all' && item.grade !== gradeFilter.value) return false;
         if (campusFilter && campusFilter.value !== 'all' && item.campusId !== campusFilter.value) return false;
         if (groupFilter && groupFilter.value !== 'all' && item.group !== groupFilter.value) return false;
         if (!searchText) return true;
-        const haystack = `${item.name} ${item.id} ${getCampusName(item.campusId)} ${item.group}`.toLowerCase();
+        const haystack = `${item.name} ${item.id} ${getUserAccountTypeLabel(item.accountType)} ${getCampusName(item.campusId)} ${item.group}`.toLowerCase();
         return haystack.includes(searchText);
     });
 
@@ -107,7 +139,7 @@ export function updateAdminUserTable(options = {}) {
     if (list.length === 0) {
         const tr = document.createElement('tr');
         const td = document.createElement('td');
-        td.colSpan = 8;
+        td.colSpan = 9;
         td.style.cssText = 'padding:14px; border:1px solid #ddd; color:#777; text-align:center;';
         td.innerText = '条件に合う児童がいません';
         tr.appendChild(td);
@@ -154,6 +186,11 @@ export function updateAdminUserTable(options = {}) {
         gradeTd.innerText = item.grade;
         tr.appendChild(gradeTd);
 
+        const accountTypeTd = document.createElement('td');
+        accountTypeTd.style.cssText = 'padding:5px; border:1px solid #ddd;';
+        accountTypeTd.innerHTML = renderAccountTypeBadge(item.accountType);
+        tr.appendChild(accountTypeTd);
+
         const campusTd = document.createElement('td');
         campusTd.style.cssText = 'padding:5px; border:1px solid #ddd;';
         const campusSelect = document.createElement('select');
@@ -195,10 +232,12 @@ export function updateAdminUserTable(options = {}) {
 
 export function clearAdminUserFilters(options = {}) {
     const searchInput = document.getElementById('admin-user-search');
+    const accountTypeFilter = document.getElementById('admin-user-account-type-filter');
     const gradeFilter = document.getElementById('admin-user-grade-filter');
     const campusFilter = document.getElementById('admin-user-campus-filter');
     const groupFilter = document.getElementById('admin-user-group-filter');
     if (searchInput) searchInput.value = '';
+    if (accountTypeFilter) accountTypeFilter.value = USER_ACCOUNT_TYPES.CLASSROOM;
     if (gradeFilter) gradeFilter.value = 'all';
     if (campusFilter) campusFilter.value = 'all';
     if (groupFilter) groupFilter.value = 'all';

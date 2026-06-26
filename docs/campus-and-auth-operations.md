@@ -78,17 +78,47 @@ STUDENT_LOGIN_NUMBER_PAD=3
 LESSON_USER_DATA_TABLE=user_data
 ```
 
-Supabase CLIを使う場合:
+Supabase CLIをこのリポジトリのdevDependencyから使う場合:
 
 ```powershell
-supabase functions deploy admin-create-student
-supabase secrets set STUDENT_LOGIN_EMAIL_DOMAIN=dlesson.example.com
-supabase secrets set STUDENT_LOGIN_EMAIL_PREFIX=dlesson-student-
-supabase secrets set STUDENT_LOGIN_NUMBER_PAD=3
-supabase secrets set LESSON_USER_DATA_TABLE=user_data
+npx.cmd supabase functions deploy admin-create-student --use-api
+npx.cmd supabase secrets set STUDENT_LOGIN_EMAIL_DOMAIN=dlesson.example.com
+npx.cmd supabase secrets set STUDENT_LOGIN_EMAIL_PREFIX=dlesson-student-
+npx.cmd supabase secrets set STUDENT_LOGIN_NUMBER_PAD=3
+npx.cmd supabase secrets set LESSON_USER_DATA_TABLE=user_data
 ```
 
 `SUPABASE_SERVICE_ROLE_KEY` は公開してはいけません。GitHub Pagesや`.env.local`には入れず、Supabase Edge FunctionのSecretにだけ保存します。
+
+### 公開版のユーザー登録を有効にする場合
+
+DレッスンURLから利用者自身が登録できるようにする場合は、管理者・先生用の `admin-create-student` とは別に、公開登録専用Functionを使います。
+
+```powershell
+deno check supabase/functions/public-register-student/index.ts
+npx.cmd supabase functions deploy public-register-student --use-api
+npx.cmd supabase secrets set PUBLIC_STUDENT_REGISTRATION_ENABLED=true
+npx.cmd supabase secrets set PUBLIC_STUDENT_CAMPUS_ID=public
+npx.cmd supabase secrets set PUBLIC_STUDENT_GROUP=public
+npx.cmd supabase secrets set PUBLIC_REGISTER_PASSWORD_MIN_LENGTH=8
+npx.cmd supabase secrets set LESSON_USER_DATA_TABLE=user_data
+```
+
+SupabaseプロジェクトにリンクしていないPCでは、各 `npx.cmd supabase` コマンドに `--project-ref lmonjfdxtefsvgtdixid` を付けます。
+
+メール確認URLを必須にする場合は、Supabase Authentication側でメール確認とメール送信設定を有効にしたうえで、次も設定します。
+
+```powershell
+npx.cmd supabase secrets set PUBLIC_REGISTER_REQUIRE_EMAIL_CONFIRMATION=true
+npx.cmd supabase secrets set PUBLIC_REGISTER_EMAIL_REDIRECT_TO=https://dreams21st-wakamatsu-takasunishi.github.io/d-lesson-v4/
+```
+
+注意:
+
+- `PUBLIC_STUDENT_REGISTRATION_ENABLED=true` を設定しない限り、登録フォームから送信しても登録は拒否されます。
+- `PUBLIC_REGISTER_REQUIRE_EMAIL_CONFIRMATION=true` の場合、登録直後の自動ログインは行いません。利用者は確認メール内のURLを開いてから通常ログインします。
+- 公開登録ユーザーは `lesson_user_access` に `student` として登録され、自分の `user_data` 行だけを読み書きします。
+- ゲストプレイはクラウドに保存しません。ブラウザを閉じるとゲストの記録は消えます。
 
 ## 6. Auth児童アカウント作成
 
