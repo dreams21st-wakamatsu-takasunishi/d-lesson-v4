@@ -16,6 +16,17 @@ function getFocusableElements() {
     });
 }
 
+function isEditableElement(element) {
+    if (!element) return false;
+    const tagName = element.tagName?.toLowerCase();
+    if (tagName === 'input' || tagName === 'textarea' || tagName === 'select') {
+        return !element.disabled && !element.readOnly;
+    }
+    if (element.isContentEditable) return true;
+    const role = element.getAttribute?.('role');
+    return role === 'textbox' || role === 'searchbox';
+}
+
 export function initFocusNavigation({ backToMenu, backFromMinigame, stopMinigame, backToMenuFromText }) {
     if (isFocusNavigationInitialized) return;
     isFocusNavigationInitialized = true;
@@ -23,6 +34,7 @@ export function initFocusNavigation({ backToMenu, backFromMinigame, stopMinigame
     window.addEventListener('keydown', (e) => {
         const activeScreen = document.querySelector('.screen.active');
         if (!activeScreen) return;
+        if (isEditableElement(document.activeElement)) return;
 
         if (e.key === 'Escape') {
             e.preventDefault();
