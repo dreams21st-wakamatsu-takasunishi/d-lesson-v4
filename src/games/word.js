@@ -5,13 +5,15 @@ import {
     saveUsers,
     hasLessonRole,
     canWriteCurrentUserRow,
-    recordPracticeActivity
+    recordPracticeActivity,
+    getPracticeLogs
 } from '../api/user.js';
 import { SoundManager } from '../utils/sound.js';
 import { createBtn } from '../utils/dom.js';
 import { showCustomAlert } from '../ui/modal.js';
 import { showScreen } from '../ui/screen.js';
 import { createConfetti } from '../ui/reward.js';
+import { buildProgressLabel, findLatestPracticeLog, formatPracticeLogShort } from '../utils/practice-guidance.js';
 
 let currentWordStageId = null;
 const WORD_TEXT_WINDOW_FEATURES = 'popup=yes,width=1180,height=820,menubar=no,toolbar=no,location=yes,status=no,scrollbars=yes,resizable=yes';
@@ -22,6 +24,71 @@ function getActiveUserOrTitle() {
     showCustomAlert('ユーザーを選択してください');
     showScreen('screen-title');
     return null;
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function getWordStageProgress(user, stageId) {
+    const prog = user?.wordProgress?.[stageId];
+    if (typeof prog === 'string') {
+        return {
+            isCleared: prog === 'cleared',
+            isWorking: prog === 'working',
+            workingPage: ''
+        };
+    }
+    return {
+        isCleared: prog?.status === 'cleared',
+        isWorking: prog?.status === 'working',
+        workingPage: prog?.page || ''
+    };
+}
+
+function getWordMenuState(user) {
+    let previousCleared = true;
+    const rows = WORD_STAGES.map(stage => {
+        const progress = getWordStageProgress(user, stage.id);
+        const isUnlocked = previousCleared || user?.isMaster;
+        const row = { stage, ...progress, isUnlocked };
+        previousCleared = progress.isCleared;
+        return row;
+    });
+    const done = rows.filter(row => row.isCleared).length;
+    const next = rows.find(row => row.isUnlocked && !row.isCleared) || null;
+    return { rows, done, total: WORD_STAGES.length, next };
+}
+
+function renderWordNextPanel(container, menuState) {
+    const latestLog = findLatestPracticeLog(getPracticeLogs(), ['word']);
+    const panel = document.createElement('div');
+    panel.className = 'course-next-panel word-next-panel' + (menuState.next ? '' : ' is-complete');
+    panel.innerHTML = `
+        <div class="course-next-copy">
+            <span class="course-next-label">つぎ</span>
+            <strong>${escapeHtml(menuState.next?.stage?.title || 'Wordれんしゅうは完了です')}</strong>
+            <span class="course-next-meta">${escapeHtml(menuState.next?.stage?.sub || 'すべての章を確認できます')}</span>
+            <span class="course-next-log">${escapeHtml(formatPracticeLogShort(latestLog))}</span>
+        </div>
+        <div class="course-next-progress">
+            <span>${escapeHtml(buildProgressLabel(menuState.done, menuState.total))}</span>
+            <div class="course-next-bar"><i style="width:${menuState.total ? Math.round((menuState.done / menuState.total) * 100) : 0}%;"></i></div>
+        </div>
+    `;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'course-next-btn';
+    button.textContent = menuState.next ? 'はじめる' : '完了';
+    button.disabled = !menuState.next;
+    if (menuState.next) createBtn(button, () => startWordStage(menuState.next.stage.id));
+    panel.appendChild(button);
+    container.appendChild(panel);
 }
 
 export function goToWordMenu() {
@@ -43,27 +110,10 @@ function renderWordMenu() {
     const u = users[currentUser];
     if (!u.wordProgress) u.wordProgress = {};
 
-    let previousCleared = true;
+    const menuState = getWordMenuState(u);
+    renderWordNextPanel(cont, menuState);
 
-    WORD_STAGES.forEach((st) => {
-        let prog = u.wordProgress[st.id];
-        let isCleared = false;
-        let isWorking = false;
-        let workingPage = '';
-
-        if (prog) {
-            if (typeof prog === 'string') {
-                isCleared = (prog === 'cleared');
-                isWorking = (prog === 'working');
-            } else {
-                isCleared = (prog.status === 'cleared');
-                isWorking = (prog.status === 'working');
-                workingPage = prog.page || '';
-            }
-        }
-
-        const isUnlocked = previousCleared || u.isMaster;
-
+    menuState.rows.forEach(({ stage: st, isCleared, isWorking, workingPage, isUnlocked }) => {
         const b = document.createElement('div');
         b.className = 'stage-btn';
         b.style.height = '100px';
@@ -72,20 +122,20 @@ function renderWordMenu() {
             b.classList.add('unlocked');
             if (isCleared) b.classList.add('cleared');
             else if (isWorking) b.classList.add('working');
+            if (menuState.next?.stage?.id === st.id) b.classList.add('next-target');
 
             createBtn(b, () => startWordStage(st.id));
         } else {
             b.style.opacity = '0.5';
         }
 
-        b.innerHTML = `<span style="font-size:24px;">📘</span><span style="font-size:16px; font-weight:bold; color:#333; margin-top:5px;">${st.title}</span><span style="font-size:12px; color:#666;">${st.sub}</span>`;
+        b.innerHTML = `<span style="font-size:24px;">📘</span><span style="font-size:16px; font-weight:bold; color:#333; margin-top:5px;">${escapeHtml(st.title)}</span><span style="font-size:12px; color:#666;">${escapeHtml(st.sub)}</span>`;
 
         if (isCleared) b.innerHTML += `<span class="reward-badge" style="background:#e8f5e9; border-color:#4CAF50; color:#2e7d32;">クリア</span>`;
-        else if (isWorking) b.innerHTML += `<span class="reward-badge" style="background:#fffde7; border-color:#FFEB3B; color:#fbc02d;">挑戦中 ⏸️ ${workingPage ? 'P.' + workingPage : ''}</span>`;
+        else if (isWorking) b.innerHTML += `<span class="reward-badge" style="background:#fffde7; border-color:#FFEB3B; color:#fbc02d;">挑戦中 ⏸️ ${workingPage ? 'P.' + escapeHtml(workingPage) : ''}</span>`;
         else if (isUnlocked) b.innerHTML += `<span class="reward-badge">💰500</span>`;
 
         cont.appendChild(b);
-        previousCleared = isCleared;
     });
 }
 

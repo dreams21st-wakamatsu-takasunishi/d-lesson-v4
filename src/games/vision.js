@@ -1,10 +1,11 @@
-import { users, currentUser, saveUsers, getUserDisplayName, isSystemUserId } from '../api/user.js'
+import { users, currentUser, saveUsers, getUserDisplayName, isSystemUserId, getPracticeLogs } from '../api/user.js'
 import { VISION_STAGES } from '../data/constants.js'
 import { SoundManager } from '../utils/sound.js'
 import { showScreen } from '../ui/screen.js'
 import { createBtn } from '../utils/dom.js'
 import { getRewardText } from '../utils/rewards.js'
 import { shuffle } from '../utils/helpers.js'
+import { buildProgressLabel, findLatestPracticeLog, formatPracticeLogShort } from '../utils/practice-guidance.js'
 import {
     startGame,
     els,
@@ -70,6 +71,21 @@ const VISION_MENU_GROUPS = [
 ];
 let activeVisionMenuGroupIndex = null;
 
+const VISION_DIFFICULTY_ORDER = [
+    { suffix: '_easy', label: 'イージー' },
+    { suffix: '', label: 'ノーマル' },
+    { suffix: '_hard', label: 'ハード' }
+];
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 function getVisionStageClearCount(user, stageId) {
     return (user.visionCleared.includes(stageId + '_easy') ? 1 : 0)
         + (user.visionCleared.includes(stageId) ? 1 : 0)
@@ -88,6 +104,57 @@ function getPreferredVisionGroupIndex(user) {
         return progress.cleared < progress.total;
     });
     return firstIncomplete === -1 ? 0 : firstIncomplete;
+}
+
+function getVisionDifficultyStageId(stageId, suffix) {
+    return suffix ? `${stageId}${suffix}` : stageId;
+}
+
+function getVisionNextTarget(user, group) {
+    if (!user || !group) return null;
+    for (const stageId of group.stageIds) {
+        const stage = VISION_STAGES.find(item => item.id === stageId);
+        if (!stage) continue;
+        for (const difficulty of VISION_DIFFICULTY_ORDER) {
+            const difficultyStageId = getVisionDifficultyStageId(stageId, difficulty.suffix);
+            const isCleared = user.visionCleared.includes(difficultyStageId);
+            const isLocked = difficulty.suffix === '_hard' && !user.visionCleared.includes(stageId) && !user.isMaster;
+            if (!isCleared && !isLocked) {
+                return { stage, difficulty, stageId: difficultyStageId };
+            }
+        }
+    }
+    return null;
+}
+
+function renderVisionNextPanel(container, user, group, progress) {
+    const nextTarget = getVisionNextTarget(user, group);
+    const latestLog = findLatestPracticeLog(getPracticeLogs(), ['vision']);
+    const panel = document.createElement('div');
+    panel.className = 'course-next-panel vision-next-panel' + (nextTarget ? '' : ' is-complete');
+    panel.innerHTML = `
+        <div class="course-next-copy">
+            <span class="course-next-label">つぎ</span>
+            <strong>${escapeHtml(nextTarget?.stage?.title || 'この分野は完了です')}</strong>
+            <span class="course-next-meta">${escapeHtml(nextTarget ? `${group.title} / ${nextTarget.difficulty.label}` : 'ほかの分野にも挑戦できます')}</span>
+            <span class="course-next-log">${escapeHtml(formatPracticeLogShort(latestLog))}</span>
+        </div>
+        <div class="course-next-progress">
+            <span>${escapeHtml(buildProgressLabel(progress.cleared, progress.total))}</span>
+            <div class="course-next-bar"><i style="width:${progress.total ? Math.round((progress.cleared / progress.total) * 100) : 0}%;"></i></div>
+        </div>
+    `;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'course-next-btn';
+    button.textContent = nextTarget ? 'ひらく' : '完了';
+    button.disabled = !nextTarget;
+    if (nextTarget) {
+        createBtn(button, () => openVisionDifficultyDialog(nextTarget.stage, user));
+    }
+    panel.appendChild(button);
+    container.appendChild(panel);
+    return nextTarget;
 }
 
 export function showVisionCompare() {
@@ -255,6 +322,8 @@ export function renderVisionMenu() {
     cont.appendChild(tabs);
 
     const group = VISION_MENU_GROUPS[activeVisionMenuGroupIndex];
+    const groupProgress = getVisionGroupProgress(u, group);
+    const nextTarget = renderVisionNextPanel(cont, u, group, groupProgress);
     const section = document.createElement('section');
     section.className = 'vision-stage-section vision-stage-section-current';
 
@@ -269,7 +338,6 @@ export function renderVisionMenu() {
     copy.appendChild(title);
     copy.appendChild(desc);
 
-    const groupProgress = getVisionGroupProgress(u, group);
     const progress = document.createElement('span');
     progress.className = 'vision-section-progress';
     progress.textContent = `${groupProgress.cleared}/${groupProgress.total}`;
@@ -283,14 +351,14 @@ export function renderVisionMenu() {
 
     group.stageIds.forEach((stageId) => {
         const st = VISION_STAGES.find((stage) => stage.id === stageId);
-        if (st) grid.appendChild(createVisionStageCard(st, u));
+        if (st) grid.appendChild(createVisionStageCard(st, u, nextTarget));
     });
 
     section.appendChild(grid);
     cont.appendChild(section);
 }
 
-function createVisionStageCard(st, user) {
+function createVisionStageCard(st, user, nextTarget = null) {
     const card = document.createElement('article');
     card.className = 'vision-stage-card';
     card.style.setProperty('--vision-accent', st.color || '#9C27B0');
@@ -298,6 +366,7 @@ function createVisionStageCard(st, user) {
     const main = document.createElement('div');
     main.setAttribute('role', 'button');
     main.className = 'vision-stage-main' + (user.visionCleared.includes(st.id) ? ' is-cleared' : '');
+    if (nextTarget?.stage?.id === st.id) main.classList.add('next-target');
     createBtn(main, () => openVisionDifficultyDialog(st, user));
 
     const icon = document.createElement('span');
@@ -327,7 +396,8 @@ function createVisionStageCard(st, user) {
         const cleared = user.visionCleared.includes(difficulty.key);
         chip.className = 'vision-stage-clear-chip'
             + (cleared ? ' is-cleared' : '')
-            + (difficulty.locked ? ' is-locked' : '');
+            + (difficulty.locked ? ' is-locked' : '')
+            + (nextTarget?.stageId === difficulty.key ? ' is-next' : '');
         chip.textContent = cleared ? `✓ ${difficulty.label}` : (difficulty.locked ? `🔒 ${difficulty.label}` : `□ ${difficulty.label}`);
         clearStatus.appendChild(chip);
     });

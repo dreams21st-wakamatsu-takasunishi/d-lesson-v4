@@ -1,7 +1,8 @@
-import { users, currentUser, saveUsers, canWriteCurrentUserRow, recordPracticeActivity } from '../api/user.js';
+import { users, currentUser, saveUsers, canWriteCurrentUserRow, recordPracticeActivity, getPracticeLogs } from '../api/user.js';
 import { SoundManager } from '../utils/sound.js';
 import { showScreen } from '../ui/screen.js';
 import { createConfetti } from '../ui/reward.js';
+import { buildProgressLabel, findLatestPracticeLog, formatPracticeLogShort } from '../utils/practice-guidance.js';
 
 /* =========================================================
    [JS] 6. 文章入力練習 ＆ 自動採点
@@ -247,25 +248,35 @@ function renderTextTaskSummary(container, tasks) {
 }
 
 function renderTextTaskRecommendation(container, tasks) {
-    if (currentTextFilter === 'done') return;
     const recommendedTask = getRecommendedTextTask(tasks);
-    if (!recommendedTask) return;
+    const doneCount = tasks.filter(task => getTextTaskRecord(task)).length;
+    const latestLog = findLatestPracticeLog(getPracticeLogs(), ['text']);
 
-    const plainContent = getTextTaskPlainContent(recommendedTask);
     const box = document.createElement('div');
-    box.className = 'text-task-recommend';
+    box.className = 'course-next-panel text-task-recommend' + (recommendedTask ? '' : ' is-complete');
+    const plainContent = recommendedTask ? getTextTaskPlainContent(recommendedTask) : '';
     box.innerHTML = `
-        <div class="text-task-recommend-copy">
-            <span class="text-task-recommend-label">まずはこれ</span>
-            <strong>${escapeHtml(recommendedTask.title)}</strong>
-            <span>★${escapeHtml(recommendedTask.star || 3)} / ${escapeHtml(recommendedTask.time)}分 / ${escapeHtml(plainContent.length)}文字 / 💰最高${escapeHtml(formatCoins(getTextTaskMaxCoins(recommendedTask)))}</span>
+        <div class="course-next-copy text-task-recommend-copy">
+            <span class="course-next-label text-task-recommend-label">つぎ</span>
+            <strong>${escapeHtml(recommendedTask?.title || '文章課題は完了です')}</strong>
+            <span class="course-next-meta">
+                ${recommendedTask
+                    ? `★${escapeHtml(recommendedTask.star || 3)} / ${escapeHtml(recommendedTask.time)}分 / ${escapeHtml(plainContent.length)}文字 / 💰最高${escapeHtml(formatCoins(getTextTaskMaxCoins(recommendedTask)))}`
+                    : '未完了の課題はありません'}
+            </span>
+            <span class="course-next-log">${escapeHtml(formatPracticeLogShort(latestLog))}</span>
+        </div>
+        <div class="course-next-progress">
+            <span>${escapeHtml(buildProgressLabel(doneCount, tasks.length))}</span>
+            <div class="course-next-bar"><i style="width:${tasks.length ? Math.round((doneCount / tasks.length) * 100) : 0}%;"></i></div>
         </div>
     `;
     const startButton = document.createElement('button');
-    startButton.className = 'text-task-recommend-btn';
+    startButton.className = 'course-next-btn text-task-recommend-btn';
     startButton.type = 'button';
-    startButton.textContent = 'はじめる';
-    startButton.onclick = () => startTextPractice(recommendedTask.id);
+    startButton.textContent = recommendedTask ? 'はじめる' : '完了';
+    startButton.disabled = !recommendedTask;
+    if (recommendedTask) startButton.onclick = () => startTextPractice(recommendedTask.id);
     box.appendChild(startButton);
     container.appendChild(box);
 }
@@ -320,8 +331,9 @@ function renderTextTasks() {
     const totalPages = Math.ceil(filteredTasks.length / TEXT_ITEMS_PER_PAGE);
     if (currentTextPage >= totalPages) currentTextPage = Math.max(0, totalPages - 1);
 
+    const recommendedTask = getRecommendedTextTask(tasks);
     renderTextTaskSummary(cont, tasks);
-    renderTextTaskRecommendation(cont, filteredTasks);
+    renderTextTaskRecommendation(cont, tasks);
 
     const grid = document.createElement('div');
     grid.className = 'text-task-grid';
@@ -338,6 +350,7 @@ function renderTextTasks() {
             const r = record;
             recordHtml = `<span class="text-task-record">🏆 最高純字数: ${escapeHtml(r.score)}文字 / ミス${escapeHtml(r.miss)}</span>`;
         }
+        if (recommendedTask?.id === task.id) btn.classList.add('next-target');
         let stars = "⭐".repeat(task.star || 3);
         const plainContent = getTextTaskPlainContent(task);
         const maxCoins = getTextTaskMaxCoins(task);
