@@ -1891,11 +1891,22 @@ input[type="text"], input[type="date"], input[type="number"] { padding: 10px; fo
 .practice-menu-screen {
     width: min(1320px, calc(100% - 32px));
     max-width: none;
+    flex: 0 0 auto;
     justify-content: center;
     gap: 18px;
     padding-top: 10px;
     margin-left: auto;
     margin-right: auto;
+}
+
+#screen-practice-menu {
+    gap: 12px;
+}
+
+#screen-practice-menu .bottom-back-btn {
+    flex-shrink: 0;
+    margin-top: 0;
+    margin-bottom: 16px;
 }
 
 .practice-menu-hero {
@@ -1904,7 +1915,7 @@ input[type="text"], input[type="date"], input[type="number"] { padding: 10px; fo
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
     gap: 16px;
-    padding: 18px 22px;
+    padding: 14px 18px;
     box-sizing: border-box;
     background: #ffffff;
     border: 2px solid #d9e6ee;
@@ -1923,9 +1934,9 @@ input[type="text"], input[type="date"], input[type="number"] { padding: 10px; fo
 }
 
 .practice-menu-hero h2 {
-    margin: 8px 0 6px;
+    margin: 6px 0 4px;
     color: #1565c0;
-    font-size: 30px;
+    font-size: 28px;
 }
 
 .practice-menu-hero p {
@@ -1948,22 +1959,37 @@ input[type="text"], input[type="date"], input[type="number"] { padding: 10px; fo
 }
 
 .practice-category-card {
-    min-height: 154px;
-    padding: 18px;
+    min-height: 170px;
+    padding: 14px;
     border: 2px solid #d9e6ee !important;
     border-radius: 12px;
     background: #ffffff !important;
     color: #263238 !important;
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
-    grid-template-rows: auto auto auto auto;
+    grid-template-rows: auto auto auto auto auto auto;
     column-gap: 14px;
-    row-gap: 4px;
+    row-gap: 3px;
     align-items: center;
     text-align: left;
     font-weight: 900;
     box-shadow: 0 4px 0 rgba(69, 90, 100, 0.18), 0 10px 20px rgba(38, 50, 56, 0.08);
     cursor: pointer;
+}
+
+.practice-category-course {
+    grid-column: 2;
+    width: fit-content;
+    max-width: 100%;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: #ffffff !important;
+    color: #37474f !important;
+    border: 1px solid rgba(55, 71, 79, 0.2);
+    font-size: 12px;
+    font-weight: 900;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
 }
 
 .practice-category-progress {
@@ -1977,6 +2003,18 @@ input[type="text"], input[type="date"], input[type="number"] { padding: 10px; fo
     font-size: 14px;
     font-weight: 900;
     text-align: center;
+}
+
+.practice-category-next {
+    grid-column: 2;
+    display: block;
+    width: 100%;
+    min-height: 22px;
+    color: #1565c0 !important;
+    font-size: 13px;
+    line-height: 1.35;
+    font-weight: 900;
+    overflow-wrap: anywhere;
 }
 
 .practice-category-meter {
@@ -2010,22 +2048,23 @@ input[type="text"], input[type="date"], input[type="number"] { padding: 10px; fo
 }
 
 .practice-category-icon {
-    grid-row: 1 / span 4;
-    width: 78px;
-    height: 78px;
+    grid-row: 1 / span 6;
+    width: 70px;
+    height: 70px;
     border-radius: 18px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     background: #f4f7f8 !important;
     color: #263238 !important;
-    font-size: 42px;
+    font-size: 38px;
 }
 
 .practice-category-card strong {
     color: #263238 !important;
-    font-size: 23px;
+    font-size: 22px;
     line-height: 1.2;
+    overflow-wrap: anywhere;
 }
 
 .practice-category-card small {
@@ -2033,6 +2072,23 @@ input[type="text"], input[type="date"], input[type="number"] { padding: 10px; fo
     font-size: 14px;
     line-height: 1.35;
     font-weight: 800;
+    overflow-wrap: anywhere;
+}
+
+.practice-category-card.is-complete {
+    border-color: #43a047 !important;
+}
+
+.practice-category-card.is-complete .practice-category-next {
+    color: #2e7d32 !important;
+}
+
+.practice-category-card.is-locked {
+    border-style: dashed !important;
+}
+
+.practice-category-card.is-locked .practice-category-next {
+    color: #6d4c41 !important;
 }
 
 .practice-card-mouse { border-color: #42a5f5 !important; background: #f4fbff !important; }
@@ -2456,6 +2512,29 @@ input[type="text"], input[type="date"], input[type="number"] { padding: 10px; fo
     .home-main-actions,
     .practice-category-grid {
         grid-template-columns: 1fr;
+    }
+
+    .practice-category-card {
+        min-height: 156px;
+        grid-template-columns: 58px minmax(0, 1fr);
+        column-gap: 10px;
+        padding: 12px;
+    }
+
+    .practice-category-icon {
+        width: 58px;
+        height: 58px;
+        border-radius: 14px;
+        font-size: 32px;
+    }
+
+    .practice-category-card strong {
+        font-size: 19px;
+    }
+
+    .practice-category-card small,
+    .practice-category-next {
+        font-size: 13px;
     }
 
     .practice-menu-hero {

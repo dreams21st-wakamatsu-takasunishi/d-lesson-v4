@@ -718,45 +718,57 @@
             <div id="practice-category-grid" class="practice-category-grid">
                 <button class="practice-category-card practice-card-mouse" id="cat-mouse" onclick="goToMouseMenu()">
                     <span class="practice-category-icon">🖱️</span>
+                    <span class="practice-category-course" id="cat-mouse-course">基礎操作</span>
                     <strong>マウスれんしゅう</strong>
                     <small>クリック・ドラッグ・スクロール</small>
                     <span class="practice-category-progress" id="cat-mouse-progress">0/7</span>
+                    <span class="practice-category-next" id="cat-mouse-next">次: M-1</span>
                     <span class="practice-category-meter"><span id="cat-mouse-meter"></span></span>
                 </button>
                 <button class="practice-category-card practice-card-keyboard" id="cat-keyboard" onclick="goToKeyboardCategory()">
                     <span class="practice-category-icon">⌨️</span>
+                    <span class="practice-category-course" id="cat-keyboard-course">文字入力</span>
                     <strong>キーボードれんしゅう</strong>
                     <small>キーの位置・文字入力・苦手特訓</small>
                     <span class="practice-category-progress" id="cat-keyboard-progress">0%</span>
+                    <span class="practice-category-next" id="cat-keyboard-next">次: ABC 1</span>
                     <span class="practice-category-meter"><span id="cat-keyboard-meter"></span></span>
                 </button>
                 <button class="practice-category-card practice-card-text" id="cat-text" onclick="goToTextMenu()">
                     <span class="practice-category-icon">📝</span>
+                    <span class="practice-category-course" id="cat-text-course">実用入力</span>
                     <strong>文章入力れんしゅう</strong>
                     <small>文章を読んで、正しく入力</small>
                     <span class="practice-category-progress" id="cat-text-progress">0/0</span>
+                    <span class="practice-category-next" id="cat-text-next">課題なし</span>
                     <span class="practice-category-meter"><span id="cat-text-meter"></span></span>
-                </button>
-                <button class="practice-category-card practice-card-minigame" id="cat-minigame" onclick="goToMinigameMenu()">
-                    <span class="practice-category-icon">🎮</span>
-                    <strong>タイピングゲーム</strong>
-                    <small>スコア・ランキングに挑戦</small>
-                    <span class="practice-category-progress" id="cat-minigame-progress">0/2</span>
-                    <span class="practice-category-meter"><span id="cat-minigame-meter"></span></span>
-                </button>
-                <button class="practice-category-card practice-card-vision" id="cat-vision" onclick="goToVisionMenu()">
-                    <span class="practice-category-icon">👁️</span>
-                    <strong>ビジョントレーニング</strong>
-                    <small>見る・覚える・反応する</small>
-                    <span class="practice-category-progress" id="cat-vision-progress">0/0</span>
-                    <span class="practice-category-meter"><span id="cat-vision-meter"></span></span>
                 </button>
                 <button class="practice-category-card practice-card-word" id="cat-word" onclick="goToWordMenu()">
                     <span class="practice-category-icon">📘</span>
+                    <span class="practice-category-course" id="cat-word-course">実用入力</span>
                     <strong>Wordれんしゅう</strong>
                     <small>教材PDFとWord操作</small>
                     <span class="practice-category-progress" id="cat-word-progress">0/0</span>
+                    <span class="practice-category-next" id="cat-word-next">ローマ字テスト後</span>
                     <span class="practice-category-meter"><span id="cat-word-meter"></span></span>
+                </button>
+                <button class="practice-category-card practice-card-vision" id="cat-vision" onclick="goToVisionMenu()">
+                    <span class="practice-category-icon">👁️</span>
+                    <span class="practice-category-course" id="cat-vision-course">見る力</span>
+                    <strong>ビジョントレーニング</strong>
+                    <small>見る・覚える・反応する</small>
+                    <span class="practice-category-progress" id="cat-vision-progress">0/0</span>
+                    <span class="practice-category-next" id="cat-vision-next">次: じゅんばんタッチ</span>
+                    <span class="practice-category-meter"><span id="cat-vision-meter"></span></span>
+                </button>
+                <button class="practice-category-card practice-card-minigame" id="cat-minigame" onclick="goToMinigameMenu()">
+                    <span class="practice-category-icon">🎮</span>
+                    <span class="practice-category-course" id="cat-minigame-course">応用</span>
+                    <strong>タイピングゲーム</strong>
+                    <small>スコア・ランキングに挑戦</small>
+                    <span class="practice-category-progress" id="cat-minigame-progress">0/2</span>
+                    <span class="practice-category-next" id="cat-minigame-next">スコアに挑戦</span>
+                    <span class="practice-category-meter"><span id="cat-minigame-meter"></span></span>
                 </button>
             </div>
         </div>

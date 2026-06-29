@@ -19,6 +19,15 @@ const homeUiHandlers = {
     openRecords: () => showScreen('screen-records')
 };
 
+const PRACTICE_CATEGORY_COURSES = Object.freeze({
+    mouse: '基礎操作',
+    keyboard: '文字入力',
+    text: '実用入力',
+    word: '実用入力',
+    vision: '見る力',
+    minigame: '応用'
+});
+
 export function setHomeUiHandlers(handlers = {}) {
     Object.assign(homeUiHandlers, handlers);
 }
@@ -212,7 +221,10 @@ export function updateHomeDashboard() {
 
     const progressMap = {
         mouse: { done: mLv, total: maxMouse },
-        keyboard: { done: kSeq, total: maxKb },
+        keyboard: {
+            done: Math.min(alphabetSeq, maxAlphabet) + Math.min(kSeq, maxKb),
+            total: maxAlphabet + maxKb
+        },
         text: getTextTaskProgress(u),
         vision: getVisionProgress(u),
         word: getWordProgress(u),
@@ -243,16 +255,21 @@ export function updateHomeDashboard() {
     }
 }
 
-function getTextTaskProgress(user) {
-    const tasks = (Array.isArray(users?.[GLOBAL_SETTINGS_ID]?.textTasks) ? users[GLOBAL_SETTINGS_ID].textTasks : [])
+function getVisibleTextTasksForUser(user) {
+    return (Array.isArray(users?.[GLOBAL_SETTINGS_ID]?.textTasks) ? users[GLOBAL_SETTINGS_ID].textTasks : [])
         .filter(task => task && task.hidden !== true)
         .filter(task => {
             const targetGroup = String(task?.targetGroup || '').trim();
             if (!targetGroup) return true;
             return String(user?.group || '').trim() === targetGroup;
         });
+}
+
+function getTextTaskProgress(user) {
+    const tasks = getVisibleTextTasksForUser(user);
     const done = tasks.filter(task => user?.textRecords?.[task.id]).length;
-    return { done, total: tasks.length };
+    const nextTask = tasks.find(task => !user?.textRecords?.[task.id]);
+    return { done, total: tasks.length, nextTitle: nextTask?.title ? String(nextTask.title) : '' };
 }
 
 function getVisionProgress(user) {
@@ -264,29 +281,121 @@ function getVisionProgress(user) {
     const cleared = new Set((Array.isArray(user?.visionCleared) ? user.visionCleared : [])
         .map(String)
         .filter(id => validIds.has(id)));
-    return { done: cleared.size, total: VISION_STAGES.length * 3 };
+    const nextStage = VISION_STAGES.find(stage => [
+        `${stage.id}_easy`,
+        stage.id,
+        `${stage.id}_hard`
+    ].some(id => !cleared.has(id)));
+    return { done: cleared.size, total: VISION_STAGES.length * 3, nextTitle: nextStage?.title || '' };
 }
 
 function getWordProgress(user) {
     const progress = user?.wordProgress || {};
     const done = WORD_STAGES.filter(stage => progress?.[stage.id]?.status === 'cleared').length;
-    return { done, total: WORD_STAGES.length };
+    const nextStage = WORD_STAGES.find(stage => progress?.[stage.id]?.status !== 'cleared');
+    return { done, total: WORD_STAGES.length, nextTitle: nextStage?.title || '' };
 }
 
 function getTypingGameProgress(user) {
-    const done = Number(user?.minigameHighscore || 0) > 0 || Number(user?.dChallengeHighscore || 0) > 0 ? 1 : 0;
+    const done = [
+        Number(user?.minigameHighscore || 0) > 0,
+        Number(user?.dChallengeHighscore || 0) > 0
+    ].filter(Boolean).length;
     return { done, total: 2 };
 }
 
+function cleanStageName(stageId) {
+    return getStageName(stageId).replace(/\[ID:\d+\]\s*/, '').trim();
+}
+
+function buildPracticeCategoryStatus(user, progressMap) {
+    const mouseLevel = Number(user?.mouseLevel || 0);
+    const alphabetSeq = Number(user?.alphabetSequence || 0);
+    const keyboardSeq = Number(user?.keyboardSequence || 0);
+    const wordLocked = !user?.isMaster && !user?.examRecords?.romaji_daku_exam;
+
+    const keyboardNext = (() => {
+        if (alphabetSeq < ALPHABET_READING_STAGES.length) {
+            return `次: ${ALPHABET_READING_STAGES[alphabetSeq]?.title || `ABC ${alphabetSeq + 1}`}`;
+        }
+        if (keyboardSeq < STAGE_ORDER.length) {
+            return `次: ${cleanStageName(STAGE_ORDER[keyboardSeq])}`;
+        }
+        return '完了';
+    })();
+
+    return {
+        mouse: {
+            course: PRACTICE_CATEGORY_COURSES.mouse,
+            next: mouseLevel >= 7 ? '完了' : `次: M-${mouseLevel + 1}`,
+            state: mouseLevel >= 7 ? 'complete' : ''
+        },
+        keyboard: {
+            course: PRACTICE_CATEGORY_COURSES.keyboard,
+            next: keyboardNext,
+            state: progressMap.keyboard.done >= progressMap.keyboard.total ? 'complete' : ''
+        },
+        text: {
+            course: PRACTICE_CATEGORY_COURSES.text,
+            next: getProgressNextLabel(progressMap.text, '課題なし', progressMap.text.nextTitle),
+            state: getProgressState(progressMap.text)
+        },
+        word: {
+            course: PRACTICE_CATEGORY_COURSES.word,
+            next: wordLocked ? 'ローマ字テスト後' : getProgressNextLabel(progressMap.word, '教材なし', progressMap.word.nextTitle),
+            state: wordLocked ? 'locked' : getProgressState(progressMap.word)
+        },
+        vision: {
+            course: PRACTICE_CATEGORY_COURSES.vision,
+            next: getProgressNextLabel(progressMap.vision, 'ステージなし', progressMap.vision.nextTitle),
+            state: getProgressState(progressMap.vision)
+        },
+        minigame: {
+            course: PRACTICE_CATEGORY_COURSES.minigame,
+            next: progressMap.minigame.done >= progressMap.minigame.total ? '記録あり' : 'スコアに挑戦',
+            state: progressMap.minigame.done >= progressMap.minigame.total ? 'complete' : ''
+        }
+    };
+}
+
+function getProgressNextLabel(progress, emptyLabel, nextTitle) {
+    const done = Math.max(0, Number(progress?.done || 0));
+    const total = Math.max(0, Number(progress?.total || 0));
+    if (total <= 0) return emptyLabel;
+    if (done >= total) return '完了';
+    return nextTitle ? `次: ${nextTitle}` : `未完了: ${total - done}件`;
+}
+
+function getProgressState(progress) {
+    const done = Math.max(0, Number(progress?.done || 0));
+    const total = Math.max(0, Number(progress?.total || 0));
+    return total > 0 && done >= total ? 'complete' : '';
+}
+
 function updatePracticeCategoryProgress(user, progressMap) {
+    const statusMap = buildPracticeCategoryStatus(user, progressMap);
     Object.entries(progressMap).forEach(([key, progress]) => {
         const done = Math.max(0, Number(progress?.done || 0));
         const total = Math.max(0, Number(progress?.total || 0));
         const percent = total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0;
+        const card = document.getElementById(`cat-${key}`);
+        const course = document.getElementById(`cat-${key}-course`);
         const label = document.getElementById(`cat-${key}-progress`);
+        const next = document.getElementById(`cat-${key}-next`);
         const meter = document.getElementById(`cat-${key}-meter`);
+        const status = statusMap[key] || {};
+        if (card) {
+            card.classList.toggle('is-complete', status.state === 'complete');
+            card.classList.toggle('is-locked', status.state === 'locked');
+        }
+        if (course) {
+            course.textContent = status.course || PRACTICE_CATEGORY_COURSES[key] || '';
+        }
         if (label) {
             label.textContent = total > 0 ? `${done}/${total}` : '未設定';
+        }
+        if (next) {
+            next.textContent = status.next || '';
         }
         if (meter) {
             meter.style.width = `${percent}%`;
