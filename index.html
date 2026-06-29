@@ -323,6 +323,7 @@
                                 <button class="btn-danger" style="font-size:14px; padding:10px 15px;" onclick="adminResetUser()">リセット</button>
                                 <button class="btn-secondary" style="font-size:14px; padding:10px 15px;" onclick="adminForceProgress()">全開放</button>
                                 <button class="btn-secondary" style="font-size:14px; padding:10px 15px;" onclick="adminPrintLoginCard()">ログインカード</button>
+                                <button class="btn-secondary" style="font-size:14px; padding:10px 15px;" onclick="adminResetStudentPasscode()">合言葉再発行</button>
                                 <button class="btn-danger" style="font-size:14px; padding:10px 15px;" onclick="adminDeleteUser()">削除</button>
                             </div>
                         </div>
@@ -664,6 +665,14 @@
                         <span>つぎのおすすめ</span>
                     </div>
                     <button id="btn-recommend" class="btn-primary home-recommend-button" onclick="startRecommendedStage()">おすすめを<br>プレイ</button>
+                </section>
+
+                <section class="home-panel home-next-panel">
+                    <div class="home-panel-head">
+                        <span>現在地</span>
+                    </div>
+                    <div id="home-current-path" class="home-current-path"></div>
+                    <div id="home-next-action-list" class="home-next-action-list"></div>
                 </section>
 
                 <section id="daily-mission-card" class="daily-mission-card home-panel home-mission-panel"></section>

@@ -67,7 +67,8 @@ export const GLOBAL_SETTINGS_ID = '__GLOBAL_SETTINGS__';
 export const MASTER_DEBUG_ID = 'Master_Debug';
 export const SETTINGS_TABLE_KEY = `${TARGET_TABLE}:global`;
 export const DEFAULT_CAMPUS_ID = 'main';
-const PRACTICE_LOG_LIMIT = 80;
+const PRACTICE_LOG_LIMIT = parseEnvInteger(import.meta.env.VITE_PRACTICE_LOG_LIMIT, 300, 20, 2000);
+const PRACTICE_LOG_RETENTION_DAYS = parseEnvInteger(import.meta.env.VITE_PRACTICE_LOG_RETENTION_DAYS, 180, 0, 3650);
 
 export let users = {};
 export let currentUser = null;
@@ -576,25 +577,37 @@ function createPracticeLogId() {
     return `practice_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function getPracticeLogRetentionCutoffMs(nowMs = Date.now()) {
+    if (!PRACTICE_LOG_RETENTION_DAYS) return null;
+    return nowMs - (PRACTICE_LOG_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+}
+
 function normalizePracticeLogs(logs) {
     if (!Array.isArray(logs)) return [];
+    const nowMs = Date.now();
+    const cutoffMs = getPracticeLogRetentionCutoffMs(nowMs);
     return logs
         .filter(log => log && typeof log === 'object')
-        .map(log => ({
-            id: String(log.id || createPracticeLogId()),
-            at: log.at || new Date().toISOString(),
-            category: String(log.category || 'practice'),
-            title: String(log.title || '練習'),
-            detail: String(log.detail || ''),
-            amount: String(log.amount || ''),
-            coins: Number.isFinite(Number(log.coins)) ? Number(log.coins) : 0
-        }))
-        .sort((a, b) => {
-            const atA = Date.parse(a.at) || 0;
-            const atB = Date.parse(b.at) || 0;
-            return atB - atA;
+        .map(log => {
+            const parsedAt = Date.parse(log.at || '');
+            const atMs = Number.isFinite(parsedAt) ? parsedAt : nowMs;
+            return {
+                id: String(log.id || createPracticeLogId()),
+                at: new Date(atMs).toISOString(),
+                atMs,
+                category: String(log.category || 'practice'),
+                title: String(log.title || '練習'),
+                detail: String(log.detail || ''),
+                amount: String(log.amount || ''),
+                coins: Number.isFinite(Number(log.coins)) ? Number(log.coins) : 0
+            };
         })
-        .slice(0, PRACTICE_LOG_LIMIT);
+        .filter(log => cutoffMs === null || log.atMs >= cutoffMs)
+        .sort((a, b) => {
+            return b.atMs - a.atMs;
+        })
+        .slice(0, PRACTICE_LOG_LIMIT)
+        .map(({ atMs: _atMs, ...log }) => log);
 }
 
 function normalizeCampusRecord(record) {
@@ -693,7 +706,7 @@ export function recordPracticeActivity(entry = {}) {
         amount: String(entry.amount || ''),
         coins: Number.isFinite(Number(entry.coins)) ? Number(entry.coins) : 0
     };
-    users[currentUser].practiceLogs = [log, ...logs].slice(0, PRACTICE_LOG_LIMIT);
+    users[currentUser].practiceLogs = normalizePracticeLogs([log, ...logs]);
     return log;
 }
 

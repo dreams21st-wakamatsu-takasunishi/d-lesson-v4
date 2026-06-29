@@ -70,7 +70,7 @@ Dレッスンは、小学生向けのPC練習アプリです。
 - `data.keyboardSequence`: キーボード進捗。
 - `data.examRecords`: ビジョンなどの記録。
 - `data.textRecords`: 文章練習記録。
-- `data.practiceLogs`: 取り組み履歴。
+- `data.practiceLogs`: 取り組み履歴。既定では児童1人あたり最新300件、180日以内を保存する。
 
 ## Auth連携
 
@@ -95,6 +95,8 @@ VITE_ENABLE_LEGACY_SUPABASE_SYNC=false
 VITE_ENABLE_RLS_CLOUD_SYNC=true
 VITE_ENABLE_SETTINGS_TABLE=true または false
 VITE_REQUIRE_SUPABASE_AUTH=true
+VITE_PRACTICE_LOG_LIMIT=300
+VITE_PRACTICE_LOG_RETENTION_DAYS=180
 ```
 
 本番公開URLに設定しないもの:
@@ -191,4 +193,3 @@ npm.cmd run build
 - [Supabase Auth / RLS 設定手順](../supabase-rls-setup.md)
 - [旧Dレッスン進捗データ移行手順](../legacy-d-lesson-data-migration.md)
 - [lesson_settings 移行手順](../lesson-settings-table.md)
-

@@ -1623,10 +1623,10 @@ input[type="text"], input[type="date"], input[type="number"] { padding: 10px; fo
 .home-layout-grid {
     width: min(1320px, 100%);
     display: grid;
-    grid-template-columns: minmax(260px, 0.9fr) minmax(340px, 1.15fr) minmax(300px, 0.95fr);
+    grid-template-columns: minmax(230px, 0.8fr) minmax(280px, 0.95fr) minmax(320px, 1.05fr) minmax(280px, 0.95fr);
     grid-template-areas:
-        "progress recommend actions"
-        "mission mission actions";
+        "progress next recommend actions"
+        "mission mission mission actions";
     gap: 16px;
     align-items: stretch;
     margin-left: auto;
@@ -1712,6 +1712,101 @@ input[type="text"], input[type="date"], input[type="number"] { padding: 10px; fo
     min-height: 92px !important;
     margin: 0;
     font-size: 20px;
+    line-height: 1.25;
+}
+
+#screen-category .home-next-panel {
+    grid-area: next;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 0;
+    padding: 18px 20px !important;
+    border-color: #b0bec5 !important;
+    background: linear-gradient(135deg, #ffffff 0%, #f8fbfd 100%);
+}
+
+.home-current-path {
+    width: 100%;
+    min-height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 10px;
+    border: 1px solid #d6e2ea;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #263238;
+    font-size: 18px;
+    font-weight: 900;
+}
+
+.home-next-action-list {
+    width: 100%;
+    display: grid;
+    gap: 8px;
+}
+
+.home-next-action {
+    width: 100%;
+    min-height: 56px;
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border: 1px solid #d6e2ea;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #263238;
+    text-align: left;
+    cursor: pointer;
+}
+
+.home-next-action.is-primary {
+    border-color: #2196f3;
+    background: #e3f2fd;
+}
+
+.home-next-number {
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #263238;
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 900;
+}
+
+.home-next-action.is-primary .home-next-number {
+    background: #1565c0;
+}
+
+.home-next-copy {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+}
+
+.home-next-copy strong,
+.home-next-copy small {
+    overflow-wrap: anywhere;
+}
+
+.home-next-copy strong {
+    color: #263238;
+    font-size: 15px;
+    line-height: 1.25;
+}
+
+.home-next-copy small {
+    color: #607d8b;
+    font-size: 12px;
+    font-weight: 800;
     line-height: 1.25;
 }
 
@@ -2319,6 +2414,7 @@ input[type="text"], input[type="date"], input[type="number"] { padding: 10px; fo
         grid-template-columns: 1fr;
         grid-template-areas:
             "recommend"
+            "next"
             "mission"
             "progress"
             "actions";
@@ -6394,6 +6490,7 @@ input[type="text"], input[type="date"], input[type="number"] { padding: 10px; fo
 .vision-radar-row.faster { border-left-color: #2e7d32; background: #f1f8e9; }
 .vision-radar-row.average { border-left-color: #0288d1; background: #eef7ff; }
 .vision-radar-row.slower { border-left-color: #ef6c00; background: #fff8e1; }
+.vision-radar-row.low-data { border-left-color: #7c3aed; background: #f5f3ff; }
 .vision-radar-row.empty { opacity: 0.78; }
 .vision-radar-note,
 .vision-radar-empty {

@@ -110,7 +110,8 @@ import {
     adminDeleteUser as deleteStudentData,
     adminAddCoins as addCoinsData,
     adminAddCampus as addCampusData,
-    renderCampusAdmin
+    renderCampusAdmin,
+    adminResetStudentPasscode as resetStudentPasscodeData
 } from './admin-student-data.js';
 
 export {
@@ -264,6 +265,10 @@ export function openEditProgress() {
 
 export function adminPrintLoginCard() {
     openStudentLoginCardForUser(getSelUser());
+}
+
+export function adminResetStudentPasscode() {
+    resetStudentPasscodeData(getSelUser(), refreshAdminStudentDataViews);
 }
 
 export function saveEditProgress() {

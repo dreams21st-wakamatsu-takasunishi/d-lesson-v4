@@ -6,6 +6,8 @@ type CreateStudentPayload = {
   displayName?: string;
   studentNumber: string | number;
   passcode: string;
+  authUserId?: string;
+  mode?: 'create' | 'reset';
   campusId?: string;
   campusCode?: string;
   group?: string;
@@ -55,6 +57,18 @@ function getCreateAuthErrorMessage(error: unknown, email: string) {
     return `この児童番号のAuthアカウントはすでに存在します。児童番号または校舎を確認してください。(${email})`;
   }
   return message || 'Auth user creation failed.';
+}
+
+async function findAuthUserIdByEmail(serviceClient: SupabaseAdminClient, email: string) {
+  const target = email.toLowerCase();
+  for (let page = 1; page <= 20; page += 1) {
+    const { data, error } = await serviceClient.auth.admin.listUsers({ page, perPage: 1000 });
+    if (error) throw error;
+    const found = data.users.find((user) => String(user.email || '').toLowerCase() === target);
+    if (found?.id) return found.id;
+    if (data.users.length < 1000) break;
+  }
+  return '';
 }
 
 type LessonAccessRow = {
@@ -134,6 +148,7 @@ serve(async (req) => {
     const userDataId = String(payload.userDataId || '').trim();
     const passcode = String(payload.passcode || '').trim();
     const studentNumber = String(payload.studentNumber || '').replace(/\D/g, '');
+    const mode = payload.mode === 'reset' ? 'reset' : 'create';
     if (!userDataId) return jsonResponse({ error: 'userDataId is required.' }, 400);
     if (!studentNumber) return jsonResponse({ error: 'studentNumber is required.' }, 400);
     if (!/^\d{6,32}$/.test(passcode)) return jsonResponse({ error: 'passcode must be 6-32 digits.' }, 400);
@@ -154,20 +169,39 @@ serve(async (req) => {
     }
 
     const email = buildStudentEmail(payload);
-    const { data: created, error: createError } = await serviceClient.auth.admin.createUser({
-      email,
-      password: passcode,
-      email_confirm: true,
-      user_metadata: {
-        user_data_id: userDataId,
-        display_name: payload.displayName || '',
-        campus_id: payload.campusId || 'main',
-      },
-    });
-    if (createError) return jsonResponse({ error: getCreateAuthErrorMessage(createError, email), email }, 400);
+    let authUserId = String(payload.authUserId || (currentRow?.data as Record<string, unknown> | undefined)?.authUserId || '').trim();
+    let action: 'created' | 'reset' = 'created';
 
-    const authUserId = created.user?.id;
-    if (!authUserId) return jsonResponse({ error: 'Auth user was not created.' }, 500);
+    if (mode === 'reset') {
+      if (!authUserId) authUserId = await findAuthUserIdByEmail(serviceClient, email);
+      if (!authUserId) return jsonResponse({ error: `Auth user was not found for ${email}.` }, 404);
+      const { error: updateError } = await serviceClient.auth.admin.updateUserById(authUserId, {
+        email,
+        password: passcode,
+        email_confirm: true,
+        user_metadata: {
+          user_data_id: userDataId,
+          display_name: payload.displayName || '',
+          campus_id: payload.campusId || 'main',
+        },
+      });
+      if (updateError) return jsonResponse({ error: updateError.message || 'Auth user password update failed.', email }, 400);
+      action = 'reset';
+    } else {
+      const { data: created, error: createError } = await serviceClient.auth.admin.createUser({
+        email,
+        password: passcode,
+        email_confirm: true,
+        user_metadata: {
+          user_data_id: userDataId,
+          display_name: payload.displayName || '',
+          campus_id: payload.campusId || 'main',
+        },
+      });
+      if (createError) return jsonResponse({ error: getCreateAuthErrorMessage(createError, email), email }, 400);
+      authUserId = created.user?.id || '';
+      if (!authUserId) return jsonResponse({ error: 'Auth user was not created.' }, 500);
+    }
 
     const { error: accessError } = await serviceClient
       .from('lesson_user_access')
@@ -191,12 +225,13 @@ serve(async (req) => {
             group: payload.group ?? currentRow.data.group ?? '',
             loginNumber: studentNumber,
             authUserId,
+            authPasscodeIssuedAt: new Date().toISOString(),
           },
         })
         .eq('id', userDataId);
     }
 
-    return jsonResponse({ ok: true, email, authUserId, userDataId });
+    return jsonResponse({ ok: true, email, authUserId, userDataId, action });
   } catch (err) {
     console.error(err);
     return jsonResponse({ error: err instanceof Error ? err.message : String(err) }, 500);

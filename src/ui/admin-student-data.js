@@ -54,6 +54,21 @@ function getNumericInputValue(id) {
     return String(document.getElementById(id)?.value || '').replace(/\D/g, '');
 }
 
+function generatePasscode(length = 6) {
+    const cryptoApi = globalThis.crypto;
+    const digits = [];
+    for (let i = 0; i < length; i++) {
+        const buffer = new Uint8Array(1);
+        if (cryptoApi?.getRandomValues) {
+            cryptoApi.getRandomValues(buffer);
+            digits.push(String(buffer[0] % 10));
+        } else {
+            digits.push(String(Math.floor(Math.random() * 10)));
+        }
+    }
+    return digits.join('');
+}
+
 function studentLoginNumberExists(loginNumber, campusId, ignoreUserId = null) {
     if (!loginNumber) return false;
     return Object.keys(users).some(userId => {
@@ -65,7 +80,7 @@ function studentLoginNumberExists(loginNumber, campusId, ignoreUserId = null) {
     });
 }
 
-async function createAdminStudentAuthAccount(userDataId, studentNumber, passcode) {
+async function createAdminStudentAuthAccount(userDataId, studentNumber, passcode, mode = 'create') {
     if (!REQUIRE_SUPABASE_AUTH || !supabase) {
         throw new Error('Supabase Auth設定が有効な環境で使用してください。');
     }
@@ -78,6 +93,8 @@ async function createAdminStudentAuthAccount(userDataId, studentNumber, passcode
             displayName: getUserDisplayName(userDataId),
             studentNumber,
             passcode,
+            authUserId: user?.authUserId || '',
+            mode,
             campusId,
             campusCode: getCampusCode(campusId),
             group: user?.group || ''
@@ -90,6 +107,7 @@ async function createAdminStudentAuthAccount(userDataId, studentNumber, passcode
 
     user.loginNumber = studentNumber;
     user.authUserId = data.authUserId;
+    user.authPasscodeIssuedAt = new Date().toISOString();
     await refreshCurrentLessonAccess();
     return data;
 }
@@ -306,6 +324,64 @@ export async function adminAddUser(afterChange) {
     showCustomAlert(shouldCreateAuth
         ? `${name} さんを追加し、Authアカウントを作成しました！\n児童番号: ${loginNumber}`
         : `${name} さんを追加しました！`);
+}
+
+export async function adminResetStudentPasscode(userDataId, afterChange) {
+    if (!userDataId || !users[userDataId] || isSystemUserId(userDataId)) {
+        showCustomAlert('合言葉を再発行する児童を選択してください。');
+        return;
+    }
+
+    const user = users[userDataId];
+    const displayName = getUserDisplayName(userDataId);
+    const campusId = getUserCampusId(user);
+    const numberInput = window.prompt(`${displayName} さんの児童番号を確認してください。`, user.loginNumber || '');
+    if (numberInput === null) return;
+    const studentNumber = String(numberInput || '').replace(/\D/g, '');
+    if (!studentNumber) {
+        showCustomAlert('児童番号を入力してください。');
+        return;
+    }
+    if (studentLoginNumberExists(studentNumber, campusId, userDataId)) {
+        showCustomAlert('同じ校舎で同じ児童番号がすでに使われています。');
+        return;
+    }
+
+    const defaultPasscode = generatePasscode(6);
+    const passcodeInput = window.prompt(`${displayName} さんの新しいあいことばを入力してください。\nこの値は保存されず、再発行直後のカードにだけ表示します。`, defaultPasscode);
+    if (passcodeInput === null) return;
+    const passcode = String(passcodeInput || '').replace(/\D/g, '');
+    if (passcode.length < 6) {
+        showCustomAlert('あいことばは6けた以上の数字で入力してください。');
+        return;
+    }
+
+    showCustomConfirm(`${displayName} さんのあいことばを再発行しますか？\n古いあいことばではログインできなくなります。`, async () => {
+        try {
+            const authData = await createAdminStudentAuthAccount(userDataId, studentNumber, passcode, 'reset');
+            const saved = await saveUsers(true);
+            if (!saved) throw new Error('児童データの保存に失敗しました。');
+            recordAdminAudit('auth_student_passcode_reset', {
+                user: displayName,
+                userDataId,
+                authUserId: authData.authUserId,
+                loginNumber: studentNumber
+            });
+            runAfterChange(afterChange);
+            openStudentLoginCardsPrintWindow([{
+                student_number: studentNumber,
+                display_name: displayName,
+                password: passcode
+            }], {
+                title: 'Dレッスン ログインカード',
+                cardsPerPage: 6
+            });
+            showCustomAlert(`${displayName} さんのあいことばを再発行しました。\nログインカードを印刷して本人に渡してください。`);
+        } catch (error) {
+            console.error('Admin reset student passcode failed:', error);
+            showCustomAlert(`あいことばの再発行に失敗しました。\n${error.message}`);
+        }
+    });
 }
 
 export function adminBulkAddUsers(afterChange) {

@@ -134,8 +134,22 @@ npx.cmd supabase secrets set PUBLIC_REGISTER_EMAIL_REDIRECT_TO=https://dreams21s
 - Supabase Authユーザー作成
 - `lesson_user_access` に student 権限を登録
 - 児童データに `loginNumber` と `authUserId` を記録
+- ログインカードをDレッスン内に表示
 
 Edge Function未デプロイの場合は、従来どおりAuth User IDを手入力して登録できます。
+
+## 6.1. あいことば再発行
+
+既存のあいことばはSupabase Auth側でハッシュ管理されるため、Dレッスン管理画面で一覧表示しません。
+
+あいことばを忘れた場合は、管理者画面または先生メニューの `合言葉再発行` を使います。
+
+1. 対象児童を選択する
+2. 児童番号を確認する
+3. 新しいあいことばを入力する
+4. 表示されたログインカードを印刷して本人に渡す
+
+再発行後、古いあいことばではログインできません。
 
 ## 7. 不正ユーザー・退会ユーザー削除
 

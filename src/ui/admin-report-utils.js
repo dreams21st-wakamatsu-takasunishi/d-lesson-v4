@@ -52,6 +52,8 @@ export const VISION_RADAR_GROUPS = [
 const VISION_RADAR_DIFFICULTY_SUFFIXES = ['_easy', '', '_hard'];
 const VISION_RADAR_MAX_SCORE = 160;
 const VISION_RADAR_AVERAGE_SCORE = 100;
+const VISION_RADAR_MIN_USER_RECORDS = 3;
+const VISION_RADAR_MIN_CLASS_RECORDS = 3;
 
 function average(values) {
     const valid = values.filter(value => Number.isFinite(value) && value > 0);
@@ -74,6 +76,15 @@ function collectVisionTimes(records, stageIds) {
 function clampRadarScore(score) {
     if (!Number.isFinite(score)) return 0;
     return Math.max(0, Math.min(VISION_RADAR_MAX_SCORE, Math.round(score)));
+}
+
+function getVisionRadarReliability(userRecordCount, classRecordCount) {
+    if (userRecordCount <= 0) return { level: 'empty', label: '本人記録なし' };
+    if (classRecordCount <= 0) return { level: 'waiting', label: '平均データ待ち' };
+    const userOk = userRecordCount >= VISION_RADAR_MIN_USER_RECORDS;
+    const classOk = classRecordCount >= VISION_RADAR_MIN_CLASS_RECORDS;
+    if (userOk && classOk) return { level: 'stable', label: '判定に使用可' };
+    return { level: 'low', label: '記録少なめ' };
 }
 
 function isAverageTargetUser(userId, user, isSystemUserId) {
@@ -133,6 +144,7 @@ export function buildVisionRadarDataFromAverageSnapshot(user, averageSnapshot = 
         const differenceSeconds = userAverage && classAverage ? userAverage - classAverage : null;
         const classRecordCount = Number(snapshot.classRecordCount || 0);
         const totalRecordSlots = Number(snapshot.totalRecordSlots || (stageIds.length * VISION_RADAR_DIFFICULTY_SUFFIXES.length));
+        const reliability = getVisionRadarReliability(userTimes.length, classRecordCount);
 
         return {
             ...group,
@@ -144,6 +156,8 @@ export function buildVisionRadarDataFromAverageSnapshot(user, averageSnapshot = 
             completionCount: userTimes.length,
             classRecordCount,
             totalRecordSlots,
+            reliability: reliability.level,
+            reliabilityLabel: reliability.label,
             hasUserData: userTimes.length > 0,
             hasClassData: classAverage !== null && classRecordCount > 0
         };
@@ -172,6 +186,7 @@ export function buildVisionRadarData(user, allUsers = {}, visionStages = [], isS
         const rawScore = userAverage && classAverage ? (classAverage / userAverage) * 100 : 0;
         const score = clampRadarScore(rawScore);
         const differenceSeconds = userAverage && classAverage ? userAverage - classAverage : null;
+        const reliability = getVisionRadarReliability(userTimes.length, classTimes.length);
 
         return {
             ...group,
@@ -183,6 +198,8 @@ export function buildVisionRadarData(user, allUsers = {}, visionStages = [], isS
             completionCount: userTimes.length,
             classRecordCount: classTimes.length,
             totalRecordSlots: stageIds.length * VISION_RADAR_DIFFICULTY_SUFFIXES.length,
+            reliability: reliability.level,
+            reliabilityLabel: reliability.label,
             hasUserData: userTimes.length > 0,
             hasClassData: classTimes.length > 0
         };
@@ -230,6 +247,7 @@ function formatVisionDifference(group) {
 
 function getVisionRadarTone(group) {
     if (!group.hasUserData || !group.hasClassData) return 'empty';
+    if (group.reliability === 'low') return 'low-data';
     if (group.score >= 108) return 'faster';
     if (group.score <= 92) return 'slower';
     return 'average';
@@ -244,7 +262,7 @@ export function renderVisionRadarChart(radarData, options = {}) {
             <div class="vision-radar-card${compactClass}">
                 <div class="vision-radar-head">
                     <h4>${escapeHtml(title)}</h4>
-                    <span>平均 100</span>
+                    <span>平均 100 / 3件以上で判定</span>
                 </div>
                 <p class="vision-radar-empty">ビジョントレーニングの記録が増えると、平均との差がレーダーチャートで表示されます。</p>
             </div>
@@ -273,6 +291,7 @@ export function renderVisionRadarChart(radarData, options = {}) {
                     <b>${escapeHtml(group.label)}</b>
                     <span>${group.completionCount}/${group.totalRecordSlots} 記録</span>
                     <span>本人 ${formatVisionAverage(group.userAverage)} / 平均 ${formatVisionAverage(group.classAverage)}</span>
+                    <span>${escapeHtml(group.reliabilityLabel || '')}</span>
                 </div>
                 <div>
                     <strong>${group.hasUserData ? group.score : '-'}</strong>
@@ -286,7 +305,7 @@ export function renderVisionRadarChart(radarData, options = {}) {
         <div class="vision-radar-card${compactClass}">
             <div class="vision-radar-head">
                 <h4>${escapeHtml(title)}</h4>
-                <span>平均 100</span>
+                <span>平均 100 / 3件以上で判定</span>
             </div>
             <div class="vision-radar-layout">
                 <div class="vision-radar-figure">
@@ -307,7 +326,7 @@ export function renderVisionRadarChart(radarData, options = {}) {
                 </div>
             </div>
             <div class="vision-radar-note">
-                タイムが短いほど外側に伸びます。表示できる児童の平均タイムと比較しています。
+                タイムが短いほど外側に伸びます。Easy、Normal、Hardの記録を分類ごとにまとめ、表示できる児童の平均タイムと比較しています。
             </div>
         </div>
     `;

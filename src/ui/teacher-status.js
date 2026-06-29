@@ -36,6 +36,7 @@ import {
     renderVisionRadarChart
 } from './admin-report-utils.js';
 import { openStudentReportPanel } from './admin-student-report.js';
+import { openStudentLoginCardsPrintWindow } from './student-login-cards.js';
 
 const TEACHER_STATUS_STALE_DAYS = 14;
 const TEACHER_STATUS_LOW_KEYBOARD_PERCENT = 40;
@@ -936,6 +937,12 @@ function attachTeacherStatusControlHandlers(modal) {
                 return;
             }
 
+            const passcodeButton = event.target.closest('[data-teacher-passcode-user-id]');
+            if (passcodeButton) {
+                void resetTeacherStudentPasscode(passcodeButton.dataset.teacherPasscodeUserId || '');
+                return;
+            }
+
             const addButton = event.target.closest('[data-teacher-add-student]');
             if (addButton) {
                 void addTeacherStudentFromForm();
@@ -1094,7 +1101,22 @@ function createTeacherStudentRecord(name, birthdate, group) {
     return userDataId;
 }
 
-async function createTeacherStudentAuthAccount(userDataId, studentNumber, passcode) {
+function generateTeacherPasscode(length = 6) {
+    const cryptoApi = globalThis.crypto;
+    const digits = [];
+    for (let i = 0; i < length; i++) {
+        const buffer = new Uint8Array(1);
+        if (cryptoApi?.getRandomValues) {
+            cryptoApi.getRandomValues(buffer);
+            digits.push(String(buffer[0] % 10));
+        } else {
+            digits.push(String(Math.floor(Math.random() * 10)));
+        }
+    }
+    return digits.join('');
+}
+
+async function createTeacherStudentAuthAccount(userDataId, studentNumber, passcode, mode = 'create') {
     if (!REQUIRE_SUPABASE_AUTH || !supabase) {
         throw new Error('Supabase Auth is not enabled.');
     }
@@ -1107,6 +1129,8 @@ async function createTeacherStudentAuthAccount(userDataId, studentNumber, passco
             displayName: getUserDisplayName(userDataId),
             studentNumber,
             passcode,
+            authUserId: user?.authUserId || '',
+            mode,
             campusId,
             campusCode: getCampusCode(campusId),
             group: user?.group || ''
@@ -1119,6 +1143,7 @@ async function createTeacherStudentAuthAccount(userDataId, studentNumber, passco
 
     user.loginNumber = String(studentNumber || '').replace(/\D/g, '');
     user.authUserId = data.authUserId;
+    user.authPasscodeIssuedAt = new Date().toISOString();
     await refreshCurrentLessonAccess();
     return data;
 }
@@ -1169,12 +1194,73 @@ async function addTeacherStudentFromForm() {
         if (passcodeInput) passcodeInput.value = '';
         renderTeacherStatus();
         renderTeacherMenuHome();
+        openStudentLoginCardsPrintWindow([{
+            student_number: loginNumber,
+            display_name: name,
+            password: passcode
+        }], {
+            title: 'Dレッスン ログインカード',
+            cardsPerPage: 6
+        });
         showCustomAlert(`${name}さんを追加し、ログイン用アカウントを作成しました。\n番号: ${loginNumber}`);
     } catch (error) {
         console.error('Teacher add student auth failed:', error);
         renderTeacherStatus();
         showCustomAlert(`児童データは追加されましたが、Auth作成に失敗しました。\n${error.message}`);
     }
+}
+
+async function resetTeacherStudentPasscode(userId) {
+    if (!userId || !users[userId] || !canManageTeacherStudent(userId)) {
+        showCustomAlert('担当範囲内の児童を選択してください。');
+        return;
+    }
+
+    const user = users[userId];
+    const displayName = getUserDisplayName(userId);
+    const numberInput = window.prompt(`${displayName} さんの児童番号を確認してください。`, user.loginNumber || '');
+    if (numberInput === null) return;
+    const studentNumber = String(numberInput || '').replace(/\D/g, '');
+    if (!studentNumber) {
+        showCustomAlert('児童番号を入力してください。');
+        return;
+    }
+
+    const passcodeInput = window.prompt(`${displayName} さんの新しいあいことばを入力してください。\nこの値は保存されず、再発行直後のカードにだけ表示します。`, generateTeacherPasscode(6));
+    if (passcodeInput === null) return;
+    const passcode = String(passcodeInput || '').replace(/\D/g, '');
+    if (passcode.length < 6) {
+        showCustomAlert('あいことばは6けた以上の数字で入力してください。');
+        return;
+    }
+
+    showCustomConfirm(`${displayName} さんのあいことばを再発行しますか？\n古いあいことばではログインできなくなります。`, async () => {
+        try {
+            const authData = await createTeacherStudentAuthAccount(userId, studentNumber, passcode, 'reset');
+            const saved = await saveManagedUserRows(userId);
+            if (!saved) throw new Error('児童データの保存に失敗しました。');
+            recordAdminAudit('teacher_student_passcode_reset', {
+                user: displayName,
+                userDataId: userId,
+                authUserId: authData.authUserId,
+                loginNumber: studentNumber
+            });
+            renderTeacherStatus();
+            renderTeacherMenuHome();
+            openStudentLoginCardsPrintWindow([{
+                student_number: studentNumber,
+                display_name: displayName,
+                password: passcode
+            }], {
+                title: 'Dレッスン ログインカード',
+                cardsPerPage: 6
+            });
+            showCustomAlert(`${displayName} さんのあいことばを再発行しました。`);
+        } catch (error) {
+            console.error('Teacher reset student passcode failed:', error);
+            showCustomAlert(`あいことばの再発行に失敗しました。\n${error.message}`);
+        }
+    });
 }
 
 async function saveTeacherStudentChange(userId, action, payload, rollback) {
@@ -1728,6 +1814,12 @@ function renderTeacherStudentManagementRows(rows) {
                                         class="teacher-status-detail-btn"
                                         data-teacher-detail-print-user-id="${escapeHtml(row.userId)}"
                                     >レポート</button>
+                                    <button
+                                        type="button"
+                                        class="teacher-status-detail-btn"
+                                        data-teacher-passcode-user-id="${escapeHtml(row.userId)}"
+                                        ${canManage ? '' : 'disabled'}
+                                    >合言葉再発行</button>
                                     <button
                                         type="button"
                                         class="teacher-danger-mini"
