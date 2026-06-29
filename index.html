@@ -75,6 +75,9 @@
                 <button class="category-btn" onclick="showAdminSection('admin-sec-dashboard')" style="background-color:#E91E63; width:260px;">
                     <span style="font-size:50px;">📊</span><span style="font-size:20px; font-weight:bold; margin-top:10px;">生徒成績</span>
                 </button>
+                <button class="category-btn" onclick="showAdminSection('admin-sec-route-settings')" style="background-color:#3F51B5; width:260px;">
+                    <span style="font-size:50px;">🧭</span><span style="font-size:20px; font-weight:bold; margin-top:10px;">ルート設定</span>
+                </button>
                 <button class="category-btn" onclick="showAdminSection('admin-sec-practice-history')" style="background-color:#795548; width:260px;">
                     <span style="font-size:50px;">🗓️</span><span style="font-size:20px; font-weight:bold; margin-top:10px;">取り組み確認</span>
                 </button>
@@ -199,6 +202,11 @@
                             </div>
                         </div>
                     </div>
+                </div>
+
+                <div id="admin-sec-route-settings" class="admin-section" style="display:none; width:100%; flex-direction:column; gap:14px;">
+                    <h3 style="margin-top:0;">🧭 ルート設定</h3>
+                    <div id="admin-route-settings-root" style="width:100%;"></div>
                 </div>
 
                 <div id="admin-sec-practice-history" class="admin-section" style="display:none; width:100%; flex-direction:column; gap:12px;">

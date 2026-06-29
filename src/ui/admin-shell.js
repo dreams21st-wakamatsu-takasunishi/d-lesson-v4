@@ -37,6 +37,7 @@ export function showAdminSection(sectionId, callbacks = {}) {
     }
 
     if (sectionId === 'admin-sec-dashboard') getCallback(callbacks, 'switchDashTab')('basic');
+    if (sectionId === 'admin-sec-route-settings') getCallback(callbacks, 'renderStandardRouteSettingsAdmin')();
     if (sectionId === 'admin-sec-practice-history') getCallback(callbacks, 'renderPracticeHistoryAdmin')();
     if (sectionId === 'admin-sec-auth-link') getCallback(callbacks, 'renderAuthLinkingAdmin')();
     if (sectionId === 'admin-sec-rhythm') getCallback(callbacks, 'renderAdminRhythmSongs')();

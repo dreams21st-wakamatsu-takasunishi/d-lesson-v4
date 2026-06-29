@@ -79,6 +79,12 @@ import {
     renderAdminRhythmSongs
 } from './admin-rhythm.js';
 import {
+    deleteStandardRouteRule,
+    renderStandardRouteSettingsAdmin,
+    saveStandardRouteMode,
+    saveStandardRouteRule
+} from './admin-route-settings.js';
+import {
     linkRoleAuthUser,
     linkStudentAuthUser,
     copyStudentAccessSql,
@@ -126,6 +132,10 @@ export {
     renderOpsGuideAdmin,
     renderTypingRankingSettingsAdmin,
     renderAdminRhythmSongs,
+    renderStandardRouteSettingsAdmin,
+    saveStandardRouteMode,
+    saveStandardRouteRule,
+    deleteStandardRouteRule,
     saveTypingRankingNicknameBlockWords,
     copyInternalIdCheckGuide,
     copyDeviceHandoffChecklist,
@@ -223,6 +233,7 @@ function adminShellCallbacks() {
         renderOpsGuideAdmin,
         renderTypingRankingSettingsAdmin,
         renderAdminRhythmSongs,
+        renderStandardRouteSettingsAdmin,
         updateAdminUserTable,
         renderAdminTextTasks,
         renderTicketAdmin

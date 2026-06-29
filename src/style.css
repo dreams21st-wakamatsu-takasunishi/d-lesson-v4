@@ -1054,6 +1054,119 @@ body {
     background: linear-gradient(90deg, #ffb74d, #ff7043);
 }
 
+.admin-route-settings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 14px;
+    width: 100%;
+}
+
+.admin-route-settings-card {
+    background: #fff;
+    border: 1px solid #c5cae9;
+    border-radius: 8px;
+    padding: 16px;
+    box-sizing: border-box;
+    color: #263238;
+}
+
+.admin-route-settings-card h4 {
+    margin: 0 0 8px;
+    color: #283593;
+    font-size: 18px;
+}
+
+.admin-route-settings-card p {
+    margin: 0 0 12px;
+    color: #546e7a;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.5;
+}
+
+.admin-route-mode-row,
+.admin-route-rule-form {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.admin-route-rule-form label,
+.admin-route-order-editor label {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    color: #37474f;
+    font-size: 13px;
+    font-weight: 900;
+}
+
+.admin-route-mode-row select,
+.admin-route-rule-form select,
+.admin-route-rule-form input {
+    min-width: 150px;
+    padding: 8px;
+    border: 1px solid #9fa8da;
+    border-radius: 6px;
+    font-size: 14px;
+    background: #fff;
+}
+
+.admin-route-current-mode {
+    margin-top: 12px;
+    padding: 10px;
+    background: #eef2ff;
+    border-radius: 6px;
+    color: #37474f;
+    font-weight: 800;
+}
+
+.admin-route-order-editor {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 8px;
+    width: 100%;
+}
+
+.admin-route-rules-card {
+    margin-top: 14px;
+}
+
+.admin-route-rules-table-wrap {
+    overflow-x: auto;
+}
+
+.admin-route-rules-table {
+    width: 100%;
+    min-width: 760px;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.admin-route-rules-table th,
+.admin-route-rules-table td {
+    border: 1px solid #d7dcef;
+    padding: 9px;
+    text-align: left;
+    vertical-align: top;
+}
+
+.admin-route-rules-table th {
+    background: #eef2ff;
+    color: #283593;
+}
+
+.admin-route-empty {
+    padding: 14px;
+    background: #f5f7fb;
+    border: 1px dashed #9fa8da;
+    border-radius: 8px;
+    color: #607d8b;
+    font-weight: 800;
+    text-align: center;
+}
+
 .teacher-admin-grade-table {
     min-width: 1240px;
 }
