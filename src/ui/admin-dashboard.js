@@ -9,6 +9,7 @@ import {
 } from '../api/user.js';
 import { STAGE_ORDER, VISION_STAGES } from '../data/constants.js';
 import { calculateGrade, sortGrades } from '../utils/helpers.js';
+import { getStandardRouteStatus, renderStandardRouteCell } from '../utils/standard-route.js';
 import {
     getDashboardProgressPercent,
     getVisionDifficultySuffix
@@ -44,6 +45,7 @@ function getStudentRows() {
             name: getUserDisplayName(userId),
             grade,
             group: user.group || '',
+            routeStatus: getStandardRouteStatus(user, users[GLOBAL_SETTINGS_ID] || {}),
             user
         });
     });
@@ -197,6 +199,7 @@ export function renderDashboardTable() {
         const list = filterRows(rows, { grade: gradeSelect.value, group: grpSelect.value });
         if (sortVal === 'mouse_desc') list.sort((a, b) => (b.user.mouseLevel || 0) - (a.user.mouseLevel || 0));
         else if (sortVal === 'kb_desc') list.sort((a, b) => (b.user.keyboardSequence || 0) - (a.user.keyboardSequence || 0));
+        else if (sortVal === 'route_asc') list.sort((a, b) => a.routeStatus.percent - b.routeStatus.percent || a.name.localeCompare(b.name, 'ja'));
         else list.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
 
         tbody.innerHTML = '';
@@ -208,6 +211,7 @@ export function renderDashboardTable() {
                 <td style="border:1px solid #ccc; padding:8px;">${escapeHtml(item.grade || '-')}</td>
                 <td style="border:1px solid #ccc; padding:8px;">${renderProgressCell(item.user.mouseLevel || 0, 7, '#2196F3')}</td>
                 <td style="border:1px solid #ccc; padding:8px;">${renderProgressCell(item.user.keyboardSequence || 0, STAGE_ORDER.length, '#FF9800')}</td>
+                <td style="border:1px solid #ccc; padding:8px;">${renderStandardRouteCell(item.routeStatus)}</td>
                 <td style="border:1px solid #ccc; padding:8px; text-align:center;"><button class="btn-secondary" style="font-size:13px; padding:6px 10px;" onclick="openStudentReportById('${escapeJsString(item.id)}')">レポート</button></td>
             `;
             tbody.appendChild(tr);

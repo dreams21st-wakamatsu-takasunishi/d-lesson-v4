@@ -2,6 +2,7 @@ import {
     users,
     saveUsers,
     DEFAULT_CAMPUS_ID,
+    GLOBAL_SETTINGS_ID,
     getCampusList,
     getCampusName,
     getUserCampusId,
@@ -15,6 +16,7 @@ import {
 } from '../api/user.js';
 import { STAGE_ORDER } from '../data/constants.js';
 import { calculateGrade, sortGrades } from '../utils/helpers.js';
+import { getStandardRouteStatus, renderStandardRouteCell } from '../utils/standard-route.js';
 import { showCustomAlert } from './modal.js';
 import { recordAdminAudit } from './admin-audit.js';
 
@@ -72,6 +74,13 @@ export function updateAdminUserTable(options = {}) {
         th.style.cssText = 'padding:8px; border:1px solid #ddd;';
         th.innerText = '校舎';
         headerRow.insertBefore(th, headerRow.children[5] || null);
+    }
+    if (headerRow && !headerRow.querySelector('[data-standard-route-header="true"]')) {
+        const th = document.createElement('th');
+        th.dataset.standardRouteHeader = 'true';
+        th.style.cssText = 'padding:8px; border:1px solid #ddd;';
+        th.innerText = '標準ルート';
+        headerRow.appendChild(th);
     }
 
     const searchInput = document.getElementById('admin-user-search');
@@ -139,7 +148,7 @@ export function updateAdminUserTable(options = {}) {
     if (list.length === 0) {
         const tr = document.createElement('tr');
         const td = document.createElement('td');
-        td.colSpan = 9;
+        td.colSpan = 10;
         td.style.cssText = 'padding:14px; border:1px solid #ddd; color:#777; text-align:center;';
         td.innerText = '条件に合う児童がいません';
         tr.appendChild(td);
@@ -225,6 +234,11 @@ export function updateAdminUserTable(options = {}) {
         keyboardTd.style.cssText = 'padding:5px; border:1px solid #ddd;';
         keyboardTd.innerText = `${item.user.keyboardSequence || 0}/${STAGE_ORDER.length}`;
         tr.appendChild(keyboardTd);
+
+        const routeTd = document.createElement('td');
+        routeTd.style.cssText = 'padding:5px; border:1px solid #ddd; min-width:150px;';
+        routeTd.innerHTML = renderStandardRouteCell(getStandardRouteStatus(item.user, users[GLOBAL_SETTINGS_ID] || {}));
+        tr.appendChild(routeTd);
 
         tbody.appendChild(tr);
     });

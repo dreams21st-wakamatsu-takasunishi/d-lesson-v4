@@ -26,6 +26,7 @@ import {
 } from '../api/user.js';
 import { escapeCsvCell, getBackupDateStamp } from '../utils/export-format.js';
 import { calculateGrade, sortGrades } from '../utils/helpers.js';
+import { getStandardRouteStatus, renderStandardRouteCell } from '../utils/standard-route.js';
 import { showCustomAlert, showCustomConfirm } from './modal.js';
 import { recordAdminAudit } from './admin-audit.js';
 import { showScreen } from './screen.js';
@@ -244,6 +245,7 @@ function getStudentRows() {
             const keyboardPercent = STAGE_ORDER.length
                 ? Math.round((keyboardSequence / STAGE_ORDER.length) * 100)
                 : 0;
+            const routeStatus = getStandardRouteStatus(user, users[GLOBAL_SETTINGS_ID] || {});
 
             const row = {
                 userId,
@@ -257,6 +259,7 @@ function getStudentRows() {
                 coins: Number(user.coins || 0),
                 mouseLevel,
                 keyboardPercent,
+                routeStatus,
                 text,
                 latestLog,
                 latest
@@ -2226,6 +2229,7 @@ function renderTeacherBasicGrades(rows) {
     const list = filterTeacherRowsByGradeGroupSearch(rows, teacherGradeFilters.basicGrade, teacherGradeFilters.basicGroup);
     if (teacherGradeFilters.basicSort === 'mouse_desc') list.sort((a, b) => b.mouseLevel - a.mouseLevel || a.name.localeCompare(b.name, 'ja'));
     else if (teacherGradeFilters.basicSort === 'kb_desc') list.sort((a, b) => b.keyboardPercent - a.keyboardPercent || a.name.localeCompare(b.name, 'ja'));
+    else if (teacherGradeFilters.basicSort === 'route_asc') list.sort((a, b) => a.routeStatus.percent - b.routeStatus.percent || a.name.localeCompare(b.name, 'ja'));
     else list.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
 
     return `
@@ -2243,6 +2247,7 @@ function renderTeacherBasicGrades(rows) {
             <label>並び順
                 <select data-teacher-grade-filter="basicSort">
                     <option value="name"${teacherGradeFilters.basicSort === 'name' ? ' selected' : ''}>名前順</option>
+                    <option value="route_asc"${teacherGradeFilters.basicSort === 'route_asc' ? ' selected' : ''}>標準ルート順</option>
                     <option value="mouse_desc"${teacherGradeFilters.basicSort === 'mouse_desc' ? ' selected' : ''}>マウス進捗順</option>
                     <option value="kb_desc"${teacherGradeFilters.basicSort === 'kb_desc' ? ' selected' : ''}>キーボード進捗順</option>
                 </select>
@@ -2257,6 +2262,7 @@ function renderTeacherBasicGrades(rows) {
                         <th>グループ</th>
                         <th>マウス</th>
                         <th>キーボード</th>
+                        <th>標準ルート</th>
                         <th>文章入力</th>
                         <th>レポート</th>
                     </tr>
@@ -2269,11 +2275,12 @@ function renderTeacherBasicGrades(rows) {
                             <td>${escapeHtml(row.group || '-')}</td>
                             <td>${renderTeacherProgressCell(row.mouseLevel, 7, '#2196F3')}</td>
                             <td>${renderTeacherProgressCell(row.keyboardPercent, 100, '#FF9800')}</td>
+                            <td>${renderStandardRouteCell(row.routeStatus)}</td>
                             <td>${renderTeacherProgressCell(row.text.done, row.text.total, '#4CAF50')}</td>
                             <td><button type="button" class="teacher-status-detail-btn" data-teacher-report-open-user-id="${escapeHtml(row.userId)}">レポート</button></td>
                         </tr>
                     `).join('') : `
-                        <tr><td colspan="7" style="text-align:center; color:#78909c; font-weight:800;">条件に合う児童がいません。</td></tr>
+                        <tr><td colspan="8" style="text-align:center; color:#78909c; font-weight:800;">条件に合う児童がいません。</td></tr>
                     `}
                 </tbody>
             </table>
