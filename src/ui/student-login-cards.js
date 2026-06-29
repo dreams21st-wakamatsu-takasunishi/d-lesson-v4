@@ -1,11 +1,14 @@
 import { showCustomAlert } from './modal.js';
 
 const DEFAULT_TITLE = 'Dレッスン ログインカード';
-const LOGIN_CARD_PRINT_WINDOW_FEATURES = 'popup=yes,width=1180,height=840,menubar=no,toolbar=no,location=no,status=no,scrollbars=yes,resizable=yes';
+const LOGIN_CARD_PANEL_ID = 'student-login-card-panel';
+const LOGIN_CARD_STYLE_ID = 'student-login-card-print-style';
 
 function validateRows(rows) {
     const failures = [];
     const seenNumbers = new Set();
+
+    if (!rows.length) failures.push('ログインカードの対象児童が選択されていません');
 
     rows.forEach(row => {
         if (!row.student_number) failures.push(`${row.__line}行目: 児童番号がありません`);
@@ -83,7 +86,7 @@ function buildCard(row, options) {
     `;
 }
 
-function buildPrintableHtml(rows, options) {
+function buildPrintableContent(rows, options) {
     const generatedAt = new Date().toLocaleString('ja-JP');
     const cardsPerPage = Math.max(4, Math.min(10, options.cardsPerPage));
     const rowsPerPage = Math.ceil(cardsPerPage / 2);
@@ -93,22 +96,38 @@ function buildPrintableHtml(rows, options) {
         </div>
     `).join('\n');
 
-    return `<!doctype html>
-<html lang="ja">
-<head>
-  <meta charset="utf-8">
-  <title>${escapeHtml(options.title)}</title>
-  <style>
+    return `
+  <div class="login-card-toolbar">
+    <button type="button" data-login-card-print>印刷</button>
+    <button type="button" data-login-card-close>閉じる</button>
+    <strong>${escapeHtml(options.title)}</strong>
+    <span>作成日時: ${escapeHtml(generatedAt)} / ${rows.length}枚</span>
+    <div>この画面には児童のあいことばが含まれます。印刷後の保管と破棄に注意してください。</div>
+  </div>
+  <div class="login-card-pages">
+    ${pages}
+  </div>`;
+}
+
+function getLoginCardPrintCss() {
+    return `
     @page { size: A4; margin: 10mm; }
     * { box-sizing: border-box; }
-    body {
+    body, .login-card-panel {
       margin: 0;
       background: #eef2f7;
       color: #102033;
       font-family: "Yu Gothic", "Meiryo", system-ui, sans-serif;
       letter-spacing: 0;
     }
-    .toolbar {
+    .login-card-panel {
+      position: fixed;
+      inset: 0;
+      z-index: 24000;
+      overflow: auto;
+      padding: 18px;
+    }
+    .login-card-toolbar {
       max-width: 210mm;
       margin: 14px auto;
       padding: 12px 14px;
@@ -118,7 +137,7 @@ function buildPrintableHtml(rows, options) {
       font-size: 14px;
       line-height: 1.6;
     }
-    .toolbar button {
+    .login-card-toolbar button {
       margin-right: 8px;
       padding: 9px 16px;
       border: 0;
@@ -127,6 +146,9 @@ function buildPrintableHtml(rows, options) {
       color: #fff;
       font-weight: 700;
       cursor: pointer;
+    }
+    .login-card-toolbar button[data-login-card-close] {
+      background: #475569;
     }
     .page {
       width: 210mm;
@@ -141,6 +163,7 @@ function buildPrintableHtml(rows, options) {
       page-break-after: always;
       overflow: hidden;
     }
+    .page:last-child { page-break-after: auto; }
     .login-card {
       border: 2px solid #164e63;
       border-radius: 8px;
@@ -226,25 +249,37 @@ function buildPrintableHtml(rows, options) {
       text-align: center;
     }
     @media print {
-      body { background: #ffffff; }
-      .toolbar { display: none; }
+      body { background: #ffffff !important; }
+      body > *:not(#student-login-card-panel) { display: none !important; }
+      #student-login-card-panel {
+        position: static !important;
+        inset: auto !important;
+        z-index: auto !important;
+        overflow: visible !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+      }
+      .login-card-toolbar { display: none !important; }
+      .login-card-pages { display: block !important; }
       .page { margin: 0; box-shadow: none; }
     }
-  </style>
-</head>
-<body>
-  <div class="toolbar">
-    <button onclick="window.print()">印刷</button>
-    <strong>${escapeHtml(options.title)}</strong>
-    <span>作成日時: ${escapeHtml(generatedAt)} / ${rows.length}枚</span>
-    <div>この画面には児童のあいことばが含まれます。印刷後の保管と破棄に注意してください。</div>
-  </div>
-  ${pages}
-</body>
-</html>`;
+`;
 }
 
-export function openStudentLoginCardsPrintWindow(rows, options = {}, targetWindow = null) {
+function ensureLoginCardStyle() {
+    if (document.getElementById(LOGIN_CARD_STYLE_ID)) return;
+    const style = document.createElement('style');
+    style.id = LOGIN_CARD_STYLE_ID;
+    style.textContent = getLoginCardPrintCss();
+    document.head.appendChild(style);
+}
+
+function closeStudentLoginCardsPanel() {
+    const existing = document.getElementById(LOGIN_CARD_PANEL_ID);
+    if (existing) existing.remove();
+}
+
+export function openStudentLoginCardsPrintWindow(rows, options = {}) {
     const safeRows = Array.isArray(rows)
         ? rows.map((row, index) => ({
             __line: row.__line || index + 1,
@@ -257,22 +292,20 @@ export function openStudentLoginCardsPrintWindow(rows, options = {}, targetWindo
     try {
         validateRows(safeRows);
     } catch (error) {
-        if (targetWindow) targetWindow.close();
         showCustomAlert(`ログインカードを作成できません。\n${error.message}`);
         return;
     }
 
-    const popup = targetWindow || window.open('', '_blank', LOGIN_CARD_PRINT_WINDOW_FEATURES);
-    if (!popup) {
-        showCustomAlert('印刷画面を開けませんでした。ブラウザのポップアップ許可を確認してください。');
-        return;
-    }
+    const normalizedOptions = normalizeCardOptions(options);
+    ensureLoginCardStyle();
+    closeStudentLoginCardsPanel();
 
-    popup.document.open();
-    popup.document.write(buildPrintableHtml(safeRows, normalizeCardOptions(options)));
-    popup.document.close();
-}
+    const panel = document.createElement('div');
+    panel.id = LOGIN_CARD_PANEL_ID;
+    panel.className = 'login-card-panel';
+    panel.innerHTML = buildPrintableContent(safeRows, normalizedOptions);
+    document.body.appendChild(panel);
 
-export function openBlankStudentLoginCardPrintWindow() {
-    return window.open('', '_blank', LOGIN_CARD_PRINT_WINDOW_FEATURES);
+    panel.querySelector('[data-login-card-print]')?.addEventListener('click', () => window.print());
+    panel.querySelector('[data-login-card-close]')?.addEventListener('click', closeStudentLoginCardsPanel);
 }

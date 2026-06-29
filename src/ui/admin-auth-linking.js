@@ -11,10 +11,7 @@ import {
 } from '../api/user.js';
 import { showCustomAlert, showCustomConfirm } from './modal.js';
 import { recordAdminAudit } from './admin-audit.js';
-import {
-    openBlankStudentLoginCardPrintWindow,
-    openStudentLoginCardsPrintWindow
-} from './student-login-cards.js';
+import { openStudentLoginCardsPrintWindow } from './student-login-cards.js';
 import {
     buildAccessSql,
     getRoleAccessDataId,
@@ -193,40 +190,25 @@ async function createStudentAuthAccount(userDataId, inputId) {
 }
 
 export function openStudentLoginCardForUser(userDataId, defaultPasscode = '') {
-    const popup = openBlankStudentLoginCardPrintWindow();
-    if (!popup) {
-        showCustomAlert('印刷画面を開けませんでした。ブラウザのポップアップ許可を確認してください。');
-        return;
-    }
-
     const user = users[userDataId];
     if (!user) {
-        popup.close();
         showCustomAlert('児童データが見つかりません。');
         return;
     }
 
     const displayName = getUserDisplayName(userDataId);
     const numberInput = window.prompt(`${displayName} さんの児童番号を入力してください。`, user.loginNumber || '');
-    if (numberInput === null) {
-        popup.close();
-        return;
-    }
+    if (numberInput === null) return;
     const studentNumber = String(numberInput || '').replace(/\D/g, '');
     if (!studentNumber) {
-        popup.close();
         showCustomAlert('児童番号を入力してください。');
         return;
     }
 
     const passcodeInput = window.prompt(`${displayName} さんのあいことばを入力してください。\n※あいことばはDレッスンに保存しません。`, defaultPasscode);
-    if (passcodeInput === null) {
-        popup.close();
-        return;
-    }
+    if (passcodeInput === null) return;
     const passcode = String(passcodeInput || '').replace(/\D/g, '');
     if (passcode.length < 6) {
-        popup.close();
         showCustomAlert('あいことばは6けた以上の数字で入力してください。');
         return;
     }
@@ -243,7 +225,7 @@ export function openStudentLoginCardForUser(userDataId, defaultPasscode = '') {
     }], {
         title: 'Dレッスン ログインカード',
         cardsPerPage: 6
-    }, popup);
+    });
 }
 
 async function copyText(text) {

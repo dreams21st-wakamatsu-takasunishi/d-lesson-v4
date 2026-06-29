@@ -22,10 +22,7 @@ import { calculateGrade } from '../utils/helpers.js';
 import { escapeCsvCell, getBackupDateStamp } from '../utils/export-format.js';
 import { showCustomAlert, showCustomConfirm } from './modal.js';
 import { recordAdminAudit } from './admin-audit.js';
-import {
-    openBlankStudentLoginCardPrintWindow,
-    openStudentLoginCardsPrintWindow
-} from './student-login-cards.js';
+import { openStudentLoginCardsPrintWindow } from './student-login-cards.js';
 
 function runAfterChange(afterChange) {
     if (typeof afterChange === 'function') afterChange();
@@ -246,7 +243,6 @@ export async function adminAddUser(afterChange) {
     const loginNumber = getNumericInputValue('admin-add-login-number');
     const passcode = getNumericInputValue('admin-add-passcode');
     const shouldCreateAuth = Boolean(loginNumber || passcode);
-    let loginCardPopup = null;
 
     if (!name) return showCustomAlert('名前を入力してください');
     if (userDisplayNameExists(name)) return showCustomAlert('その名前はすでに登録されています');
@@ -255,12 +251,6 @@ export async function adminAddUser(afterChange) {
     if (shouldCreateAuth && passcode.length < 6) return showCustomAlert('Auth作成する場合は、あいことばを6けた以上の数字で入力してください');
     if (shouldCreateAuth && studentLoginNumberExists(loginNumber, campusId)) {
         return showCustomAlert('同じ校舎で同じ児童番号がすでに使われています。');
-    }
-    if (shouldCreateAuth) {
-        loginCardPopup = openBlankStudentLoginCardPrintWindow();
-        if (!loginCardPopup) {
-            return showCustomAlert('ログインカードを開けませんでした。ブラウザのポップアップ許可を確認してから、もう一度追加してください。');
-        }
     }
 
     const userDataId = createStudentRecord(name, birthdate, group, campusId);
@@ -273,7 +263,6 @@ export async function adminAddUser(afterChange) {
     });
     const saved = await saveUsers(true);
     if (!saved) {
-        if (loginCardPopup) loginCardPopup.close();
         delete users[userDataId];
         runAfterChange(afterChange);
         return showCustomAlert('児童データの保存に失敗しました。通信状態または権限を確認してください。');
@@ -297,14 +286,13 @@ export async function adminAddUser(afterChange) {
             }], {
                 title: 'Dレッスン ログインカード',
                 cardsPerPage: 6
-            }, loginCardPopup);
+            });
             const loginInput = document.getElementById('admin-add-login-number');
             const passcodeInput = document.getElementById('admin-add-passcode');
             if (loginInput) loginInput.value = '';
             if (passcodeInput) passcodeInput.value = '';
         } catch (error) {
             console.error('Admin add student auth failed:', error);
-            if (loginCardPopup) loginCardPopup.close();
             runAfterChange(afterChange);
             showCustomAlert(`児童データは追加されましたが、Auth作成に失敗しました。\n${error.message}`);
             return;
