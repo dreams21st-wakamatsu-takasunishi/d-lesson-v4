@@ -79,10 +79,7 @@
                     <span style="font-size:50px;">🗓️</span><span style="font-size:20px; font-weight:bold; margin-top:10px;">取り組み確認</span>
                 </button>
                 <button class="category-btn" onclick="showAdminSection('admin-sec-users')" style="background-color:#2196F3; width:260px;">
-                    <span style="font-size:50px;">👥</span><span style="font-size:20px; font-weight:bold; margin-top:10px;">生徒管理/Auth連携</span>
-                </button>
-                <button class="category-btn" onclick="showAdminSection('admin-sec-users')" style="background-color:#00695C; width:260px; display:none;">
-                    <span style="font-size:50px;">🔐</span><span style="font-size:20px; font-weight:bold; margin-top:10px;">Auth連携</span>
+                    <span style="font-size:50px;">👥</span><span style="font-size:20px; font-weight:bold; margin-top:10px;">生徒管理</span>
                 </button>
                 <button class="category-btn" onclick="showAdminSection('admin-sec-tasks')" style="background-color:#4CAF50; width:260px;">
                     <span style="font-size:50px;">📝</span><span style="font-size:20px; font-weight:bold; margin-top:10px;">文章課題の作成</span>
@@ -261,7 +258,7 @@
                 </div>
 
                 <div id="admin-sec-users" class="admin-section" style="display:none; width: 100%;">
-                    <h3 style="margin-top:0;">👥 生徒の管理 / Auth連携</h3>
+                    <h3 style="margin-top:0;">👥 生徒の管理</h3>
                     <div style="display:flex; gap:20px; width:100%; align-items: flex-start;">
                         <div style="flex:1; display:flex; flex-direction:column; gap:15px;">
                             <div style="display:flex; flex-direction:column; gap:10px; background:#e3f2fd; padding:15px; border-radius:8px; border:1px solid #90caf9;">
@@ -325,6 +322,7 @@
                                 <button class="btn-primary" style="font-size:14px; padding:10px 15px;" onclick="openEditProgress()">編集する</button>
                                 <button class="btn-danger" style="font-size:14px; padding:10px 15px;" onclick="adminResetUser()">リセット</button>
                                 <button class="btn-secondary" style="font-size:14px; padding:10px 15px;" onclick="adminForceProgress()">全開放</button>
+                                <button class="btn-secondary" style="font-size:14px; padding:10px 15px;" onclick="adminPrintLoginCard()">ログインカード</button>
                                 <button class="btn-danger" style="font-size:14px; padding:10px 15px;" onclick="adminDeleteUser()">削除</button>
                             </div>
                         </div>
@@ -332,7 +330,7 @@
                 </div>
 
                 <div id="admin-sec-auth-link" class="admin-section" style="display:none; width:100%;">
-                    <h3 style="margin-top:0;">🔐 Auth連携</h3>
+                    <h3 style="margin-top:0;">🔐 先生・管理者権限</h3>
                     <div style="display:flex; gap:20px; width:100%; align-items:flex-start; flex-wrap:wrap;">
                         <div style="flex:1; min-width:320px; display:flex; flex-direction:column; gap:12px;">
                             <div style="background:#e0f2f1; border:1px solid #80cbc4; border-radius:8px; padding:15px;">
@@ -370,17 +368,6 @@
                                         <tbody id="auth-access-tbody"></tbody>
                                     </table>
                                 </div>
-                            </div>
-                        </div>
-                        <div style="flex:1.4; min-width:420px; background:#fff; border:1px solid #ccc; border-radius:8px; padding:15px;">
-                            <div style="font-weight:bold; color:#00695c; margin-bottom:10px;">生徒Auth連携</div>
-                            <div style="max-height:520px; overflow:auto;">
-                                <table style="width:100%; border-collapse:collapse; font-size:13px;">
-                                    <thead style="background:#f2f2f2; position:sticky; top:0;">
-                                        <tr><th style="border:1px solid #ddd; padding:6px;">名前</th><th style="border:1px solid #ddd; padding:6px;">user_data_id</th><th style="border:1px solid #ddd; padding:6px;">Auth User ID</th><th style="border:1px solid #ddd; padding:6px;">操作</th></tr>
-                                    </thead>
-                                    <tbody id="auth-link-student-tbody"></tbody>
-                                </table>
                             </div>
                         </div>
                     </div>

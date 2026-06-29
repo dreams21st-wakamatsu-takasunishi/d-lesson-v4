@@ -84,7 +84,8 @@ import {
     copyStudentAccessSql,
     copyRoleAccessSql,
     renderAuthAccessOverview,
-    renderAuthLinkingAdmin
+    renderAuthLinkingAdmin,
+    openStudentLoginCardForUser
 } from './admin-auth-linking.js';
 import {
     resetUserProgress,
@@ -259,6 +260,10 @@ export function adminForceProgress() {
 
 export function openEditProgress() {
     openEditProgressPanel(getSelUser());
+}
+
+export function adminPrintLoginCard() {
+    openStudentLoginCardForUser(getSelUser());
 }
 
 export function saveEditProgress() {

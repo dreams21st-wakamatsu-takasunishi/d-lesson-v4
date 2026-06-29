@@ -943,6 +943,21 @@ function buildStudentAuthPanelHtml() {
     `;
 }
 
+async function getFunctionErrorMessage(error, fallback = '処理に失敗しました。') {
+    if (!error) return fallback;
+    const context = error.context;
+    if (context && typeof context.clone === 'function') {
+        try {
+            const body = await context.clone().json();
+            if (body?.error) return String(body.error);
+            if (body?.message) return String(body.message);
+        } catch (_err) {
+            // Fall through to the SDK message below.
+        }
+    }
+    return error.message || fallback;
+}
+
 function buildGuestPanelHtml() {
     return `
         <section class="auth-panel guest-login-panel">
@@ -1400,7 +1415,9 @@ async function handlePublicRegisterFormSubmit(event) {
         const { data, error } = await supabase.functions.invoke(PUBLIC_STUDENT_REGISTRATION_FUNCTION, {
             body: { displayName, email, birthdate, password }
         });
-        if (error || data?.error) throw new Error(data?.error || error?.message || '登録に失敗しました。');
+        if (error || data?.error) {
+            throw new Error(data?.error || await getFunctionErrorMessage(error, '登録に失敗しました。'));
+        }
         if (data?.needsEmailConfirmation) {
             setAuthGateBusy(false);
             setAuthGateMessage('確認メールを送信しました。メール内のURLを開いてから、通常ログインしてください。', false);

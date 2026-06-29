@@ -192,7 +192,7 @@ async function createStudentAuthAccount(userDataId, inputId) {
     await renderAuthLinkingAdmin();
 }
 
-function openStudentLoginCardForUser(userDataId, defaultPasscode = '') {
+export function openStudentLoginCardForUser(userDataId, defaultPasscode = '') {
     const popup = openBlankStudentLoginCardPrintWindow();
     if (!popup) {
         showCustomAlert('印刷画面を開けませんでした。ブラウザのポップアップ許可を確認してください。');
@@ -326,6 +326,8 @@ export async function renderAuthAccessOverview() {
 }
 
 export async function renderAuthLinkingAdmin() {
+    await renderAuthAccessOverview();
+
     const body = document.getElementById('auth-link-student-tbody');
     if (!body) return;
     body.innerHTML = '';
@@ -393,5 +395,4 @@ export async function renderAuthLinkingAdmin() {
         body.appendChild(tr);
     });
 
-    await renderAuthAccessOverview();
 }
