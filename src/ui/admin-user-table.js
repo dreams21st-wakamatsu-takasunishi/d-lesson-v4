@@ -218,7 +218,7 @@ export function updateAdminUserTable(options = {}) {
 
         const mouseTd = document.createElement('td');
         mouseTd.style.cssText = 'padding:5px; border:1px solid #ddd;';
-        mouseTd.innerText = `Lv.${item.user.mouseLevel || 1}`;
+        mouseTd.innerText = `Lv.${Number(item.user.mouseLevel || 0)}`;
         tr.appendChild(mouseTd);
 
         const keyboardTd = document.createElement('td');

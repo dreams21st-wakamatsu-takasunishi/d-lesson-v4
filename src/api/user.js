@@ -451,7 +451,7 @@ function createGuestUserRecord(existing = {}) {
         birthdate: '',
         grade: 'ゲスト',
         campusId: DEFAULT_CAMPUS_ID,
-        mouseLevel: Number.isFinite(Number(base.mouseLevel)) ? Number(base.mouseLevel) : 1,
+        mouseLevel: Number.isFinite(Number(base.mouseLevel)) ? Number(base.mouseLevel) : 0,
         keyboardSequence: Number.isFinite(Number(base.keyboardSequence)) ? Number(base.keyboardSequence) : 0,
         coins: Number.isFinite(Number(base.coins)) ? Number(base.coins) : 0,
         items: Array.isArray(base.items) ? base.items : [],
@@ -902,6 +902,10 @@ function buildPublicRegisterPanelHtml() {
             <label class="auth-field-label">
                 メールアドレス
                 <input id="public-register-email" class="auth-text-input" type="email" inputmode="email" autocomplete="username" spellcheck="false" required>
+            </label>
+            <label class="auth-field-label">
+                生年月日
+                <input id="public-register-birthdate" class="auth-text-input" type="date" autocomplete="bday" required>
             </label>
             <label class="auth-field-label">
                 パスワード
@@ -1370,6 +1374,7 @@ async function handlePublicRegisterFormSubmit(event) {
 
     const displayName = document.getElementById('public-register-display-name')?.value.trim();
     const email = document.getElementById('public-register-email')?.value.trim();
+    const birthdate = document.getElementById('public-register-birthdate')?.value || '';
     const password = document.getElementById('public-register-password')?.value || '';
     const confirm = document.getElementById('public-register-password-confirm')?.value || '';
 
@@ -1381,6 +1386,10 @@ async function handlePublicRegisterFormSubmit(event) {
         setAuthGateMessage('メールアドレスとパスワードを入力してください。', true);
         return;
     }
+    if (!birthdate) {
+        setAuthGateMessage('生年月日を入力してください。', true);
+        return;
+    }
     if (password !== confirm) {
         setAuthGateMessage('確認用パスワードが一致しません。', true);
         return;
@@ -1389,7 +1398,7 @@ async function handlePublicRegisterFormSubmit(event) {
     setAuthGateBusy(true, '登録中...');
     try {
         const { data, error } = await supabase.functions.invoke(PUBLIC_STUDENT_REGISTRATION_FUNCTION, {
-            body: { displayName, email, password }
+            body: { displayName, email, birthdate, password }
         });
         if (error || data?.error) throw new Error(data?.error || error?.message || '登録に失敗しました。');
         if (data?.needsEmailConfirmation) {
@@ -1519,6 +1528,17 @@ export async function deleteCloudUserRows(userIds) {
     }
 
     return deletedIds;
+}
+
+export async function deleteCloudStudentAccount(userDataId) {
+    if (!userDataId || !supabase || !canUseRlsCloudSync() || !hasLessonRole('admin')) return false;
+    const { data, error } = await supabase.functions.invoke('admin-delete-auth-user', {
+        body: { userDataId }
+    });
+    if (error || data?.error) {
+        throw new Error(data?.error || error?.message || 'Failed to delete linked Auth user');
+    }
+    return Boolean(data?.ok);
 }
 
 export async function saveManagedUserRows(userIds) {

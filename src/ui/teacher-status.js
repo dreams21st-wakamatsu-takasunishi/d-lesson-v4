@@ -1083,7 +1083,7 @@ function createTeacherStudentRecord(name, birthdate, group) {
         birthdate,
         grade: calculateGrade(birthdate),
         campusId,
-        mouseLevel: 1,
+        mouseLevel: 0,
         keyboardSequence: 0,
         coins: 0,
         items: [],

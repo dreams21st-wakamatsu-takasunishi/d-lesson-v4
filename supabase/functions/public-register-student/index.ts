@@ -1,14 +1,14 @@
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
 
-const EMAIL_MAX_LENGTH = 254;
-
 type PublicRegisterPayload = {
   displayName?: string;
   email?: string;
   password?: string;
   birthdate?: string;
 };
+
+type SupabaseAdminClient = ReturnType<typeof createClient<any, 'public', any>>;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -42,7 +42,7 @@ function sanitizeBirthdate(value: unknown) {
 }
 
 function isValidEmail(value: string) {
-  return value.length <= EMAIL_MAX_LENGTH && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
 function createUserDataId() {
@@ -58,7 +58,7 @@ function createStudentRecord(userDataId: string, payload: Required<Pick<PublicRe
     userDataId,
     birthdate,
     campusId,
-    mouseLevel: 1,
+    mouseLevel: 0,
     keyboardSequence: 0,
     coins: 0,
     items: [],
@@ -67,6 +67,27 @@ function createStudentRecord(userDataId: string, payload: Required<Pick<PublicRe
     group,
     publicRegistration: true,
   };
+}
+
+async function authEmailExists(serviceClient: SupabaseAdminClient, email: string) {
+  const target = email.toLowerCase();
+  const perPage = 1000;
+  for (let page = 1; page <= 20; page++) {
+    const { data, error } = await serviceClient.auth.admin.listUsers({ page, perPage });
+    if (error) throw error;
+    const authUsers = data?.users || [];
+    if (authUsers.some((user) => String(user.email || '').toLowerCase() === target)) return true;
+    if (authUsers.length < perPage) return false;
+  }
+  throw new Error('登録済みメールアドレスの確認件数が上限を超えました。管理者に連絡してください。');
+}
+
+function getCreateAuthErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error || '');
+  if (/already|registered|exists|duplicate/i.test(message)) {
+    return 'このメールアドレスはすでに登録されています。通常ログインしてください。';
+  }
+  return message || '登録に失敗しました。';
 }
 
 function shouldRequireEmailConfirmation() {
@@ -161,9 +182,14 @@ serve(async (req) => {
     const displayName = sanitizeDisplayName(payload.displayName);
     const email = String(payload.email || '').trim().toLowerCase();
     const password = String(payload.password || '');
+    const birthdate = sanitizeBirthdate(payload.birthdate);
 
     if (!displayName) return jsonResponse({ error: 'ニックネームを入力してください。' }, 400);
     if (!isValidEmail(email)) return jsonResponse({ error: 'メールアドレスを確認してください。' }, 400);
+    if (!birthdate) return jsonResponse({ error: '生年月日を入力してください。' }, 400);
+    if (await authEmailExists(createClient(supabaseUrl, serviceRoleKey), email)) {
+      return jsonResponse({ error: 'このメールアドレスはすでに登録されています。通常ログインしてください。' }, 400);
+    }
 
     const userDataId = createUserDataId();
     const {
@@ -177,12 +203,12 @@ serve(async (req) => {
       displayName,
       userDataId,
     });
-    if (createError) return jsonResponse({ error: createError.message }, 400);
+    if (createError) return jsonResponse({ error: getCreateAuthErrorMessage(createError) }, 400);
 
     if (!authUserId) return jsonResponse({ error: 'Auth user was not created.' }, 500);
 
     try {
-      const studentRecord = createStudentRecord(userDataId, { ...payload, displayName });
+      const studentRecord = createStudentRecord(userDataId, { ...payload, displayName, birthdate });
       const { error: userDataError } = await serviceClient
         .from(userDataTable)
         .insert({ id: userDataId, data: { ...studentRecord, authUserId } });

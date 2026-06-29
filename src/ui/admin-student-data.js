@@ -1,15 +1,20 @@
 import {
     users,
     saveUsers,
+    REQUIRE_SUPABASE_AUTH,
     GLOBAL_SETTINGS_ID,
     DEFAULT_CAMPUS_ID,
     createUserDataId,
+    supabase,
+    refreshCurrentLessonAccess,
     getCampusList,
+    getCampusCode,
     getCampusName,
     getUserCampusId,
     normalizeCampusId,
     getUserDisplayName,
     isSystemUserId,
+    deleteCloudStudentAccount,
     deleteCloudUserRows,
     userDisplayNameExists
 } from '../api/user.js';
@@ -33,7 +38,7 @@ function createStudentRecord(name, birthdate, group, campusId = DEFAULT_CAMPUS_I
         birthdate,
         grade,
         campusId: normalizeCampusId(campusId),
-        mouseLevel: 1,
+        mouseLevel: 0,
         keyboardSequence: 0,
         coins: 0,
         items: [],
@@ -42,6 +47,50 @@ function createStudentRecord(name, birthdate, group, campusId = DEFAULT_CAMPUS_I
         group
     };
     return userDataId;
+}
+
+function getNumericInputValue(id) {
+    return String(document.getElementById(id)?.value || '').replace(/\D/g, '');
+}
+
+function studentLoginNumberExists(loginNumber, campusId, ignoreUserId = null) {
+    if (!loginNumber) return false;
+    return Object.keys(users).some(userId => {
+        if (userId === ignoreUserId || isSystemUserId(userId)) return false;
+        const user = users[userId];
+        return user
+            && String(user.loginNumber || '').replace(/\D/g, '') === loginNumber
+            && getUserCampusId(user) === campusId;
+    });
+}
+
+async function createAdminStudentAuthAccount(userDataId, studentNumber, passcode) {
+    if (!REQUIRE_SUPABASE_AUTH || !supabase) {
+        throw new Error('Supabase Auth設定が有効な環境で使用してください。');
+    }
+
+    const user = users[userDataId];
+    const campusId = getUserCampusId(user);
+    const { data, error } = await supabase.functions.invoke('admin-create-student', {
+        body: {
+            userDataId,
+            displayName: getUserDisplayName(userDataId),
+            studentNumber,
+            passcode,
+            campusId,
+            campusCode: getCampusCode(campusId),
+            group: user?.group || ''
+        }
+    });
+
+    if (error || data?.error) {
+        throw new Error(data?.error || error?.message || 'Auth account creation failed.');
+    }
+
+    user.loginNumber = studentNumber;
+    user.authUserId = data.authUserId;
+    await refreshCurrentLessonAccess();
+    return data;
 }
 
 function getCampusInputValue(id) {
@@ -185,15 +234,23 @@ export function adminDeleteCampus(campusId, afterChange) {
     runAfterChange(afterChange);
 }
 
-export function adminAddUser(afterChange) {
+export async function adminAddUser(afterChange) {
     const name = document.getElementById('admin-add-name').value.trim();
     const birthdate = document.getElementById('admin-add-birth').value;
     const campusId = getCampusInputValue('admin-add-campus');
     const group = document.getElementById('admin-add-group').value.trim();
+    const loginNumber = getNumericInputValue('admin-add-login-number');
+    const passcode = getNumericInputValue('admin-add-passcode');
+    const shouldCreateAuth = Boolean(loginNumber || passcode);
 
     if (!name) return showCustomAlert('名前を入力してください');
     if (userDisplayNameExists(name)) return showCustomAlert('その名前はすでに登録されています');
     if (!birthdate) return showCustomAlert('生年月日を入力してください');
+    if (shouldCreateAuth && !loginNumber) return showCustomAlert('Auth作成する場合は児童番号を入力してください');
+    if (shouldCreateAuth && passcode.length < 6) return showCustomAlert('Auth作成する場合は、あいことばを6けた以上の数字で入力してください');
+    if (shouldCreateAuth && studentLoginNumberExists(loginNumber, campusId)) {
+        return showCustomAlert('同じ校舎で同じ児童番号がすでに使われています。');
+    }
 
     const userDataId = createStudentRecord(name, birthdate, group, campusId);
     recordAdminAudit('児童追加', {
@@ -203,11 +260,43 @@ export function adminAddUser(afterChange) {
         campusId,
         group
     });
-    saveUsers(true);
+    const saved = await saveUsers(true);
+    if (!saved) {
+        delete users[userDataId];
+        runAfterChange(afterChange);
+        return showCustomAlert('児童データの保存に失敗しました。通信状態または権限を確認してください。');
+    }
+
+    if (shouldCreateAuth) {
+        try {
+            const authData = await createAdminStudentAuthAccount(userDataId, loginNumber, passcode);
+            await saveUsers(true);
+            recordAdminAudit('auth_student_created', {
+                user: name,
+                userDataId,
+                authUserId: authData.authUserId,
+                email: authData.email,
+                loginNumber
+            });
+            const loginInput = document.getElementById('admin-add-login-number');
+            const passcodeInput = document.getElementById('admin-add-passcode');
+            if (loginInput) loginInput.value = '';
+            if (passcodeInput) passcodeInput.value = '';
+        } catch (error) {
+            console.error('Admin add student auth failed:', error);
+            runAfterChange(afterChange);
+            showCustomAlert(`児童データは追加されましたが、Auth作成に失敗しました。\n${error.message}`);
+            return;
+        }
+    }
+
     document.getElementById('admin-add-name').value = '';
+    document.getElementById('admin-add-birth').value = '';
     document.getElementById('admin-add-group').value = '';
     runAfterChange(afterChange);
-    showCustomAlert(`${name} さんを追加しました！`);
+    showCustomAlert(shouldCreateAuth
+        ? `${name} さんを追加し、Authアカウントを作成しました！\n児童番号: ${loginNumber}`
+        : `${name} さんを追加しました！`);
 }
 
 export function adminBulkAddUsers(afterChange) {
@@ -397,7 +486,8 @@ export function adminDeleteUser(userDataId, afterChange) {
     showCustomConfirm(`${getUserDisplayName(userDataId)}さんを削除しますか？`, async () => {
         const displayName = getUserDisplayName(userDataId);
         try {
-            await deleteCloudUserRows(userDataId);
+            const deletedByAdminFunction = await deleteCloudStudentAccount(userDataId);
+            if (!deletedByAdminFunction) await deleteCloudUserRows(userDataId);
             delete users[userDataId];
             const saved = await saveUsers(true);
             if (!saved) throw new Error('Failed to persist deletion');

@@ -270,7 +270,9 @@
                                     <input type="text" id="admin-add-name" placeholder="名前" style="margin:0; flex:1; min-width:120px; padding:8px; font-size:16px;">
                                     <input type="date" id="admin-add-birth" title="生年月日" style="margin:0; width:140px; padding:8px; font-size:16px;">
                                     <input type="text" id="admin-add-group" placeholder="グループ(任意)" style="margin:0; width:130px; padding:8px; font-size:16px;">
-                                    <button class="btn-primary" onclick="adminAddUser()" style="margin:0; padding:8px 15px; font-size:16px;">追加</button>
+                                    <input type="text" id="admin-add-login-number" inputmode="numeric" pattern="[0-9]*" placeholder="児童番号" title="教室ログイン用の児童番号" style="margin:0; width:100px; padding:8px; font-size:16px;">
+                                    <input type="password" id="admin-add-passcode" inputmode="numeric" pattern="[0-9]*" placeholder="あいことば" title="6けた以上の数字。入力するとAuth作成まで行います。" style="margin:0; width:120px; padding:8px; font-size:16px;">
+                                    <button class="btn-primary" onclick="adminAddUser()" style="margin:0; padding:8px 15px; font-size:16px;">追加/Auth作成</button>
                                 </div>
                             </div>
                             <div style="display:flex; flex-direction:column; gap:10px; background:#fff8e1; padding:15px; border-radius:8px; border:1px solid #ffc107;">

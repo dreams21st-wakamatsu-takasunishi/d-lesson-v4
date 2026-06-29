@@ -82,6 +82,7 @@ Supabase CLIをこのリポジトリのdevDependencyから使う場合:
 
 ```powershell
 npx.cmd supabase functions deploy admin-create-student --use-api
+npx.cmd supabase functions deploy admin-delete-auth-user --use-api
 npx.cmd supabase secrets set STUDENT_LOGIN_EMAIL_DOMAIN=dlesson.example.com
 npx.cmd supabase secrets set STUDENT_LOGIN_EMAIL_PREFIX=dlesson-student-
 npx.cmd supabase secrets set STUDENT_LOGIN_NUMBER_PAD=3
@@ -123,8 +124,10 @@ npx.cmd supabase secrets set PUBLIC_REGISTER_EMAIL_REDIRECT_TO=https://dreams21s
 
 1. 管理者でDレッスンにログイン
 2. `管理者用` → `生徒管理/Auth連携`
-3. 対象児童の行で `Auth作成`
-4. 児童番号とあいことばを入力
+3. 新規追加欄で、名前・生年月日・児童番号・あいことばを入力
+4. `追加/Auth作成` を押す
+
+既存児童にあとからAuthを作る場合は、対象児童の行で `Auth作成` を押し、児童番号とあいことばを入力します。
 
 作成後、次が自動で行われます。
 
@@ -134,7 +137,17 @@ npx.cmd supabase secrets set PUBLIC_REGISTER_EMAIL_REDIRECT_TO=https://dreams21s
 
 Edge Function未デプロイの場合は、従来どおりAuth User IDを手入力して登録できます。
 
-## 7. 校舎別URL
+## 7. 不正ユーザー・退会ユーザー削除
+
+管理者画面の児童削除では、`admin-delete-auth-user` が利用可能な場合、次をまとめて削除します。
+
+- 対象児童の Supabase Auth ユーザー
+- `lesson_user_access` の対象児童行
+- `user_data` の対象児童行
+
+Auth未連携の古い児童データは、`user_data` の削除のみ行います。
+
+## 8. 校舎別URL
 
 校舎別のログインメールに分けたい場合、公開URLに `campus` を付けます。
 

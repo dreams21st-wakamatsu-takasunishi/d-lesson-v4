@@ -11,6 +11,8 @@ type CreateStudentPayload = {
   group?: string;
 };
 
+type SupabaseAdminClient = ReturnType<typeof createClient<any, 'public', any>>;
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -45,6 +47,14 @@ function buildStudentEmail(payload: CreateStudentPayload) {
   const campusCode = cleanCode(payload.campusCode || payload.campusId || Deno.env.get('STUDENT_LOGIN_CAMPUS_CODE') || '');
   const campusPart = campusCode ? `${campusCode}-` : '';
   return `${prefix}${campusPart}${padNumber(payload.studentNumber)}@${domain}`;
+}
+
+function getCreateAuthErrorMessage(error: unknown, email: string) {
+  const message = error instanceof Error ? error.message : String(error || '');
+  if (/already|registered|exists|duplicate/i.test(message)) {
+    return `この児童番号のAuthアカウントはすでに存在します。児童番号または校舎を確認してください。(${email})`;
+  }
+  return message || 'Auth user creation failed.';
 }
 
 type LessonAccessRow = {
@@ -85,7 +95,7 @@ function dataMatchesTeacherScope(data: Record<string, unknown>, row: LessonAcces
   }, row);
 }
 
-async function getAllowedLessonAccessRows(serviceClient: ReturnType<typeof createClient>, authUserId: string, payload: CreateStudentPayload) {
+async function getAllowedLessonAccessRows(serviceClient: SupabaseAdminClient, authUserId: string, payload: CreateStudentPayload) {
   const { data, error } = await serviceClient
     .from('lesson_user_access')
     .select('role,scope_type,scope_value')
@@ -154,7 +164,7 @@ serve(async (req) => {
         campus_id: payload.campusId || 'main',
       },
     });
-    if (createError) return jsonResponse({ error: createError.message, email }, 400);
+    if (createError) return jsonResponse({ error: getCreateAuthErrorMessage(createError, email), email }, 400);
 
     const authUserId = created.user?.id;
     if (!authUserId) return jsonResponse({ error: 'Auth user was not created.' }, 500);
