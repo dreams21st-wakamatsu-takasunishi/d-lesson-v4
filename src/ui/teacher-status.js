@@ -15,6 +15,7 @@ import {
     getUserCampusId,
     getUserDisplayName,
     hasLessonRole,
+    invokeLessonFunction,
     isSystemUserId,
     normalizeCampusId,
     refreshCurrentLessonAccess,
@@ -1126,23 +1127,17 @@ async function createTeacherStudentAuthAccount(userDataId, studentNumber, passco
 
     const user = users[userDataId];
     const campusId = getUserCampusId(user);
-    const { data, error } = await supabase.functions.invoke('admin-create-student', {
-        body: {
-            userDataId,
-            displayName: getUserDisplayName(userDataId),
-            studentNumber,
-            passcode,
-            authUserId: user?.authUserId || '',
-            mode,
-            campusId,
-            campusCode: getCampusCode(campusId),
-            group: user?.group || ''
-        }
+    const data = await invokeLessonFunction('admin-create-student', {
+        userDataId,
+        displayName: getUserDisplayName(userDataId),
+        studentNumber,
+        passcode,
+        authUserId: user?.authUserId || '',
+        mode,
+        campusId,
+        campusCode: getCampusCode(campusId),
+        group: user?.group || ''
     });
-
-    if (error || data?.error) {
-        throw new Error(data?.error || error?.message || 'Auth account creation failed.');
-    }
 
     user.loginNumber = String(studentNumber || '').replace(/\D/g, '');
     user.authUserId = data.authUserId;

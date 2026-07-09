@@ -14,6 +14,7 @@ import {
     normalizeCampusId,
     getUserDisplayName,
     isSystemUserId,
+    invokeLessonFunction,
     deleteCloudStudentAccount,
     deleteCloudUserRows,
     userDisplayNameExists
@@ -87,23 +88,17 @@ async function createAdminStudentAuthAccount(userDataId, studentNumber, passcode
 
     const user = users[userDataId];
     const campusId = getUserCampusId(user);
-    const { data, error } = await supabase.functions.invoke('admin-create-student', {
-        body: {
-            userDataId,
-            displayName: getUserDisplayName(userDataId),
-            studentNumber,
-            passcode,
-            authUserId: user?.authUserId || '',
-            mode,
-            campusId,
-            campusCode: getCampusCode(campusId),
-            group: user?.group || ''
-        }
+    const data = await invokeLessonFunction('admin-create-student', {
+        userDataId,
+        displayName: getUserDisplayName(userDataId),
+        studentNumber,
+        passcode,
+        authUserId: user?.authUserId || '',
+        mode,
+        campusId,
+        campusCode: getCampusCode(campusId),
+        group: user?.group || ''
     });
-
-    if (error || data?.error) {
-        throw new Error(data?.error || error?.message || 'Auth account creation failed.');
-    }
 
     user.loginNumber = studentNumber;
     user.authUserId = data.authUserId;

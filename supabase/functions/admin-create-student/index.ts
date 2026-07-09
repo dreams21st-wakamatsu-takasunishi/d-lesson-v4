@@ -59,6 +59,10 @@ function getCreateAuthErrorMessage(error: unknown, email: string) {
   return message || 'Auth user creation failed.';
 }
 
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error || '');
+}
+
 async function findAuthUserIdByEmail(serviceClient: SupabaseAdminClient, email: string) {
   const target = email.toLowerCase();
   for (let page = 1; page <= 20; page += 1) {
@@ -153,7 +157,12 @@ serve(async (req) => {
     if (!studentNumber) return jsonResponse({ error: 'studentNumber is required.' }, 400);
     if (!/^\d{6,32}$/.test(passcode)) return jsonResponse({ error: 'passcode must be 6-32 digits.' }, 400);
 
-    const allowedAccessRows = await getAllowedLessonAccessRows(serviceClient, authData.user.id, payload);
+    let allowedAccessRows: LessonAccessRow[] = [];
+    try {
+      allowedAccessRows = await getAllowedLessonAccessRows(serviceClient, authData.user.id, payload);
+    } catch (accessError) {
+      return jsonResponse({ error: errorMessage(accessError) }, 403);
+    }
     const { data: currentRow } = await serviceClient
       .from(userDataTable)
       .select('data')
@@ -212,10 +221,10 @@ serve(async (req) => {
         scope_type: 'all',
         scope_value: '',
       }, { onConflict: 'auth_user_id,user_data_id' });
-    if (accessError) throw accessError;
+    if (accessError) return jsonResponse({ error: accessError.message || 'lesson_user_access update failed.' }, 400);
 
     if (currentRow?.data && typeof currentRow.data === 'object') {
-      await serviceClient
+      const { error: updateUserDataError } = await serviceClient
         .from(userDataTable)
         .update({
           data: {
@@ -229,6 +238,9 @@ serve(async (req) => {
           },
         })
         .eq('id', userDataId);
+      if (updateUserDataError) {
+        return jsonResponse({ error: updateUserDataError.message || `${userDataTable} update failed.` }, 400);
+      }
     }
 
     return jsonResponse({ ok: true, email, authUserId, userDataId, action });

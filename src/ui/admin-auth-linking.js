@@ -7,6 +7,7 @@ import {
     getCampusCode,
     getUserCampusId,
     getUserDisplayName,
+    invokeLessonFunction,
     isSystemUserId
 } from '../api/user.js';
 import { showCustomAlert, showCustomConfirm } from './modal.js';
@@ -154,8 +155,9 @@ async function createStudentAuthAccount(userDataId, inputId) {
 
     const campusId = getUserCampusId(user);
     const campusCode = getCampusCode(campusId);
-    const { data, error } = await supabase.functions.invoke('admin-create-student', {
-        body: {
+    let data = null;
+    try {
+        data = await invokeLessonFunction('admin-create-student', {
             userDataId,
             displayName,
             studentNumber: cleanNumber,
@@ -163,11 +165,9 @@ async function createStudentAuthAccount(userDataId, inputId) {
             campusId,
             campusCode,
             group: user?.group || ''
-        }
-    });
-
-    if (error || data?.error) {
-        showCustomAlert(`Auth作成に失敗しました: ${data?.error || error?.message || 'unknown error'}`);
+        });
+    } catch (error) {
+        showCustomAlert(`Auth作成に失敗しました: ${error.message}`);
         return;
     }
 

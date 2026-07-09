@@ -34,6 +34,34 @@ export const REQUIRE_SUPABASE_AUTH = import.meta.env.VITE_REQUIRE_SUPABASE_AUTH 
 export const ENABLE_SETTINGS_TABLE = import.meta.env.VITE_ENABLE_SETTINGS_TABLE === 'true';
 export const supabase = HAS_SUPABASE_CONFIG ? createClient(supabaseUrl, supabaseKey, supabaseClientOptions) : null;
 
+async function getSupabaseFunctionErrorMessage(error) {
+    const response = error?.context || error?.response;
+    if (response && typeof response.clone === 'function') {
+        try {
+            const contentType = response.headers?.get?.('content-type') || '';
+            if (contentType.includes('application/json')) {
+                const payload = await response.clone().json();
+                if (payload?.error) return String(payload.error);
+                if (payload?.message) return String(payload.message);
+            } else {
+                const text = await response.clone().text();
+                if (text.trim()) return text.trim();
+            }
+        } catch (_err) {
+            // Fall through to the generic Supabase client error.
+        }
+    }
+    return error?.message || 'Edge Function returned an error.';
+}
+
+export async function invokeLessonFunction(functionName, body) {
+    if (!supabase) throw new Error('Supabase設定が見つかりません。');
+    const { data, error } = await supabase.functions.invoke(functionName, { body });
+    if (error) throw new Error(await getSupabaseFunctionErrorMessage(error));
+    if (data?.error) throw new Error(String(data.error));
+    return data;
+}
+
 // ==========================================
 // Environment settings
 // ==========================================
