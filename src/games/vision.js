@@ -54,18 +54,18 @@ const FIND_DIFF_QUESTIONS = Object.freeze([
 let lastSideCompareQuestionKey = '';
 const VISION_MENU_GROUPS = [
     {
-        title: '見つける・くらべる',
-        description: '似ているもの、目標のもの、おなじ かたちを見つける練習です。',
+        title: 'みつける・くらべる',
+        description: 'にているものや、おなじかたちをみつけるれんしゅうです。',
         stageIds: ['v1', 'v2', 'v5', 'v12', 'v14', 'v15', 'v18', 'v20']
     },
     {
-        title: '目で追う・反応する',
-        description: '画面の広い範囲を見て、すばやく反応する練習です。',
+        title: 'めでおう・はやくうごく',
+        description: 'ひろいところをみて、すばやくうごくれんしゅうです。',
         stageIds: ['v3', 'v4', 'v6', 'v10']
     },
     {
-        title: '覚える・見通す',
-        description: '見たものを覚える、周辺を見る、道をたどる練習です。',
+        title: 'おぼえる・みとおす',
+        description: 'みたものをおぼえたり、みちをたどったりするれんしゅうです。',
         stageIds: ['v7', 'v8', 'v9', 'v11', 'v13', 'v16', 'v17', 'v19']
     }
 ];
@@ -135,8 +135,8 @@ function renderVisionNextPanel(container, user, group, progress) {
     panel.innerHTML = `
         <div class="course-next-copy">
             <span class="course-next-label">つぎ</span>
-            <strong>${escapeHtml(nextTarget?.stage?.title || 'この分野は完了です')}</strong>
-            <span class="course-next-meta">${escapeHtml(nextTarget ? `${group.title} / ${nextTarget.difficulty.label}` : 'ほかの分野にも挑戦できます')}</span>
+            <strong>${escapeHtml(nextTarget?.stage?.title || 'このグループはできています')}</strong>
+            <span class="course-next-meta">${escapeHtml(nextTarget ? `${group.title} / ${nextTarget.difficulty.label}` : 'ほかのグループもちょうせんできます')}</span>
             <span class="course-next-log">${escapeHtml(formatPracticeLogShort(latestLog))}</span>
         </div>
         <div class="course-next-progress">
@@ -147,7 +147,7 @@ function renderVisionNextPanel(container, user, group, progress) {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'course-next-btn';
-    button.textContent = nextTarget ? 'ひらく' : '完了';
+    button.textContent = nextTarget ? 'ひらく' : 'できた';
     button.disabled = !nextTarget;
     if (nextTarget) {
         createBtn(button, () => openVisionDifficultyDialog(nextTarget.stage, user));
@@ -180,7 +180,7 @@ export function showVisionCompare() {
     });
 
     let html = '<table style="width:100%; border-collapse:collapse; font-size:16px;">';
-    html += '<tr style="background:#f2f2f2; position:sticky; top:0; z-index:5;"><th style="border:1px solid #ccc; padding:8px;">ステージ</th><th style="border:1px solid #ccc; padding:8px;">難易度</th><th style="border:1px solid #ccc; padding:8px;">あなたのタイム</th><th style="border:1px solid #ccc; padding:8px;">みんなの平均</th></tr>';
+    html += '<tr style="background:#f2f2f2; position:sticky; top:0; z-index:5;"><th style="border:1px solid #ccc; padding:8px;">ステージ</th><th style="border:1px solid #ccc; padding:8px;">むずかしさ</th><th style="border:1px solid #ccc; padding:8px;">あなたのタイム</th><th style="border:1px solid #ccc; padding:8px;">みんなのタイム</th></tr>';
     
     const u = users[currentUser];
     VISION_STAGES.forEach(st => {
@@ -253,7 +253,7 @@ export function renderVisionDashboardTable() {
     trAvg.style.backgroundColor = '#fff9c4'; trAvg.style.fontWeight = 'bold';
     let tdAvgName = document.createElement('td');
     tdAvgName.style.cssText = 'border:1px solid #ccc; padding:8px; position:sticky; left:0; background:#fff9c4; z-index:6; color:#f57f17;';
-    tdAvgName.innerText = '★平均タイム'; trAvg.appendChild(tdAvgName);
+    tdAvgName.innerText = '★みんなのタイム'; trAvg.appendChild(tdAvgName);
 
     VISION_STAGES.forEach(st => {
         let td = document.createElement('td');
@@ -294,8 +294,8 @@ export function renderVisionMenu() {
     overview.className = 'vision-menu-overview';
     overview.innerHTML = `
         <div>
-            <span class="vision-menu-kicker">分野をえらぶ</span>
-            <strong>1つの分野だけ表示します</strong>
+            <span class="vision-menu-kicker">グループをえらぶ</span>
+            <strong>1つのグループだけ出します</strong>
         </div>
         <span class="vision-menu-total">${totalProgress.cleared}/${totalProgress.total}</span>
     `;
@@ -470,8 +470,8 @@ function ensureVisionDifficultyDialog() {
     dialog.className = 'vision-difficulty-modal';
     dialog.setAttribute('aria-hidden', 'true');
     dialog.innerHTML = `
-        <div class="vision-difficulty-panel" role="dialog" aria-modal="true" aria-label="難易度を選ぶ">
-            <button type="button" class="vision-difficulty-close" aria-label="閉じる">×</button>
+        <div class="vision-difficulty-panel" role="dialog" aria-modal="true" aria-label="むずかしさをえらぶ">
+            <button type="button" class="vision-difficulty-close" aria-label="とじる">×</button>
             <div class="vision-difficulty-stage">
                 <span class="vision-difficulty-stage-icon"></span>
                 <div>
@@ -501,7 +501,7 @@ function createVisionDifficultyChoice({ label, detail, levelClass, stageId, unlo
     if (cleared) choice.classList.add('is-cleared');
     if (!unlocked) choice.classList.add('is-locked');
 
-    const status = !unlocked ? 'ロック中' : (cleared ? 'クリア済み' : getRewardText('vision', stageId));
+    const status = !unlocked ? 'まだ' : (cleared ? 'クリアずみ' : getRewardText('vision', stageId));
     choice.innerHTML = `
         <span class="vision-difficulty-label">${label}</span>
         <span class="vision-difficulty-detail">${detail}</span>
@@ -1114,7 +1114,7 @@ function playVisionV10() {
     updateProgress();
     els.playArea.style.display = 'block';
     els.playArea.style.position = 'relative';
-    els.instText.innerText = '左右に出る「★」をすばやく見つけよう！';
+    els.instText.innerText = 'みぎ・ひだりに出る「★」をすばやくみつけよう！';
 
     let nextSide = Math.random() < 0.5 ? 'left' : 'right';
 
@@ -1244,7 +1244,7 @@ function playVisionV12() {
 
 function nextVisionV12() {
     els.playArea.innerHTML = '';
-    els.instText.innerText = '上と同じ「色」と「かたち」をえらぼう';
+    els.instText.innerText = '上とおなじ「いろ」と「かたち」をえらぼう';
 
     const shapes = ['●', '■', '▲', '◆', '★', '✚'];
     const colors = ['#e53935', '#1e88e5', '#43a047', '#fb8c00', '#8e24aa', '#00897b'];
@@ -1312,7 +1312,7 @@ function playVisionV13() {
 
 function nextVisionV13() {
     els.playArea.innerHTML = '';
-    els.instText.innerText = '上と同じ「番号」と「形」のカードをえらぼう！';
+    els.instText.innerText = '上とおなじ「ばんごう」と「かたち」のカードをえらぼう！';
 
     const numbers = getVisionHardMode() ? [1, 2, 3, 4, 5, 6, 7, 8, 9] : (getVisionEasyMode() ? [1, 2, 3, 4] : [1, 2, 3, 4, 5, 6]);
     const shapes = ['●', '■', '▲', '◆', '★', '＋'];
@@ -1392,8 +1392,8 @@ function nextVisionV14() {
 
     const cards = document.createElement('div');
     cards.className = 'side-compare-cards';
-    cards.appendChild(createSideCompareCard(left, featureMode, '左'));
-    cards.appendChild(createSideCompareCard(right, featureMode, '右'));
+    cards.appendChild(createSideCompareCard(left, featureMode, 'ひだり'));
+    cards.appendChild(createSideCompareCard(right, featureMode, 'みぎ'));
     stage.appendChild(cards);
 
     const answers = document.createElement('div');
@@ -1596,7 +1596,7 @@ function playVisionV16() {
 
 function nextVisionV16() {
     els.playArea.innerHTML = '';
-    els.instText.innerText = '線を目でたどって、つながったゴールをタッチしよう！';
+    els.instText.innerText = 'せんをめでたどって、つながったゴールをタッチしよう！';
 
     const stage = document.createElement('div');
     stage.className = 'line-trace-stage';
@@ -1851,7 +1851,7 @@ function playVisionV18() {
 
 function nextVisionV18() {
     els.playArea.innerHTML = '';
-    els.instText.innerText = '上のかげと同じ形をえらぼう！';
+    els.instText.innerText = '上のかげとおなじかたちをえらぼう！';
 
     const allShapes = getShadowMatchShapes();
     const choiceCount = getVisionHardMode() ? 9 : (getVisionEasyMode() ? 4 : 6);
@@ -1928,7 +1928,7 @@ function playVisionV19() {
 
 function nextVisionV19() {
     els.playArea.innerHTML = '';
-    els.instText.innerText = '光った場所をおぼえて、同じ場所をえらぼう！';
+    els.instText.innerText = 'ひかったばしょをおぼえて、おなじばしょをえらぼう！';
 
     const columns = getVisionEasyMode() ? 3 : 4;
     const rows = getVisionHardMode() ? 4 : (getVisionEasyMode() ? 2 : 3);
@@ -2008,7 +2008,7 @@ function playVisionV20() {
 
 function nextVisionV20() {
     els.playArea.innerHTML = '';
-    els.instText.innerText = 'かくれている形を考えて、同じ形をえらぼう！';
+    els.instText.innerText = 'かくれているかたちをかんがえて、おなじかたちをえらぼう！';
 
     const shapes = getShadowMatchShapes();
     const answer = shapes[Math.floor(Math.random() * shapes.length)];

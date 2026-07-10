@@ -23,85 +23,135 @@ let currentKeyboardCategory = 'basic';
 const KEYBOARD_CHAPTER_GUIDE = {
     alphabet: {
         focus: 'ABCをおぼえる',
-        goal: 'ABCをみて、おなじキーをおします。できたら、よみかたがきこえます。'
+        goal: 'ABCをみて、おなじキーをおします。'
     },
     home: {
         focus: 'ホームポジション',
-        goal: 'F/J から始めて、A/S/D/F/J/K/L/; を安定して押す練習です。'
+        goal: 'F と J から、いつもの手のばしょをおぼえます。'
     },
     top: {
-        focus: '上段キー',
-        goal: 'Q/W/E/R/T と Y/U/I/O/P を、ホームポジションから手を戻しながら押す練習です。'
+        focus: 'うえのキー',
+        goal: 'うえのキーをおして、ホームにもどります。'
     },
     bottom: {
-        focus: '下段キー',
-        goal: 'Z/X/C/V/B と N/M/,/./ を、指を大きく動かしすぎずに押す練習です。'
+        focus: 'したのキー',
+        goal: 'したのキーを、ゆっくりたしかめます。'
     },
     number: {
-        focus: '数字キー',
-        goal: '1 から 0、- までを、左右の指の担当を意識して押す練習です。'
+        focus: 'すうじキー',
+        goal: '1 から 0 と - をおします。'
     },
     blind: {
-        focus: '見ないで入力',
-        goal: 'キーボードを見ずに、手の位置と指の動きだけで入力する練習です。'
+        focus: 'みないでうつ',
+        goal: 'キーボードを見ないで、おしてみます。'
     },
     h_1: {
-        focus: 'ひらがな あ行からさ行',
-        goal: '短いローマ字入力から、見ないで入力する段階へ進みます。'
+        focus: 'ひらがな あ〜さ',
+        goal: 'あ〜さをれんしゅうします。'
     },
     h_2: {
-        focus: 'ひらがな た行からは行',
-        goal: 'よく使う行を増やし、ローマ字入力の幅を広げます。'
+        focus: 'ひらがな た〜は',
+        goal: 'た〜はをれんしゅうします。'
     },
     h_3: {
-        focus: 'ひらがな ま行からん',
-        goal: 'や行、ら行、わ行、んを加えて、基本のひらがなを仕上げます。'
+        focus: 'ひらがな ま〜ん',
+        goal: 'ま〜んをれんしゅうします。'
     },
     h_4: {
-        focus: '濁音・半濁音',
-        goal: 'が、ざ、だ、ば、ぱ行を入力し、苦手になりやすい音を整理します。'
+        focus: 'だくてん',
+        goal: 'が、ざ、だ、ば、ぱをれんしゅうします。'
     },
     word1: {
-        focus: '短いことば',
-        goal: '身近なことばを使って、単語入力に慣れます。'
+        focus: 'みじかいことば',
+        goal: 'みじかいことばをうちます。'
     },
     word2: {
-        focus: '特殊な音',
-        goal: 'ん、っ、ゃゅょ、ーなど、迷いやすい入力を練習します。'
+        focus: 'むずかしいおと',
+        goal: 'ん、っ、ゃゅょ、ーをれんしゅうします。'
     },
     word3: {
         focus: 'レベルアップ',
-        goal: '地名や英単語を含む、少し難しいことばに取り組みます。'
+        goal: 'すこしながいことばにちょうせんします。'
     },
     word4: {
-        focus: '実用ことば',
-        goal: '生活や学習で使うことばを入力します。'
+        focus: 'つかうことば',
+        goal: 'よくつかうことばをうちます。'
     },
     word5: {
-        focus: '文・カタカナ',
-        goal: '短い文やカタカナ語を入力し、文章入力へつなげます。'
+        focus: 'ぶん・カタカナ',
+        goal: 'みじかいぶんやカタカナをうちます。'
     },
     word6: {
-        focus: '短文入力',
-        goal: '読点「、」を含む短い文を入力し、実際の文章入力へ近づけます。'
+        focus: 'みじかいぶん',
+        goal: '「、」のあるぶんをうちます。'
     },
     word7: {
-        focus: '実践文入力',
-        goal: '教室やパソコン操作で使う文を入力し、Dレッスン外の学習や文章入力へつなげます。'
+        focus: 'れんしゅうぶん',
+        goal: 'つかいやすいぶんをうちます。'
     },
     word8: {
-        focus: '記号・実用入力',
-        goal: '日付、番号、ハイフン、スラッシュなど、実際の入力で使う記号に慣れます。'
+        focus: 'きごう',
+        goal: 'ひづけやきごうをうちます。'
     },
     word9: {
-        focus: '実用文入力',
-        goal: '番号や記号を含む短い文を入力し、文章入力練習へ進む準備をします。'
+        focus: 'つかうぶん',
+        goal: 'すうじやきごうのあるぶんをうちます。'
     },
     word10: {
-        focus: '文章入力の準備',
-        goal: '読点で区切る文や二つ続く文を入力し、長い文章へ入る前の準備をします。'
+        focus: 'ぶんのじゅんび',
+        goal: 'ながいぶんのまえに、ぶんをうつれんしゅうです。'
     }
 };
+
+const KEYBOARD_CATEGORY_SUMMARY = {
+    alphabet: { label: 'ABC', copy: 'ABCのかたちとよみをおぼえます。' },
+    basic: { label: 'きほん', copy: '手のばしょとキーのいちをおぼえます。' },
+    blind: { label: 'みないで', copy: 'キーボードを見ないでうつれんしゅうです。' },
+    hiragana: { label: 'ひらがな', copy: 'ローマ字でひらがなをうちます。' },
+    word: { label: 'ことば', copy: 'ことばやみじかいぶんをうちます。' }
+};
+
+const KEYBOARD_CHAPTER_SHORT_TEXT = {
+    alphabet: 'ABCを みて おす',
+    home: 'F と J から',
+    top: 'うえのキー',
+    bottom: 'したのキー',
+    number: 'すうじキー',
+    blind: 'みないでうつ',
+    h_1: 'あ か さ',
+    h_2: 'た な は',
+    h_3: 'ま や ら わ',
+    h_4: 'だくてん',
+    word1: 'みじかいことば',
+    word2: 'むずかしいおと',
+    word3: 'レベルアップ',
+    word4: 'つかうことば',
+    word5: 'みじかいぶん',
+    word6: '「、」のぶん',
+    word7: 'れんしゅうぶん',
+    word8: 'きごう',
+    word9: 'つかうぶん',
+    word10: 'ぶんのじゅんび'
+};
+
+function getKeyboardTargetId(user, sequence) {
+    if (currentKeyboardCategory === 'alphabet') {
+        return ALPHABET_READING_STAGES[Math.min(Number(user.alphabetSequence || 0), ALPHABET_READING_STAGES.length - 1)]?.id;
+    }
+    return STAGE_ORDER[sequence];
+}
+
+function getKeyboardChapterStageIds(chap) {
+    return [
+        ...chap.stages,
+        ...(chap.bridge ? [chap.bridge] : []),
+        ...(chap.exam ? [chap.exam] : [])
+    ];
+}
+
+function getKeyboardChapterShortText(chap) {
+    return KEYBOARD_CHAPTER_SHORT_TEXT[chap.id] || KEYBOARD_CHAPTER_GUIDE[chap.id]?.focus || chap.title;
+}
 
 function getActiveUserOrTitle() {
     const u = currentUser ? users[currentUser] : null;
@@ -139,7 +189,7 @@ function updateWeakTrainingEntryVisibility() {
 
 export function goToKeyboardMenu(type) {
     if (type) currentKeyboardCategory = type;
-    document.getElementById('kb-chapter-container').style.display = 'flex';
+    document.getElementById('kb-chapter-container').style.display = 'grid';
     document.getElementById('kb-stage-container').style.display = 'none';
     document.getElementById('kb-bottom-back-btn').style.display = 'block';
 
@@ -203,13 +253,58 @@ function renderKeyboardChapters() {
         return x !== -1 && seq > x;
     };
 
+    const targetId = getKeyboardTargetId(u, seq);
+    const allStageIds = [
+        ...displayChapters.flatMap(getKeyboardChapterStageIds),
+        ...(showMasterExam ? [showMasterExam] : [])
+    ];
+    const allDoneCount = allStageIds.filter(isCleared).length;
+    const allTotalCount = allStageIds.length;
+    const allProgressPercent = allTotalCount ? Math.round((allDoneCount / allTotalCount) * 100) : 0;
+    const nextChapter = displayChapters.find(chap => {
+        const ids = getKeyboardChapterStageIds(chap);
+        return ids.includes(targetId) && !ids.every(isCleared);
+    });
+    const summaryInfo = KEYBOARD_CATEGORY_SUMMARY[currentKeyboardCategory] || KEYBOARD_CATEGORY_SUMMARY.basic;
+    const summary = document.createElement('section');
+    summary.className = 'kb-chapter-summary';
+    if (allTotalCount && allDoneCount >= allTotalCount) summary.classList.add('is-complete');
+    const nextTitle = allTotalCount && allDoneCount >= allTotalCount
+        ? 'このれんしゅうは できています'
+        : (nextChapter ? `つぎは「${nextChapter.title}」` : 'つぎは「まとめテスト」');
+    const nextCopy = allTotalCount && allDoneCount >= allTotalCount
+        ? 'ほかのれんしゅうにも ちょうせんできます。'
+        : (nextChapter ? getKeyboardChapterShortText(nextChapter) : 'ここまでの力をたしかめます。');
+    summary.innerHTML = `
+        <div class="kb-chapter-summary-main">
+            <span class="kb-chapter-summary-kicker">${summaryInfo.label}</span>
+            <strong>${nextTitle}</strong>
+            <small>${summaryInfo.copy}</small>
+        </div>
+        <div class="kb-chapter-summary-next">
+            <span>やること</span>
+            <b>${nextCopy}</b>
+        </div>
+        <div class="kb-chapter-summary-progress">
+            <span>${allDoneCount}/${allTotalCount}</span>
+            <i><em style="width:${allProgressPercent}%;"></em></i>
+        </div>
+    `;
+    cont.appendChild(summary);
+
     if (currentKeyboardCategory === 'hiragana') {
         const btn = document.createElement('button');
-        btn.className = 'category-btn';
-        btn.style.backgroundColor = '#00bcd4';
-        btn.style.width = '280px';
-        btn.style.height = '120px';
-        btn.innerHTML = `<span style="font-size:40px;">📋</span><span style="font-size:18px; font-weight:bold; margin-top:5px;">ローマ字いちらん表</span>`;
+        btn.className = 'category-btn kb-chapter-card kb-romaji-card';
+        btn.innerHTML = `
+            <span class="kb-chapter-card-top">
+                <span class="kb-chapter-status">みる</span>
+            </span>
+            <span class="kb-chapter-title">ローマ字いちらん</span>
+            <span class="kb-chapter-focus">こまったらみる</span>
+            <span class="kb-chapter-progress">
+                <span class="kb-chapter-progress-bar"><i style="width:100%;"></i></span>
+            </span>
+        `;
         btn.onclick = () => showRomajiMenu();
         cont.appendChild(btn);
     }
@@ -222,51 +317,31 @@ function renderKeyboardChapters() {
         });
         if (chap.exam && !isCleared(chap.exam)) chapCleared = false;
 
-        const stageIds = [
-            ...chap.stages,
-            ...(chap.bridge ? [chap.bridge] : []),
-            ...(chap.exam ? [chap.exam] : [])
-        ];
+        const stageIds = getKeyboardChapterStageIds(chap);
         const doneCount = stageIds.filter(isCleared).length;
         const totalCount = stageIds.length;
         const progressPercent = totalCount ? Math.round((doneCount / totalCount) * 100) : 0;
-        const guide = KEYBOARD_CHAPTER_GUIDE[chap.id] || {
-            focus: chap.title,
-            goal: '順番にクリアして、次のステージへ進みます。'
-        };
+        const isNextChapter = chapUnlocked && !chapCleared && stageIds.includes(targetId);
+        const shortText = getKeyboardChapterShortText(chap);
 
         const btn = document.createElement('button');
         btn.className = 'category-btn kb-chapter-card';
         if (!chapUnlocked) {
             btn.classList.add('kb-chapter-locked');
-            btn.style.opacity = '0.5';
             btn.style.cursor = 'not-allowed';
-            btn.style.backgroundColor = '#9e9e9e';
         } else {
+            if (isNextChapter) btn.classList.add('kb-chapter-next');
             if (chapCleared) btn.classList.add('kb-chapter-cleared');
-            btn.style.backgroundColor = chapCleared ? '#4CAF50' : '#FF9800';
             btn.onclick = () => renderKeyboardStages(chap);
         }
-        btn.style.width = '300px';
-        btn.style.height = 'auto';
-        btn.style.minHeight = '168px';
 
-        let icon = '⌨️';
-        if (currentKeyboardCategory === 'alphabet') icon = '🔤';
-        if (currentKeyboardCategory === 'basic') icon = '🅰️';
-        if (currentKeyboardCategory === 'blind') icon = '🙈';
-        if (currentKeyboardCategory === 'hiragana') icon = 'あ';
-        if (currentKeyboardCategory === 'word') icon = '🍎';
-
-        const statusText = chapCleared ? 'クリア済' : (chapUnlocked ? `${doneCount}/${totalCount}` : 'ロック中');
+        const statusText = chapCleared ? 'できた' : (isNextChapter ? 'つぎ' : (chapUnlocked ? `${doneCount}/${totalCount}` : 'まだ'));
         btn.innerHTML = `
             <span class="kb-chapter-card-top">
-                <span class="kb-chapter-icon">${icon}</span>
                 <span class="kb-chapter-status">${statusText}</span>
             </span>
             <span class="kb-chapter-title">${chap.title}</span>
-            <span class="kb-chapter-focus">${guide.focus}</span>
-            <span class="kb-chapter-note">${guide.goal}</span>
+            <span class="kb-chapter-focus">${shortText}</span>
             <span class="kb-chapter-progress">
                 <span class="kb-chapter-progress-bar"><i style="width:${progressPercent}%;"></i></span>
             </span>
@@ -289,33 +364,38 @@ function renderKeyboardChapters() {
         const mid = showMasterExam;
         const ed = EXAMS.find(x => x.id === mid);
         const btn = document.createElement('button');
-        btn.className = 'category-btn';
-        btn.style.width = '280px';
-        btn.style.height = 'auto';
-        btn.style.minHeight = '140px';
-        btn.style.padding = '10px';
+        const masterUnlocked = isUnlocked(mid);
+        const masterCleared = isCleared(mid);
+        const masterIsNext = masterUnlocked && !masterCleared && mid === targetId;
+        btn.className = 'category-btn kb-chapter-card kb-master-exam-card';
 
-        if (!isUnlocked(mid)) {
-            btn.style.opacity = '0.5';
+        if (!masterUnlocked) {
+            btn.classList.add('kb-chapter-locked');
             btn.style.cursor = 'not-allowed';
-            btn.style.backgroundColor = '#9e9e9e';
         } else {
-            btn.style.background = 'linear-gradient(45deg, #FFC107, #FF9800)';
+            if (masterCleared) btn.classList.add('kb-chapter-cleared');
+            if (masterIsNext) btn.classList.add('kb-chapter-next');
             btn.onclick = () => startGame(mid, 'keyboard');
         }
 
-        if (isCleared(mid)) {
-            btn.innerHTML = `<span style="font-size:40px;">👑</span><span style="font-size:16px; font-weight:bold; margin-top:5px; line-height:1.3; width:100%; word-wrap:break-word;">★${ed.title} 合格★</span><span style="font-size:12px; margin-top:5px; color:#fff;">(🎟️ クリアでチケット)</span>`;
-        } else {
-            btn.innerHTML = `<span style="font-size:40px;">👑</span><span style="font-size:16px; font-weight:bold; margin-top:5px; line-height:1.3; width:100%; word-wrap:break-word;">★${ed.title}★</span><span style="font-size:12px; margin-top:5px; color:#fff;">(🎟️ クリアでチケット)</span>`;
-        }
+        const statusText = masterCleared ? 'できた' : (masterIsNext ? 'つぎ' : (masterUnlocked ? 'テスト' : 'まだ'));
+        btn.innerHTML = `
+            <span class="kb-chapter-card-top">
+                <span class="kb-chapter-status">${statusText}</span>
+            </span>
+            <span class="kb-chapter-title">${ed.title}</span>
+            <span class="kb-chapter-focus">まとめテスト</span>
+            <span class="kb-chapter-progress">
+                <span class="kb-chapter-progress-bar"><i style="width:${masterCleared ? 100 : 0}%;"></i></span>
+            </span>
+        `;
         cont.appendChild(btn);
     }
 
     if (advancedChapters.length > 0) {
         const divider = document.createElement('div');
         divider.className = 'kb-advanced-divider';
-        divider.textContent = '発展ステージ';
+        divider.textContent = 'もっとれんしゅう';
         cont.appendChild(divider);
         advancedChapters.forEach(appendChapterButton);
     }
@@ -380,10 +460,10 @@ function getKeyboardStageDisplay(sid, index = 0) {
         if (st) {
             keys = st.chars.slice(0, 3).map(c => c.h).join('');
             if (sid >= 3200) {
-                sub = '(ブラインド試験)';
+                sub = '(みないでテスト)';
                 exCls = 'blind-exam';
             } else if (sid >= 3100) {
-                sub = '(ブラインド練習)';
+                sub = '(みないでれんしゅう)';
                 exCls = 'blind-practice';
             } else {
                 sub = st.title.split('(')[0];
@@ -393,7 +473,7 @@ function getKeyboardStageDisplay(sid, index = 0) {
         const st = BLIND_STAGES.find(s => s.id === sid);
         if (st) {
             keys = st.title.split('(')[0];
-            sub = st.type === 'exam' ? '(試験)' : '(練習)';
+            sub = st.type === 'exam' ? '(テスト)' : '(れんしゅう)';
             exCls = st.type === 'exam' ? 'blind-exam' : 'blind-practice';
         }
     } else {
@@ -410,7 +490,7 @@ function getKeyboardStageDisplay(sid, index = 0) {
 function getKeyboardSpecialStageDisplay(stageId) {
     const bridge = BRIDGE_STAGES.find(x => x.id === stageId);
     if (bridge) {
-        return { title: '復習', keys: '', sub: bridge.title };
+        return { title: 'ふくしゅう', keys: '', sub: bridge.title };
     }
 
     const exam = EXAMS.find(x => x.id === stageId);
@@ -425,11 +505,7 @@ function renderKeyboardStageGuide(chap, isCleared, isUnlocked) {
     const guideEl = document.getElementById('kb-stage-guide');
     if (!guideEl) return;
 
-    const stageIds = [
-        ...chap.stages,
-        ...(chap.bridge ? [chap.bridge] : []),
-        ...(chap.exam ? [chap.exam] : [])
-    ];
+    const stageIds = getKeyboardChapterStageIds(chap);
     const total = stageIds.length;
     const done = stageIds.filter(id => isCleared(id)).length;
     const nextId = stageIds.find(id => isUnlocked(id) && !isCleared(id));
@@ -441,20 +517,20 @@ function renderKeyboardStageGuide(chap, isCleared, isUnlocked) {
         : null;
     const guide = KEYBOARD_CHAPTER_GUIDE[chap.id] || {
         focus: chap.title,
-        goal: '順番にクリアして、次のステージへ進みます。'
+        goal: 'じゅんばんにクリアして、つぎへすすみます。'
     };
 
     guideEl.innerHTML = `
         <div class="kb-stage-guide-main">
-            <div class="kb-stage-guide-label">この章のめあて</div>
+            <div class="kb-stage-guide-label">このれんしゅう</div>
             <div class="kb-stage-guide-focus">${guide.focus}</div>
             <div class="kb-stage-guide-goal">${guide.goal}</div>
         </div>
         <div class="kb-stage-guide-next">
             <div class="kb-stage-guide-label">つぎ</div>
-            <div class="kb-stage-guide-next-title">${nextDisplay?.title || '完了'}</div>
-            <div class="kb-stage-guide-next-keys">${nextDisplay?.keys || 'クリア済み'}</div>
-            <div class="kb-stage-guide-next-sub">${nextDisplay?.sub || 'この章は完了しています。'}</div>
+            <div class="kb-stage-guide-next-title">${nextDisplay?.title || 'できた'}</div>
+            <div class="kb-stage-guide-next-keys">${nextDisplay?.keys || 'クリアずみ'}</div>
+            <div class="kb-stage-guide-next-sub">${nextDisplay?.sub || 'このれんしゅうはできています。'}</div>
         </div>
         <div class="kb-stage-guide-progress">
             <span>${done}/${total}</span>
@@ -536,7 +612,7 @@ export function renderKeyboardStages(chap) {
         }
         if (isCleared(bid)) {
             b.classList.add('cleared');
-            b.innerText = '総復習クリア';
+            b.innerText = 'ふくしゅうクリア';
         } else {
             b.innerText = bd.title + '(ミスOK)';
         }
@@ -578,7 +654,7 @@ export function renderKeyboardStages(chap) {
 }
 
 export function backToKbChapter() {
-    document.getElementById('kb-chapter-container').style.display = 'flex';
+    document.getElementById('kb-chapter-container').style.display = 'grid';
     document.getElementById('kb-stage-container').style.display = 'none';
     document.getElementById('kb-bottom-back-btn').style.display = 'block';
 }

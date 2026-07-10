@@ -20,6 +20,7 @@ import { showCustomAlert } from './modal.js';
 import { getValidMistakeEntries, normalizeMistakeCount } from '../utils/weak-mistakes.js';
 import {
     buildVisionRadarData,
+    buildVisionRadarBenchmarkData,
     buildVisionRadarDataFromAverageSnapshot,
     renderVisionRadarChart
 } from './admin-report-utils.js';
@@ -161,7 +162,7 @@ function rerenderThemeEffectSection() {
 
 function ensureCanChangeStyle() {
     if (!users[currentUser] || !canWriteCurrentUserRow()) {
-        showCustomAlert('確認用の表示では、きせかえ設定は保存されません。児童本人でログインしてから変更してください。');
+        showCustomAlert('かくにん用の画面では、きせかえはほぞんされません。児童本人でログインしてからかえてください。');
         return false;
     }
     return true;
@@ -171,7 +172,7 @@ export function toggleThemeFavorite(themeId) {
     if (!ensureCanChangeStyle()) return;
     const user = users[currentUser];
     const theme = THEMES.find(item => item.id === themeId);
-    if (!isThemeUnlocked(user, theme)) return showCustomAlert('ガチャでゲットするとお気に入りにできます。');
+    if (!isThemeUnlocked(user, theme)) return showCustomAlert('ガチャでゲットするとおきにいりにできます。');
     toggleFavorite(user, 'theme', themeId);
     saveUsers(false);
     rerenderThemeEffectSection();
@@ -181,7 +182,7 @@ export function toggleEffectFavorite(effectId) {
     if (!ensureCanChangeStyle()) return;
     const user = users[currentUser];
     const effect = EFFECTS.find(item => item.id === effectId);
-    if (!isEffectUnlocked(user, effect)) return showCustomAlert('ガチャでゲットするとお気に入りにできます。');
+    if (!isEffectUnlocked(user, effect)) return showCustomAlert('ガチャでゲットするとおきにいりにできます。');
     toggleFavorite(user, 'effect', effectId);
     saveUsers(false);
     rerenderThemeEffectSection();
@@ -192,7 +193,7 @@ export function toggleRandomTheme() {
     const user = users[currentUser];
     normalizeStyleSettings(user);
     if (!user.randomThemeEnabled && unlockedFavoriteCount(user, 'theme') === 0) {
-        showCustomAlert('ランダムきせかえを使うには、先にきせかえを1つ以上お気に入りにしてください。');
+        showCustomAlert('ランダムきせかえをつかうには、先にきせかえを1つ以上おきにいりにしてください。');
         return;
     }
     user.randomThemeEnabled = !user.randomThemeEnabled;
@@ -205,7 +206,7 @@ export function toggleRandomEffect() {
     const user = users[currentUser];
     normalizeStyleSettings(user);
     if (!user.randomEffectEnabled && unlockedFavoriteCount(user, 'effect') === 0) {
-        showCustomAlert('ランダム演出を使うには、先に演出を1つ以上お気に入りにしてください。');
+        showCustomAlert('ランダムえんしゅつをつかうには、先にえんしゅつを1つ以上おきにいりにしてください。');
         return;
     }
     user.randomEffectEnabled = !user.randomEffectEnabled;
@@ -232,7 +233,7 @@ export function backToRecordMenu() {
 function renderGachaSection(container, user, canSaveResult) {
     container.innerHTML = `<div class="gacha-section">
         <div class="coin-display">🪙 コイン: ${user.coins || 0} 枚</div>
-        ${canSaveResult ? '<p style="margin: 5px 0 15px 0;">ガチャをひいて、きせかえや演出をゲットしよう！</p>' : '<p style="margin: 5px 0 15px 0; color:#00695c; font-weight:bold;">先生確認モードでは、ガチャ・チケット・きせかえ変更は保存されません。</p>'}
+        ${canSaveResult ? '<p style="margin: 5px 0 15px 0;">ガチャをひいて、きせかえやえんしゅつをゲットしよう！</p>' : '<p style="margin: 5px 0 15px 0; color:#00695c; font-weight:bold;">先生のかくにん中は、ガチャ・チケット・きせかえはほぞんされません。</p>'}
         ${canSaveResult ? `
             <div style="display:flex; justify-content:center; gap:15px; flex-wrap:wrap;">
                 <button class="btn-gacha" style="padding: 10px 20px; font-size: 20px;" onclick="drawGacha(1)">1回 (100)</button>
@@ -240,7 +241,7 @@ function renderGachaSection(container, user, canSaveResult) {
                 <button class="btn-gacha" style="padding: 10px 20px; font-size: 20px; background:linear-gradient(135deg, #E91E63, #9C27B0);" onclick="drawGacha(1, true)">🔮 レア確定 (500)</button>
             </div>
         ` : `
-            <div style="padding:12px; border:2px solid #80cbc4; border-radius:8px; background:#e0f2f1; color:#004d40; font-weight:bold;">確認専用のため、保存を伴う操作は無効です。</div>
+            <div style="padding:12px; border:2px solid #80cbc4; border-radius:8px; background:#e0f2f1; color:#004d40; font-weight:bold;">かくにん用のため、ほぞんする操作はできません。</div>
         `}
     </div>`;
 
@@ -250,7 +251,7 @@ function renderGachaSection(container, user, canSaveResult) {
         user.tickets.forEach((ticket, index) => {
             const ticketButton = canSaveResult
                 ? `<button class="ticket-btn" onclick="useTicket(${index})">この場でつかう</button>`
-                : '<button class="ticket-btn" disabled style="opacity:0.5; cursor:not-allowed;">確認専用</button>';
+                : '<button class="ticket-btn" disabled style="opacity:0.5; cursor:not-allowed;">かくにん用</button>';
             container.innerHTML += `<div class="ticket-card"><div><div class="ticket-name">${escapeAttr(ticket.name)}</div><div style="font-size:12px; color:#555;">ゲットした日: ${escapeAttr(ticket.date)}</div></div>${ticketButton}</div>`;
         });
     } else {
@@ -272,7 +273,7 @@ function renderRandomPanel(user) {
                     きせかえ ${user.randomThemeEnabled ? 'ON' : 'OFF'} <span>${themeFavs}件</span>
                 </button>
                 <button class="style-random-toggle ${user.randomEffectEnabled ? 'is-on' : ''}" onclick="toggleRandomEffect()">
-                    演出 ${user.randomEffectEnabled ? 'ON' : 'OFF'} <span>${effectFavs}件</span>
+                    えんしゅつ ${user.randomEffectEnabled ? 'ON' : 'OFF'} <span>${effectFavs}件</span>
                 </button>
             </div>
         </div>
@@ -342,7 +343,7 @@ function renderThemeEffectSection(container, user) {
             </div>
             <div class="style-board-column">
                 <div class="style-board-head">
-                    <h3>🎉 演出</h3>
+                    <h3>🎉 えんしゅつ</h3>
                     <p>クリア時の紙吹雪を変えます。</p>
                 </div>
                 ${Array.from(effectGroups.entries()).map(([name, items]) => renderStyleGroup(name, items, 'effect', user)).join('')}
@@ -365,9 +366,9 @@ function renderTimeRecordsSection(container, user) {
             kbTimes += `<div class="record-chip">${escapeAttr(exam.title)}: <span>${records[exam.id].toFixed(1)}秒</span> ${medal}</div>`;
         }
     });
-    if (!hasKbRecord) kbTimes += '<span class="record-empty-inline">まだ記録がありません</span>';
+    if (!hasKbRecord) kbTimes += '<span class="record-empty-inline">まだきろくがありません</span>';
 
-    let visionTimes = '<h4 class="record-subtitle">👁️ ビジョントレーニング</h4><div class="record-chip-list">';
+    let visionTimes = '<h4 class="record-subtitle">👁️ ビジョンのきろく</h4><div class="record-chip-list">';
     let hasVisionRecord = false;
     VISION_STAGES.forEach(stage => {
         [
@@ -381,14 +382,9 @@ function renderTimeRecordsSection(container, user) {
             visionTimes += `<div class="record-chip ${diff.cls}">${escapeAttr(stage.title)} (${diff.label}): <span>${value.toFixed(1)}秒</span></div>`;
         });
     });
-    if (!hasVisionRecord) visionTimes += '<span class="record-empty-inline">まだ記録がありません</span>';
+    if (!hasVisionRecord) visionTimes += '<span class="record-empty-inline">まだきろくがありません</span>';
 
     container.innerHTML = `${kbTimes}</div>${visionTimes}</div>`;
-}
-
-function getSavedVisionRadarData(user) {
-    const data = user?.visionRadarSnapshot?.data || user?.visionRadarSnapshot;
-    return data && Array.isArray(data.groups) ? data : null;
 }
 
 function getSharedVisionRadarAverageSnapshot() {
@@ -405,7 +401,7 @@ function renderGraphSection(container, user) {
     const keyboardSequence = user.keyboardSequence || 0;
     const visionPercent = Math.min(100, Math.floor((countCurrentVisionClears(user) / (VISION_STAGES.length * 3)) * 100));
     graphGrid.innerHTML += `<div class="record-graph-card">
-        <h4 style="margin-top:0; color:#555; border-bottom:2px solid #eee; padding-bottom:10px;">🎮 全体の達成度</h4>
+        <h4 style="margin-top:0; color:#555; border-bottom:2px solid #eee; padding-bottom:10px;">🎮 ぜんたいのすすみ</h4>
         <div class="record-progress-row"><span>🖱️ マウス</span><b>${Math.floor((mouseLevel / 7) * 100)}%</b></div><div class="record-progress"><div style="width:${Math.floor((mouseLevel / 7) * 100)}%; background:#2196F3;"></div></div>
         <div class="record-progress-row"><span>⌨️ キーボード</span><b>${Math.floor((keyboardSequence / STAGE_ORDER.length) * 100)}%</b></div><div class="record-progress"><div style="width:${Math.floor((keyboardSequence / STAGE_ORDER.length) * 100)}%; background:#FF9800;"></div></div>
         <div class="record-progress-row"><span>👁️ ビジョン</span><b>${visionPercent}%</b></div><div class="record-progress"><div style="width:${visionPercent}%; background:#9C27B0;"></div></div>
@@ -413,30 +409,42 @@ function renderGraphSection(container, user) {
 
     const radarDiv = document.createElement('div');
     const sharedAverageSnapshot = getSharedVisionRadarAverageSnapshot();
-    const savedRadarData = sharedAverageSnapshot
+    const sharedAverageData = sharedAverageSnapshot
         ? buildVisionRadarDataFromAverageSnapshot(user, sharedAverageSnapshot, VISION_STAGES)
-        : getSavedVisionRadarData(user);
-    const myPageVisionUsers = currentUser ? { [currentUser]: user } : {};
-    const radarData = savedRadarData || buildVisionRadarData(user, myPageVisionUsers, VISION_STAGES, isSystemUserId);
-    radarDiv.innerHTML = renderVisionRadarChart(radarData, { title: savedRadarData ? '👁️ ビジョン平均との差' : '👁️ ビジョンの記録' });
+        : null;
+    const comparableVisionUsers = Object.fromEntries(Object.entries(users || {}).filter(([userId, row]) => {
+        if (!userId || !row || row.isMaster) return false;
+        if (String(userId).startsWith('__')) return false;
+        if (typeof isSystemUserId === 'function' && isSystemUserId(userId)) return false;
+        return Boolean(row.examRecords && typeof row.examRecords === 'object');
+    }));
+    const liveAverageData = Object.keys(comparableVisionUsers).length > 1
+        ? buildVisionRadarData(user, comparableVisionUsers, VISION_STAGES, isSystemUserId)
+        : null;
+    const benchmarkRadarData = buildVisionRadarBenchmarkData(user, VISION_STAGES);
+    const radarData = sharedAverageData || liveAverageData || benchmarkRadarData;
+    const radarTitle = sharedAverageData || liveAverageData
+        ? '👁️ ビジョンのみんなとの差'
+        : '👁️ ビジョンのきろく';
+    radarDiv.innerHTML = renderVisionRadarChart(radarData, { title: radarTitle });
     const myPageRadarCard = radarDiv.firstElementChild;
-    const myPageRadarBasis = myPageRadarCard?.querySelector('.vision-radar-head span');
-    if (!savedRadarData && myPageRadarBasis) myPageRadarBasis.textContent = '自分基準 100';
-    if (!savedRadarData) {
+    if (!sharedAverageData && !liveAverageData) {
+        const myPageRadarBasis = myPageRadarCard?.querySelector('.vision-radar-head span');
+        if (myPageRadarBasis) myPageRadarBasis.textContent = 'めやす 100';
         myPageRadarCard?.querySelectorAll('.vision-radar-summary span, .vision-radar-legend span, .vision-radar-note').forEach(element => {
-            element.textContent = element.textContent.replace(/平均/g, '自分基準');
+            element.textContent = element.textContent.replace(/平均/g, 'めやす');
         });
     }
     if (myPageRadarCard) graphGrid.appendChild(myPageRadarCard);
 
     const weakDiv = document.createElement('div');
     weakDiv.className = 'record-graph-card';
-    weakDiv.innerHTML = '<h4 style="margin-top:0; color:#555; border-bottom:2px solid #eee; padding-bottom:10px;">⚠️ あなたの苦手なキー</h4>';
+    weakDiv.innerHTML = '<h4 style="margin-top:0; color:#555; border-bottom:2px solid #eee; padding-bottom:10px;">⚠️ にがてなキー</h4>';
     const mistakes = user.globalMistakes || {};
     const sorted = getValidMistakeEntries(mistakes);
 
     if (sorted.length === 0) {
-        weakDiv.innerHTML += '<div style="color:#4CAF50; font-weight:bold; margin-top:20px; text-align:center; font-size:20px;">✨ すばらしい！<br>苦手なキーはまだありません。</div>';
+        weakDiv.innerHTML += '<div style="color:#4CAF50; font-weight:bold; margin-top:20px; text-align:center; font-size:20px;">✨ すばらしい！<br>にがてなキーはまだありません。</div>';
     } else {
         const maxMiss = sorted[0].count;
         let heatmapHtml = '<div class="heatmap-kb">';
@@ -473,7 +481,7 @@ function renderLearningSection(container, user) {
 
     const times = document.createElement('section');
     times.className = 'record-combined-panel record-learning-times';
-    times.innerHTML = '<h3>⏱️ タイムアタック記録</h3>';
+    times.innerHTML = '<h3>⏱️ タイムアタック</h3>';
     const timesBody = document.createElement('div');
     renderTimeRecordsSection(timesBody, user);
     times.appendChild(timesBody);
@@ -481,7 +489,7 @@ function renderLearningSection(container, user) {
 
     const practice = document.createElement('section');
     practice.className = 'record-combined-panel record-learning-practice';
-    practice.innerHTML = '<h3>📝 取り組み記録</h3>';
+    practice.innerHTML = '<h3>📝 とりくみきろく</h3>';
     const practiceBody = document.createElement('div');
     renderPracticeHistorySection(practiceBody, currentUser);
     practice.appendChild(practiceBody);
@@ -493,7 +501,7 @@ function renderAchievementSection(container) {
     container.innerHTML = '';
     const certificates = document.createElement('section');
     certificates.className = 'record-combined-panel record-certificate-panel';
-    certificates.innerHTML = '<h3>🏅 賞状印刷</h3>';
+    certificates.innerHTML = '<h3>🏅 しょうじょう</h3>';
     const certificateBody = document.createElement('div');
     certificateBody.className = 'record-certificate-body';
     renderCertificateSection(certificateBody, currentUser);

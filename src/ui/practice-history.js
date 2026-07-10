@@ -9,7 +9,7 @@ export function renderLastPracticeCard(card, userId) {
     card.innerHTML = '';
 
     const label = document.createElement('div');
-    label.textContent = '前回の練習';
+    label.textContent = 'まえのれんしゅう';
     label.style.cssText = 'font-size:13px; color:#00695c; font-weight:bold; margin-bottom:4px;';
 
     const title = document.createElement('div');
@@ -64,15 +64,15 @@ export function renderPracticeHistorySection(container, userId) {
 
     const summary = document.createElement('div');
     summary.style.cssText = 'display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px;';
-    appendPracticeMetric(summary, '今日の取り組み', `${todayCount}回`, '#2196F3');
-    appendPracticeMetric(summary, '記録された回数', `${logs.length}回`, '#4CAF50');
-    appendPracticeMetric(summary, '記録内の獲得コイン', `${totalCoins}コイン`, '#FF9800');
+    appendPracticeMetric(summary, 'きょうのとりくみ', `${todayCount}回`, '#2196F3');
+    appendPracticeMetric(summary, 'きろくされた回数', `${logs.length}回`, '#4CAF50');
+    appendPracticeMetric(summary, 'きろくのコイン', `${totalCoins}コイン`, '#FF9800');
     container.appendChild(summary);
 
     const latestInfo = formatPracticeActivity(logs[0]);
     const latestBox = document.createElement('div');
     latestBox.style.cssText = 'background:#e3f2fd; border:2px solid #90caf9; border-radius:8px; padding:14px; margin-bottom:16px; text-align:left;';
-    latestBox.innerHTML = '<div style="font-weight:bold; color:#0d47a1; margin-bottom:6px;">前回の練習</div>';
+    latestBox.innerHTML = '<div style="font-weight:bold; color:#0d47a1; margin-bottom:6px;">まえのれんしゅう</div>';
     const latestTitle = document.createElement('div');
     latestTitle.textContent = logs[0] ? `${latestInfo.title}${latestInfo.when ? ` (${latestInfo.when})` : ''}` : latestInfo.title;
     latestTitle.style.cssText = 'font-size:20px; font-weight:bold; color:#263238;';
@@ -84,7 +84,7 @@ export function renderPracticeHistorySection(container, userId) {
     container.appendChild(latestBox);
 
     const listTitle = document.createElement('h3');
-    listTitle.textContent = '取り組み履歴';
+    listTitle.textContent = 'とりくみきろく';
     listTitle.style.cssText = 'margin:0 0 10px; color:#37474f;';
     container.appendChild(listTitle);
 
@@ -92,7 +92,7 @@ export function renderPracticeHistorySection(container, userId) {
     list.style.cssText = 'display:flex; flex-direction:column; gap:8px; max-height:430px; overflow:auto; padding-right:6px;';
     if (logs.length === 0) {
         const empty = document.createElement('div');
-        empty.textContent = 'まだ練習履歴がありません。練習を終えるとここに記録されます。';
+        empty.textContent = 'まだれんしゅうのきろくがありません。れんしゅうをおえるとここに出ます。';
         empty.style.cssText = 'background:#fff; border:1px dashed #b0bec5; border-radius:8px; padding:18px; color:#607d8b; text-align:center;';
         list.appendChild(empty);
     } else {

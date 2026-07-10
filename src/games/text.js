@@ -37,12 +37,16 @@ function renderTextSpace(charClass, isLineHead) {
     return `<span class="${classes}" aria-label="スペース">&nbsp;</span>`;
 }
 
+function isTextWaitingDisplay(refBox) {
+    return Boolean(refBox?.innerText && /(待\s*機\s*中|まっています)/.test(refBox.innerText));
+}
+
 export function toggleRuby() {
     isRubyOn = !isRubyOn;
     const btn = document.getElementById('btn-toggle-ruby');
     if (btn) { btn.innerText = `よみがな: ${isRubyOn ? 'ON' : 'OFF'}`; btn.style.background = isRubyOn ? '#00bcd4' : '#9e9e9e'; }
     const refBox = document.getElementById('ref-text-box');
-    if (refBox && refBox.innerHTML && !refBox.innerText.includes('待 機 中')) renderTextContent();
+    if (refBox && refBox.innerHTML && !isTextWaitingDisplay(refBox)) renderTextContent();
     if (document.activeElement) document.activeElement.blur();
 }
 
@@ -51,7 +55,7 @@ export function toggleNavi() {
     const btn = document.getElementById('btn-toggle-navi');
     if (btn) { btn.innerText = `ナビ: ${isNaviOn ? 'ON' : 'OFF'}`; btn.style.background = isNaviOn ? '#ff9800' : '#9e9e9e'; }
     const refBox = document.getElementById('ref-text-box');
-    if (refBox && refBox.innerHTML && !refBox.innerText.includes('待 機 中')) renderTextContent();
+    if (refBox && refBox.innerHTML && !isTextWaitingDisplay(refBox)) renderTextContent();
     if (document.activeElement) document.activeElement.blur();
 }
 
@@ -258,11 +262,11 @@ function renderTextTaskRecommendation(container, tasks) {
     box.innerHTML = `
         <div class="course-next-copy text-task-recommend-copy">
             <span class="course-next-label text-task-recommend-label">つぎ</span>
-            <strong>${escapeHtml(recommendedTask?.title || '文章課題は完了です')}</strong>
+            <strong>${escapeHtml(recommendedTask?.title || 'ぶんしょうはできています')}</strong>
             <span class="course-next-meta">
                 ${recommendedTask
-                    ? `★${escapeHtml(recommendedTask.star || 3)} / ${escapeHtml(recommendedTask.time)}分 / ${escapeHtml(plainContent.length)}文字 / 💰最高${escapeHtml(formatCoins(getTextTaskMaxCoins(recommendedTask)))}`
-                    : '未完了の課題はありません'}
+                    ? `★${escapeHtml(recommendedTask.star || 3)} / ${escapeHtml(recommendedTask.time)}分 / ${escapeHtml(plainContent.length)}文字 / 💰さいこう${escapeHtml(formatCoins(getTextTaskMaxCoins(recommendedTask)))}`
+                    : 'やるものはありません'}
             </span>
             <span class="course-next-log">${escapeHtml(formatPracticeLogShort(latestLog))}</span>
         </div>
@@ -274,7 +278,7 @@ function renderTextTaskRecommendation(container, tasks) {
     const startButton = document.createElement('button');
     startButton.className = 'course-next-btn text-task-recommend-btn';
     startButton.type = 'button';
-    startButton.textContent = recommendedTask ? 'はじめる' : '完了';
+    startButton.textContent = recommendedTask ? 'はじめる' : 'できた';
     startButton.disabled = !recommendedTask;
     if (recommendedTask) startButton.onclick = () => startTextPractice(recommendedTask.id);
     box.appendChild(startButton);
@@ -292,8 +296,8 @@ function renderTextTasks() {
     if (allTasks.length === 0) {
         cont.innerHTML = `
             <div class="text-empty-state">
-                <div class="text-empty-title">まだ文章課題がありません</div>
-                <div class="text-empty-note">先生・管理者画面で課題を作ると、ここに表示されます。</div>
+                <div class="text-empty-title">まだ ぶんしょうがありません</div>
+                <div class="text-empty-note">先生・管理者画面で課題を作ると、ここに出ます。</div>
             </div>
         `;
         return;
@@ -301,8 +305,8 @@ function renderTextTasks() {
     if (visibleTasks.length === 0) {
         cont.innerHTML = `
             <div class="text-empty-state">
-                <div class="text-empty-title">表示中の文章課題がありません</div>
-                <div class="text-empty-note">先生・管理者画面で課題を「表示する」にすると、ここに出ます。</div>
+                <div class="text-empty-title">いま出ている ぶんしょうがありません</div>
+                <div class="text-empty-note">先生・管理者画面で課題を「出す」にすると、ここに出ます。</div>
             </div>
         `;
         return;
@@ -310,7 +314,7 @@ function renderTextTasks() {
     if (tasks.length === 0) {
         cont.innerHTML = `
             <div class="text-empty-state">
-                <div class="text-empty-title">このグループで表示中の文章課題がありません</div>
+                <div class="text-empty-title">このグループで出ている ぶんしょうがありません</div>
                 <div class="text-empty-note">先生・管理者画面で、課題の対象グループを確認してください。</div>
             </div>
         `;
@@ -321,8 +325,8 @@ function renderTextTasks() {
     if (filteredTasks.length === 0) {
         cont.innerHTML = `
             <div class="text-empty-state">
-                <div class="text-empty-title">${escapeHtml(getTextTaskFilterLabel(currentTextFilter))} の課題はありません</div>
-                <div class="text-empty-note">別のボタンをえらぶと、ほかの課題を表示できます。</div>
+                <div class="text-empty-title">${escapeHtml(getTextTaskFilterLabel(currentTextFilter))} のぶんしょうはありません</div>
+                <div class="text-empty-note">べつのボタンをえらぶと、ほかのぶんしょうが出ます。</div>
             </div>
         `;
         return;
@@ -348,7 +352,7 @@ function renderTextTasks() {
         const isDone = Boolean(record);
         if (record) {
             const r = record;
-            recordHtml = `<span class="text-task-record">🏆 最高純字数: ${escapeHtml(r.score)}文字 / ミス${escapeHtml(r.miss)}</span>`;
+            recordHtml = `<span class="text-task-record">🏆 さいこう: ${escapeHtml(r.score)}文字 / ミス${escapeHtml(r.miss)}</span>`;
         }
         if (recommendedTask?.id === task.id) btn.classList.add('next-target');
         let stars = "⭐".repeat(task.star || 3);
@@ -360,12 +364,12 @@ function renderTextTasks() {
                 <span class="text-task-status ${isDone ? 'done' : 'todo'}">${isDone ? 'やった' : 'まだ'}</span>
             </span>
             <span class="text-task-meta">
-                <span>難易度: ${escapeHtml(stars)}</span>
-                <span>制限時間: ${escapeHtml(task.time)}分</span>
+                <span>むずかしさ: ${escapeHtml(stars)}</span>
+                <span>じかん: ${escapeHtml(task.time)}分</span>
                 <span>${escapeHtml(plainContent.length)}文字</span>
             </span>
             ${recordHtml}
-            <span class="text-task-reward">💰最高${escapeHtml(formatCoins(maxCoins))}</span>
+            <span class="text-task-reward">💰さいこう${escapeHtml(formatCoins(maxCoins))}</span>
         `;
         btn.onclick = () => startTextPractice(task.id); grid.appendChild(btn);
     });
@@ -456,7 +460,7 @@ export function confirmStartTextPractice() {
     if (btnNavi) { btnNavi.innerText = `ナビ: ${isNaviOn ? 'ON' : 'OFF'}`; btnNavi.style.background = isNaviOn ? '#ff9800' : '#9e9e9e'; }
 
     const refBox = document.getElementById('ref-text-box'); refBox.style.cssText = ''; 
-    refBox.innerHTML = '<div style="display:flex; flex-direction:column; justify-content:center; align-items:center; height:100%; color:#999; text-align:center;"><span style="font-size:24px; font-weight:bold; margin-bottom:15px;">【 待 機 中 】</span><span>スペースキーを押すと、ここに問題が表示されて<br>タイマーがスタートします。</span></div>';
+    refBox.innerHTML = '<div style="display:flex; flex-direction:column; justify-content:center; align-items:center; height:100%; color:#999; text-align:center;"><span style="font-size:24px; font-weight:bold; margin-bottom:15px;">【 まっています 】</span><span>スペースキーをおすと、ここにもんだいが出て<br>タイマーがスタートします。</span></div>';
     
     const typeBox = document.getElementById('type-text-box'); typeBox.value = ''; typeBox.disabled = true; 
     typeBox.oninput = () => { renderTextContent(); };
@@ -552,9 +556,9 @@ function showTextResult() {
         users[currentUser].coins = (users[currentUser].coins || 0) + coinGain;
         recordPracticeActivity({
             category: 'text',
-            title: `文章入力 ${currentTextTask.title}`,
-            detail: isNewRecord ? '提出 / 新記録' : '提出',
-            amount: `入力 ${totalCount}文字 / ミス ${missCount}箇所 / 純字数 ${netCount}`,
+            title: `ぶんしょう ${currentTextTask.title}`,
+            detail: isNewRecord ? 'おわり / しんきろく' : 'おわり',
+            amount: `うった数 ${totalCount}文字 / ミス ${missCount}か所 / スコア ${netCount}`,
             coins: coinGain
         });
         saveUsers(false);
@@ -570,23 +574,23 @@ function showTextResult() {
     const details = document.getElementById('text-result-details');
     details.innerHTML = `
         <div class="text-result-summary">
-            <div style="font-size:22px; font-weight:900; color:#0277bd;">結果</div>
-            <div>総字数： <span style="color:#0288d1">${totalCount}</span> 文字</div>
-            <div>ミス数： <span style="color:#d32f2f">${missCount}</span> 箇所</div>
-            <div>純字数： <span style="color:#4CAF50; font-weight:bold;">${netCount}</span> (スコア)</div>
-            <div style="color:#FF9800; font-weight:bold;">💰 獲得コイン: ${coinGain} 枚</div>
+            <div style="font-size:22px; font-weight:900; color:#0277bd;">けっか</div>
+            <div>うった数： <span style="color:#0288d1">${totalCount}</span> 文字</div>
+            <div>ミス： <span style="color:#d32f2f">${missCount}</span> か所</div>
+            <div>スコア： <span style="color:#4CAF50; font-weight:bold;">${netCount}</span></div>
+            <div style="color:#FF9800; font-weight:bold;">💰 コイン: ${coinGain} 枚</div>
         </div>
-        ${!canSaveResult ? '<div style="font-size:18px; color:#607D8B; text-align:center; margin-top:8px;">先生確認モード：結果は保存されません</div>' : ''}
+        ${!canSaveResult ? '<div style="font-size:18px; color:#607D8B; text-align:center; margin-top:8px;">先生のかくにん中：けっかはほぞんされません</div>' : ''}
         ${isNewRecord ? '<div style="color:#ffeb3b; font-size:24px; text-shadow: 1px 1px #000; animation:bounce 1s infinite; text-align:center; margin-top:10px;">★しんきろく！★</div>' : ''}
         <div class="text-result-compare">
             <section class="text-result-card">
-                <h3>原文</h3>
+                <h3>おてほん</h3>
                 <div class="text-review-box">${sourceHtml}</div>
             </section>
             <section class="text-result-card">
-                <h3>入力内容の添削</h3>
+                <h3>なおし</h3>
                 <div class="text-review-box">${reviewedInputHtml}</div>
-                <div class="text-review-legend"><span class="legend-correct">正解</span><span class="legend-miss">ミス</span></div>
+                <div class="text-review-legend"><span class="legend-correct">せいかい</span><span class="legend-miss">ミス</span></div>
             </section>
         </div>
     `;
@@ -611,9 +615,9 @@ function recordTextPracticeInterrupt() {
     if (!textTimerInterval && typedCount === 0) return;
     recordPracticeActivity({
         category: 'text',
-        title: `文章入力 ${currentTextTask.title}`,
-        detail: '中断',
-        amount: `入力 ${typedCount}文字 / 経過 ${formatElapsedSeconds(elapsed)}`,
+        title: `ぶんしょう ${currentTextTask.title}`,
+        detail: 'とちゅうでやめた',
+        amount: `うった数 ${typedCount}文字 / ${formatElapsedSeconds(elapsed)}`,
         coins: 0
     });
     saveUsers(false);
@@ -694,13 +698,13 @@ function generateSourceHtml(ref) {
 }
 
 function generateReviewedInputHtml(analysis) {
-    if (!analysis?.operations?.length) return '<span class="diff-empty">入力はありません</span>';
+    if (!analysis?.operations?.length) return '<span class="diff-empty">まだうっていません</span>';
     return analysis.operations.map(op => {
         if (op.type === 'correct') return `<span class="diff-correct">${formatReviewText(op.typed)}</span>`;
         if (op.type === 'omitted') {
             return `<span class="diff-miss diff-omitted" title="ぬけています: ${escapeHtml(op.expected)}">${formatReviewText(op.expected)}</span>`;
         }
-        const title = op.expected ? `正しくは: ${escapeHtml(op.expected)}` : 'よけいな入力です';
+        const title = op.expected ? `せいかい: ${escapeHtml(op.expected)}` : 'よけいにうっています';
         return `<span class="diff-miss" title="${title}">${formatReviewText(op.typed)}</span>`;
     }).join('');
 }

@@ -72,8 +72,8 @@ function renderWordNextPanel(container, menuState) {
     panel.innerHTML = `
         <div class="course-next-copy">
             <span class="course-next-label">つぎ</span>
-            <strong>${escapeHtml(menuState.next?.stage?.title || 'Wordれんしゅうは完了です')}</strong>
-            <span class="course-next-meta">${escapeHtml(menuState.next?.stage?.sub || 'すべての章を確認できます')}</span>
+            <strong>${escapeHtml(menuState.next?.stage?.title || 'Wordれんしゅうはできています')}</strong>
+            <span class="course-next-meta">${escapeHtml(menuState.next?.stage?.sub || 'すべてみられます')}</span>
             <span class="course-next-log">${escapeHtml(formatPracticeLogShort(latestLog))}</span>
         </div>
         <div class="course-next-progress">
@@ -84,7 +84,7 @@ function renderWordNextPanel(container, menuState) {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'course-next-btn';
-    button.textContent = menuState.next ? 'はじめる' : '完了';
+    button.textContent = menuState.next ? 'はじめる' : 'できた';
     button.disabled = !menuState.next;
     if (menuState.next) createBtn(button, () => startWordStage(menuState.next.stage.id));
     panel.appendChild(button);
@@ -132,7 +132,7 @@ function renderWordMenu() {
         b.innerHTML = `<span style="font-size:24px;">📘</span><span style="font-size:16px; font-weight:bold; color:#333; margin-top:5px;">${escapeHtml(st.title)}</span><span style="font-size:12px; color:#666;">${escapeHtml(st.sub)}</span>`;
 
         if (isCleared) b.innerHTML += `<span class="reward-badge" style="background:#e8f5e9; border-color:#4CAF50; color:#2e7d32;">クリア</span>`;
-        else if (isWorking) b.innerHTML += `<span class="reward-badge" style="background:#fffde7; border-color:#FFEB3B; color:#fbc02d;">挑戦中 ⏸️ ${workingPage ? 'P.' + escapeHtml(workingPage) : ''}</span>`;
+        else if (isWorking) b.innerHTML += `<span class="reward-badge" style="background:#fffde7; border-color:#FFEB3B; color:#fbc02d;">やっているところ ⏸️ ${workingPage ? 'P.' + escapeHtml(workingPage) : ''}</span>`;
         else if (isUnlocked) b.innerHTML += `<span class="reward-badge">💰500</span>`;
 
         cont.appendChild(b);
@@ -171,7 +171,7 @@ function getCurrentWordStageLabel() {
 
 export function suspendWordTask() {
     if (!canWriteCurrentUserRow()) {
-        showCustomAlert('先生確認モードでは、Wordの途中保存は保存されません。生徒本人または管理者で操作してください。');
+        showCustomAlert('先生のかくにん中は、Wordのとちゅうほぞんはできません。生徒本人または管理者で操作してください。');
         return;
     }
 
@@ -190,13 +190,13 @@ export function suspendWordTask() {
     recordPracticeActivity({
         category: 'word',
         title: getCurrentWordStageLabel(),
-        detail: isCleared ? 'クリア済みページ更新' : '途中保存',
-        amount: pageVal ? `${pageVal}ページまで` : 'ページ未入力',
+        detail: isCleared ? 'クリアずみページをこうしん' : 'とちゅうほぞん',
+        amount: pageVal ? `${pageVal}ページまで` : 'ページなし',
         coins: 0
     });
     saveUsers(false);
     SoundManager.playClick();
-    showCustomAlert('「挑戦中 ⏸️」として記録しました！\nデータを保存してWordをとじたら、また次回続きから頑張ろう！');
+    showCustomAlert('「やっているところ ⏸️」としてきろくしました！\nデータをほぞんしてWordをとじたら、つぎはつづきからできます。');
     goToWordMenu();
 }
 
@@ -206,12 +206,12 @@ export function confirmWordClear() {
         return;
     }
 
-    showCustomAlert('先生または管理者アカウントでログインして確認してください。');
+    showCustomAlert('先生または管理者アカウントでログインして、かくにんしてください。');
 }
 
 export function processWordClear() {
     if (!canWriteCurrentUserRow()) {
-        showCustomAlert('先生確認モードでは、Wordのクリア結果は保存されません。管理者アカウントで操作してください。');
+        showCustomAlert('先生のかくにん中は、Wordのクリアけっかはほぞんされません。管理者アカウントで操作してください。');
         return;
     }
 
@@ -229,8 +229,8 @@ export function processWordClear() {
     recordPracticeActivity({
         category: 'word',
         title: getCurrentWordStageLabel(),
-        detail: isFirstClear ? 'クリア' : 'クリア再確認',
-        amount: pageVal ? `${pageVal}ページまで` : 'ページ未入力',
+        detail: isFirstClear ? 'クリア' : 'クリアをもういちどかくにん',
+        amount: pageVal ? `${pageVal}ページまで` : 'ページなし',
         coins: coinGain
     });
 

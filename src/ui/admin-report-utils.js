@@ -54,6 +54,13 @@ const VISION_RADAR_MAX_SCORE = 160;
 const VISION_RADAR_AVERAGE_SCORE = 100;
 const VISION_RADAR_MIN_USER_RECORDS = 3;
 const VISION_RADAR_MIN_CLASS_RECORDS = 3;
+const VISION_RADAR_BENCHMARK_SECONDS = {
+    find: 18,
+    compare: 18,
+    react: 12,
+    memory: 15,
+    track: 14
+};
 
 function average(values) {
     const valid = values.filter(value => Number.isFinite(value) && value > 0);
@@ -211,6 +218,52 @@ export function buildVisionRadarData(user, allUsers = {}, visionStages = [], isS
         averageScore: VISION_RADAR_AVERAGE_SCORE,
         hasAnyUserData: groups.some(group => group.hasUserData),
         hasAnyClassData: groups.some(group => group.hasClassData)
+    };
+}
+
+export function buildVisionRadarBenchmarkData(user, visionStages = []) {
+    const groups = VISION_RADAR_GROUPS.map(group => {
+        const stageIds = getVisionRadarStageIds(group, visionStages);
+        const userTimes = collectVisionTimes(user?.examRecords, stageIds);
+        const userAverage = average(userTimes);
+        const benchmarkAverage = VISION_RADAR_BENCHMARK_SECONDS[group.id] || 15;
+        const rawScore = userAverage ? (benchmarkAverage / userAverage) * 100 : 0;
+        const score = clampRadarScore(rawScore);
+        const differenceSeconds = userAverage ? userAverage - benchmarkAverage : null;
+        const reliabilityLabel = userTimes.length >= VISION_RADAR_MIN_USER_RECORDS
+            ? 'めやすとくらべています'
+            : userTimes.length > 0
+                ? 'きろくが少なめです'
+                : 'きろくなし';
+
+        return {
+            ...group,
+            stageIds,
+            score,
+            userAverage,
+            classAverage: benchmarkAverage,
+            differenceSeconds,
+            completionCount: userTimes.length,
+            classRecordCount: 0,
+            totalRecordSlots: stageIds.length * VISION_RADAR_DIFFICULTY_SUFFIXES.length,
+            reliability: userTimes.length >= VISION_RADAR_MIN_USER_RECORDS ? 'stable' : 'low',
+            reliabilityLabel,
+            hasUserData: userTimes.length > 0,
+            hasClassData: true,
+            usesBenchmark: true,
+            comparisonLabel: 'めやす'
+        };
+    });
+
+    return {
+        groups,
+        maxScore: VISION_RADAR_MAX_SCORE,
+        averageScore: VISION_RADAR_AVERAGE_SCORE,
+        hasAnyUserData: groups.some(group => group.hasUserData),
+        hasAnyClassData: true,
+        usesBenchmark: true,
+        comparisonLabel: 'めやす',
+        headLabel: 'めやす 100'
     };
 }
 

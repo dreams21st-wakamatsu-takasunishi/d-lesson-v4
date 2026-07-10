@@ -122,7 +122,7 @@ function getPracticeTitle() {
     if (gameMode === 'vision') {
         const stageId = String(currentStage).replace('_hard', '').replace('_easy', '');
         const stage = VISION_STAGES.find(st => st.id === stageId);
-        const level = isVisionHardMode ? 'ハード' : (isVisionEasyMode ? 'やさしい' : '通常');
+        const level = isVisionHardMode ? 'ハード' : (isVisionEasyMode ? 'やさしい' : 'ふつう');
         return `ビジョントレーニング ${stage ? stage.title : stageId} (${level})`;
     }
     if (gameMode === 'romaji') {
@@ -136,10 +136,10 @@ function getPracticeTitle() {
 function getPracticeAmount(elapsed) {
     if (gameMode === 'mouse') return 'ステージをクリア';
     if (gameMode === 'vision') return `タイム ${elapsed.toFixed(1)}秒`;
-    if (gameMode === 'romaji') return `正解 ${romajiCorrectCells}/${romajiTotalCells} / タイム ${elapsed.toFixed(1)}秒`;
+    if (gameMode === 'romaji') return `せいかい ${romajiCorrectCells}/${romajiTotalCells} / タイム ${elapsed.toFixed(1)}秒`;
     const total = totalKeysTyped + missKeysTyped;
     const acc = total > 0 ? Math.floor((totalKeysTyped / total) * 100) : 0;
-    return `打鍵 ${totalKeysTyped}回 / ミス ${missKeysTyped}回 / 正確率 ${acc}%`;
+    return `うった数 ${totalKeysTyped}回 / ミス ${missKeysTyped}回 / せいかく ${acc}%`;
 }
 
 function clearFeedbackActions() {
@@ -242,7 +242,7 @@ function renderFeedbackActions() {
         const certificateButton = document.createElement('button');
         certificateButton.className = 'btn-primary feedback-certificate-button';
         certificateButton.type = 'button';
-        certificateButton.innerHTML = `賞状ゲットを見る<small>${pendingCertificateAward.title}</small>`;
+        certificateButton.innerHTML = `しょうじょうゲットを見る<small>${pendingCertificateAward.title}</small>`;
         certificateButton.onclick = () => showCertificateAwardOverlay(pendingCertificateAward);
         actions.appendChild(certificateButton);
     }
@@ -293,23 +293,23 @@ function showCertificateAwardOverlay(award) {
         backToMenu();
         return;
     }
-    showRewardOverlay('🏆 賞状ゲット！ 🏆', `${award.title}\n印刷画面へすすみます`, '📜', openCertificateSectionFromFeedback);
+    showRewardOverlay('🏆 しょうじょうゲット！ 🏆', `${award.title}\nいんさつ画面へすすみます`, '📜', openCertificateSectionFromFeedback);
 }
 
 function getKeyboardCertificateAward(previousSequence, nextSequence) {
     const total = STAGE_ORDER.length;
     const awards = [
-        { threshold: Math.ceil(total * 0.25), title: 'キーボード 努力賞' },
-        { threshold: Math.ceil(total * 0.5), title: 'キーボード 上達賞' },
-        { threshold: total, title: 'キーボード 達成賞' }
+        { threshold: Math.ceil(total * 0.25), title: 'キーボード がんばりしょう' },
+        { threshold: Math.ceil(total * 0.5), title: 'キーボード じょうたつしょう' },
+        { threshold: total, title: 'キーボード たっせいしょう' }
     ];
     return awards.find(award => previousSequence < award.threshold && nextSequence >= award.threshold) || null;
 }
 
 function getPracticeInterruptAmount(elapsed) {
-    if (gameMode === 'mouse') return `進行 ${currentCount}/${totalCount}`;
-    if (gameMode === 'vision') return `正解 ${visionScore}/${visionTarget} / 経過 ${elapsed.toFixed(1)}秒`;
-    if (gameMode === 'romaji') return `正解 ${romajiCorrectCells}/${romajiTotalCells} / 経過 ${elapsed.toFixed(1)}秒`;
+    if (gameMode === 'mouse') return `すすみ ${currentCount}/${totalCount}`;
+    if (gameMode === 'vision') return `せいかい ${visionScore}/${visionTarget} / ${elapsed.toFixed(1)}秒`;
+    if (gameMode === 'romaji') return `せいかい ${romajiCorrectCells}/${romajiTotalCells} / ${elapsed.toFixed(1)}秒`;
     return getPracticeAmount(elapsed);
 }
 
@@ -330,7 +330,7 @@ function recordPracticeInterrupt(shouldRecord) {
     recordPracticeActivity({
         category: gameMode || 'practice',
         title: getPracticeTitle(),
-        detail: '中断',
+        detail: 'とちゅうでやめた',
         amount: getPracticeInterruptAmount(elapsed),
         coins: 0
     });
@@ -339,7 +339,7 @@ function recordPracticeInterrupt(shouldRecord) {
 
 export function startGame(sid, mode, options = {}) {
     if (mode === 'keyboard' && sid === 9888 && !hasTrainableMistakes(users[currentUser]?.globalMistakes)) {
-        showCustomAlert('ミスのデータがないか、すべて克服しました！\nいろいろな練習をしてからまた挑戦してみてね！');
+        showCustomAlert('ミスのデータがないか、ぜんぶできています！\nいろいろなれんしゅうをしてからまたやってみてね！');
         showScreen('screen-keyboard-category');
         return;
     }
@@ -730,15 +730,15 @@ function setupVision(sid) {
     els.playArea.style.justifyContent = 'center'; els.playArea.style.alignItems = 'center'; els.playArea.innerHTML = '';
     totalCount = 1; currentCount = 0; updateProgress();
     
-    if (sid === 'v1') els.instText.innerText = "1から 順番に すばやく クリックしてね！";
-    else if (sid === 'v2') els.instText.innerText = "1つだけ 違う文字を さがして クリックしてね！";
-    else if (sid === 'v3') els.instText.innerText = "的(まと)の 上に マウスを ずっと 合わせてね！";
-    else if (sid === 'v4') els.instText.innerText = "一瞬だけ 出てくる 絵を おぼえよう！";
+    if (sid === 'v1') els.instText.innerText = "1から じゅんばんに すばやく クリックしてね！";
+    else if (sid === 'v2') els.instText.innerText = "1つだけ ちがうもじを さがして クリックしてね！";
+    else if (sid === 'v3') els.instText.innerText = "まとに マウスを ずっと あわせてね！";
+    else if (sid === 'v4') els.instText.innerText = "すこしだけ 出る 絵を おぼえよう！";
     else if (sid === 'v5') els.instText.innerText = "おなじ絵を ぜんぶ さがして クリックしてね！";
-    else if (sid === 'v6') els.instText.innerText = "でてきた 的(まと)を すばやく クリックしてね！";
-    else if (sid === 'v7') els.instText.innerText = "光った 順番を おぼえて、同じように クリックしてね！";
-    else if (sid === 'v8') els.instText.innerText = "青いスタートから 赤いゴールまで はみ出さずに すすんでね！";
-    else if (sid === 'v9') els.instText.innerText = "真ん中と 同じ向きの ものを えらんでね！";
+    else if (sid === 'v6') els.instText.innerText = "でてきた まとを すばやく クリックしてね！";
+    else if (sid === 'v7') els.instText.innerText = "ひかった じゅんばんを おぼえて、同じように クリックしてね！";
+    else if (sid === 'v8') els.instText.innerText = "あおいスタートから あかいゴールまで はみ出さずに すすんでね！";
+    else if (sid === 'v9') els.instText.innerText = "まんなかと 同じむきの ものを えらんでね！";
 }
 
 function setupRomajiTable(sid) {
@@ -762,7 +762,7 @@ function setupRomajiTable(sid) {
         hintBtn.style.marginBottom = '10px';
         hintBtn.onclick = () => {
             document.querySelectorAll('.romaji-cell').forEach(c => c.classList.add('show-hint'));
-            hintBtn.disabled = true; hintBtn.innerText = '💡 ヒント表示中';
+            hintBtn.disabled = true; hintBtn.innerText = '💡 ヒントあり';
             const firstInp = container.querySelector('.romaji-input:not(:disabled)');
             if(firstInp) firstInp.focus();
         };
@@ -1090,7 +1090,7 @@ export function markClear() {
             recordPracticeActivity({
                 category: gameMode || 'practice',
                 title: getPracticeTitle(),
-                detail: isNewRecord ? 'クリア / 新記録' : 'クリア',
+                detail: isNewRecord ? 'クリア / しんきろく' : 'クリア',
                 amount: getPracticeAmount(elapsed),
                 coins: coinGain
             });
@@ -1100,7 +1100,7 @@ export function markClear() {
             });
             clearMsg += `<br><span style="font-size:24px; color:#FFD700;">💰 +${coinGain} コインゲット！</span>`;
             if (dailyMissionResult?.task) {
-                clearMsg += `<br><span style="font-size:20px; color:#00c853;">今日のミッション達成！ ${dailyMissionResult.doneCount}/${dailyMissionResult.total}</span>`;
+                clearMsg += `<br><span style="font-size:20px; color:#00c853;">きょうのミッションできた！ ${dailyMissionResult.doneCount}/${dailyMissionResult.total}</span>`;
                 pendingDailyMissionTask = dailyMissionResult.doneCount < dailyMissionResult.total
                     ? getNextIncompleteDailyMission()
                     : null;
@@ -1111,7 +1111,7 @@ export function markClear() {
             saveUsers(false);
         } else {
             if (originalUserData) users[currentUser] = originalUserData;
-            clearMsg += `<br><span style="font-size:20px; color:#607D8B;">先生確認モード：結果は保存されません</span>`;
+            clearMsg += `<br><span style="font-size:20px; color:#607D8B;">先生のかくにん中：けっかはほぞんされません</span>`;
         }
         
         SoundManager.playClear();

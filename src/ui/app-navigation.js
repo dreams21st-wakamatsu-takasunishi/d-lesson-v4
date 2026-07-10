@@ -10,7 +10,7 @@ import { hasTrainableMistakes } from '../utils/weak-mistakes.js';
 function getActiveUserOrTitle() {
     const u = currentUser ? users[currentUser] : null;
     if (u) return u;
-    showCustomAlert('ユーザーを選択してください');
+    showCustomAlert('つかう人をえらんでください');
     showScreen('screen-title');
     return null;
 }
@@ -57,7 +57,7 @@ export function loginAsMaster() {
         return;
     }
 
-    showCustomAlert('先生または管理者アカウントでログインしてください。');
+    showCustomAlert('先生か管理者アカウントでログインしてください。');
 }
 
 export function goToWeakTraining() {
@@ -69,5 +69,5 @@ export function goToWeakTraining() {
         return;
     }
 
-    showCustomAlert('ミスのデータがないか、すべて克服しました！\nいろいろな練習をしてからまた挑戦してみてね！');
+    showCustomAlert('ミスのデータがないか、ぜんぶできています！\nいろいろなれんしゅうをしてからまたやってみてね！');
 }

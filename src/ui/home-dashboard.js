@@ -20,12 +20,12 @@ const homeUiHandlers = {
 };
 
 const PRACTICE_CATEGORY_COURSES = Object.freeze({
-    mouse: '基礎操作',
-    keyboard: '文字入力',
-    text: '実用入力',
-    word: '実用入力',
-    vision: '見る力',
-    minigame: '応用'
+    mouse: 'マウス',
+    keyboard: 'もじをうつ',
+    text: 'ぶんしょう',
+    word: 'Word',
+    vision: 'みる力',
+    minigame: 'あそび'
 });
 
 export function setHomeUiHandlers(handlers = {}) {
@@ -49,7 +49,7 @@ function getLearningPathLabel(user) {
     if (mouseLevel < 7) return `マウス M-${mouseLevel + 1}`;
     if (alphabetSeq < ALPHABET_READING_STAGES.length) return `ABC ${alphabetSeq + 1}/${ALPHABET_READING_STAGES.length}`;
     if (keyboardSeq < STAGE_ORDER.length) return `キーボード ${keyboardSeq + 1}/${STAGE_ORDER.length}`;
-    return '応用練習';
+    return 'あそび';
 }
 
 function buildNextLearningActions(user, progressMap) {
@@ -107,7 +107,7 @@ function buildNextLearningActions(user, progressMap) {
 
     if (progressMap.text.total > 0 && progressMap.text.done < progressMap.text.total) {
         actions.push({
-            title: '文章入力れんしゅう',
+            title: 'ぶんしょうをうつ',
             detail: `${progressMap.text.done}/${progressMap.text.total} からつづき`,
             run: () => goToTextMenu()
         });
@@ -132,7 +132,7 @@ function buildNextLearningActions(user, progressMap) {
     if (!actions.length) {
         actions.push({
             title: 'マイページ',
-            detail: '記録と賞状をみる',
+            detail: 'きろくとしょうじょうをみる',
             run: () => homeUiHandlers.openRecords()
         });
     }
@@ -142,7 +142,7 @@ function buildNextLearningActions(user, progressMap) {
 
 function renderHomeNextActions(user, actions) {
     const currentPath = document.getElementById('home-current-path');
-    if (currentPath) currentPath.textContent = getLearningPathLabel(user);
+    if (currentPath) currentPath.textContent = `いまここ：${getLearningPathLabel(user)}`;
 
     const list = document.getElementById('home-next-action-list');
     if (!list) return;
@@ -206,7 +206,7 @@ export function updateHomeDashboard() {
     const mPct = Math.floor((mLv / maxMouse) * 100);
     const mouseLvDisplay = document.getElementById('home-mouse-lv');
     const mouseBar = document.getElementById('home-mouse-bar');
-    if (mouseLvDisplay) mouseLvDisplay.innerText = mLv >= 7 ? 'Lv.MAX (免許皆伝)' : `Lv.${mLv} / 7`;
+    if (mouseLvDisplay) mouseLvDisplay.innerText = mLv >= 7 ? 'Lv.MAX' : `Lv.${mLv} / 7`;
     if (mouseBar) mouseBar.style.width = `${mPct}%`;
 
     const maxKb = STAGE_ORDER.length;
@@ -316,18 +316,18 @@ function buildPracticeCategoryStatus(user, progressMap) {
 
     const keyboardNext = (() => {
         if (alphabetSeq < ALPHABET_READING_STAGES.length) {
-            return `次: ${ALPHABET_READING_STAGES[alphabetSeq]?.title || `ABC ${alphabetSeq + 1}`}`;
+            return `つぎ: ${ALPHABET_READING_STAGES[alphabetSeq]?.title || `ABC ${alphabetSeq + 1}`}`;
         }
         if (keyboardSeq < STAGE_ORDER.length) {
-            return `次: ${cleanStageName(STAGE_ORDER[keyboardSeq])}`;
+            return `つぎ: ${cleanStageName(STAGE_ORDER[keyboardSeq])}`;
         }
-        return '完了';
+        return 'できた';
     })();
 
     return {
         mouse: {
             course: PRACTICE_CATEGORY_COURSES.mouse,
-            next: mouseLevel >= 7 ? '完了' : `次: M-${mouseLevel + 1}`,
+            next: mouseLevel >= 7 ? 'できた' : `つぎ: M-${mouseLevel + 1}`,
             state: mouseLevel >= 7 ? 'complete' : ''
         },
         keyboard: {
@@ -337,22 +337,22 @@ function buildPracticeCategoryStatus(user, progressMap) {
         },
         text: {
             course: PRACTICE_CATEGORY_COURSES.text,
-            next: getProgressNextLabel(progressMap.text, '課題なし', progressMap.text.nextTitle),
+            next: getProgressNextLabel(progressMap.text, 'やるものなし', progressMap.text.nextTitle),
             state: getProgressState(progressMap.text)
         },
         word: {
             course: PRACTICE_CATEGORY_COURSES.word,
-            next: wordLocked ? 'ローマ字テスト後' : getProgressNextLabel(progressMap.word, '教材なし', progressMap.word.nextTitle),
+            next: wordLocked ? 'ローマ字テストのあと' : getProgressNextLabel(progressMap.word, 'やるものなし', progressMap.word.nextTitle),
             state: wordLocked ? 'locked' : getProgressState(progressMap.word)
         },
         vision: {
             course: PRACTICE_CATEGORY_COURSES.vision,
-            next: getProgressNextLabel(progressMap.vision, 'ステージなし', progressMap.vision.nextTitle),
+            next: getProgressNextLabel(progressMap.vision, 'やるものなし', progressMap.vision.nextTitle),
             state: getProgressState(progressMap.vision)
         },
         minigame: {
             course: PRACTICE_CATEGORY_COURSES.minigame,
-            next: progressMap.minigame.done >= progressMap.minigame.total ? '記録あり' : 'スコアに挑戦',
+            next: progressMap.minigame.done >= progressMap.minigame.total ? 'きろくあり' : 'スコアにちょうせん',
             state: progressMap.minigame.done >= progressMap.minigame.total ? 'complete' : ''
         }
     };
@@ -362,8 +362,8 @@ function getProgressNextLabel(progress, emptyLabel, nextTitle) {
     const done = Math.max(0, Number(progress?.done || 0));
     const total = Math.max(0, Number(progress?.total || 0));
     if (total <= 0) return emptyLabel;
-    if (done >= total) return '完了';
-    return nextTitle ? `次: ${nextTitle}` : `未完了: ${total - done}件`;
+    if (done >= total) return 'できた';
+    return nextTitle ? `つぎ: ${nextTitle}` : `あと ${total - done}`;
 }
 
 function getProgressState(progress) {
@@ -392,7 +392,7 @@ function updatePracticeCategoryProgress(user, progressMap) {
             course.textContent = status.course || PRACTICE_CATEGORY_COURSES[key] || '';
         }
         if (label) {
-            label.textContent = total > 0 ? `${done}/${total}` : '未設定';
+            label.textContent = total > 0 ? `${done}/${total}` : 'まだ';
         }
         if (next) {
             next.textContent = status.next || '';

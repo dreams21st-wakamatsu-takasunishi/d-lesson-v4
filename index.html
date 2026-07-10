@@ -13,7 +13,7 @@
 </div>
 
 <div id="game-container">
-    <div id="ime-warning" style="display:none; position:fixed; top:80px; left:50%; transform:translateX(-50%); background:#f44336; color:#fff; padding:15px 30px; border-radius:15px; font-weight:bold; font-size:24px; z-index:9999; box-shadow:0 4px 10px rgba(0,0,0,0.3); animation: pulse 1s infinite;">⚠️ 「半角/全角」キーを押して、日本語入力をオフにしてね！</div>
+    <div id="ime-warning" style="display:none; position:fixed; top:80px; left:50%; transform:translateX(-50%); background:#f44336; color:#fff; padding:15px 30px; border-radius:15px; font-weight:bold; font-size:24px; z-index:9999; box-shadow:0 4px 10px rgba(0,0,0,0.3); animation: pulse 1s infinite;">⚠️ 「半角/全角」キーをおして、にほんごをオフにしてね！</div>
     
     <!-- グローバルヘッダー -->
     <div id="global-header" style="display: none;">
@@ -24,7 +24,7 @@
         </div>
         <div id="header-center-tools">
             <div id="global-coin-display">💰 0</div>
-            <div id="role-mode-badge" title="先生確認モードでは児童データを保存しません" style="display:none; margin-left:8px; padding:5px 10px; border-radius:999px; background:#e0f2f1; border:2px solid #00796b; color:#00695c; font-size:13px; font-weight:bold; white-space:nowrap;">先生確認モード</div>
+            <div id="role-mode-badge" title="先生のかくにん中は児童データをほぞんしません" style="display:none; margin-left:8px; padding:5px 10px; border-radius:999px; background:#e0f2f1; border:2px solid #00796b; color:#00695c; font-size:13px; font-weight:bold; white-space:nowrap;">先生のかくにん中</div>
         </div>
         <div id="header-right-tools">
             <div id="sync-status" title="保存状態（クラウド同期）">☁️</div>
@@ -646,12 +646,12 @@
     <div id="screen-category" class="screen">
         <div class="screen-content home-screen-content">
             <h2 id="welcome-msg">ようこそ</h2>
-            <div id="readonly-mode-notice" style="display:none; width:90%; max-width:800px; margin:0 0 12px; padding:10px 14px; border:2px solid #00796b; border-radius:8px; background:#e0f2f1; color:#004d40; font-weight:bold; text-align:center;">先生確認モード：練習結果・コイン・進捗は保存されません</div>
+            <div id="readonly-mode-notice" style="display:none; width:90%; max-width:800px; margin:0 0 12px; padding:10px 14px; border:2px solid #00796b; border-radius:8px; background:#e0f2f1; color:#004d40; font-weight:bold; text-align:center;">先生のかくにん中：れんしゅう・コイン・すすみぐあいはほぞんされません</div>
 
             <div class="home-layout-grid">
                 <section id="home-dashboard" class="home-panel home-progress-panel">
                     <div class="home-panel-head">
-                        <span>進捗状況</span>
+                        <span>すすみぐあい</span>
                     </div>
                     <div class="home-progress-row">
                         <div class="home-progress-label">
@@ -678,7 +678,7 @@
 
                 <section class="home-panel home-next-panel">
                     <div class="home-panel-head">
-                        <span>現在地</span>
+                        <span>つぎにやること</span>
                     </div>
                     <div id="home-current-path" class="home-current-path"></div>
                     <div id="home-next-action-list" class="home-next-action-list"></div>
@@ -694,13 +694,13 @@
                     </button>
                     <button class="home-main-action home-action-free" onclick="goToFreeTimeMenu()" tabindex="0">
                         <span class="home-action-icon">🌐</span>
-                        <span class="home-action-title">自由時間</span>
+                        <span class="home-action-title">じゆうじかん</span>
                         <small>YouTube・Pokiをひらく</small>
                     </button>
                     <button class="home-main-action home-action-mypage" onclick="goToRecords()" tabindex="0">
                         <span class="home-action-icon">🏆</span>
                         <span class="home-action-title">マイページ</span>
-                        <small>記録・賞状をみる</small>
+                        <small>きろく・しょうじょうをみる</small>
                     </button>
                     <button class="home-main-action home-action-logout" onclick="handleGlobalLogout()" tabindex="0">
                         <span class="home-action-icon">🚪</span>
@@ -727,7 +727,7 @@
             <div id="practice-category-grid" class="practice-category-grid">
                 <button class="practice-category-card practice-card-mouse" id="cat-mouse" onclick="goToMouseMenu()">
                     <span class="practice-category-icon">🖱️</span>
-                    <span class="practice-category-course" id="cat-mouse-course">基礎操作</span>
+                    <span class="practice-category-course" id="cat-mouse-course">マウス</span>
                     <strong>マウスれんしゅう</strong>
                     <small>クリック・ドラッグ・スクロール</small>
                     <span class="practice-category-progress" id="cat-mouse-progress">0/7</span>
@@ -736,27 +736,27 @@
                 </button>
                 <button class="practice-category-card practice-card-keyboard" id="cat-keyboard" onclick="goToKeyboardCategory()">
                     <span class="practice-category-icon">⌨️</span>
-                    <span class="practice-category-course" id="cat-keyboard-course">文字入力</span>
+                    <span class="practice-category-course" id="cat-keyboard-course">もじをうつ</span>
                     <strong>キーボードれんしゅう</strong>
-                    <small>キーの位置・文字入力・苦手特訓</small>
+                    <small>キーのばしょ・にがて</small>
                     <span class="practice-category-progress" id="cat-keyboard-progress">0%</span>
                     <span class="practice-category-next" id="cat-keyboard-next">次: ABC 1</span>
                     <span class="practice-category-meter"><span id="cat-keyboard-meter"></span></span>
                 </button>
                 <button class="practice-category-card practice-card-text" id="cat-text" onclick="goToTextMenu()">
                     <span class="practice-category-icon">📝</span>
-                    <span class="practice-category-course" id="cat-text-course">実用入力</span>
-                    <strong>文章入力れんしゅう</strong>
-                    <small>文章を読んで、正しく入力</small>
+                    <span class="practice-category-course" id="cat-text-course">ぶんしょう</span>
+                    <strong>ぶんしょうをうつ</strong>
+                    <small>おてほんをみて、ただしくうつ</small>
                     <span class="practice-category-progress" id="cat-text-progress">0/0</span>
                     <span class="practice-category-next" id="cat-text-next">課題なし</span>
                     <span class="practice-category-meter"><span id="cat-text-meter"></span></span>
                 </button>
                 <button class="practice-category-card practice-card-word" id="cat-word" onclick="goToWordMenu()">
                     <span class="practice-category-icon">📘</span>
-                    <span class="practice-category-course" id="cat-word-course">実用入力</span>
+                    <span class="practice-category-course" id="cat-word-course">Word</span>
                     <strong>Wordれんしゅう</strong>
-                    <small>教材PDFとWord操作</small>
+                    <small>PDFとWordをつかう</small>
                     <span class="practice-category-progress" id="cat-word-progress">0/0</span>
                     <span class="practice-category-next" id="cat-word-next">ローマ字テスト後</span>
                     <span class="practice-category-meter"><span id="cat-word-meter"></span></span>
@@ -772,11 +772,11 @@
                 </button>
                 <button class="practice-category-card practice-card-minigame" id="cat-minigame" onclick="goToMinigameMenu()">
                     <span class="practice-category-icon">🎮</span>
-                    <span class="practice-category-course" id="cat-minigame-course">応用</span>
+                    <span class="practice-category-course" id="cat-minigame-course">あそび</span>
                     <strong>タイピングゲーム</strong>
-                    <small>スコア・ランキングに挑戦</small>
+                    <small>スコア・ランキングにちょうせん</small>
                     <span class="practice-category-progress" id="cat-minigame-progress">0/2</span>
-                    <span class="practice-category-next" id="cat-minigame-next">スコアに挑戦</span>
+                    <span class="practice-category-next" id="cat-minigame-next">スコアにちょうせん</span>
                     <span class="practice-category-meter"><span id="cat-minigame-meter"></span></span>
                 </button>
             </div>
@@ -791,7 +791,7 @@
                 <div>
                     <span class="keyboard-category-kicker">キーボード</span>
                     <h2>キーボードのれんしゅう</h2>
-                    <p>今の力に合わせて、練習の入口をえらぼう。</p>
+                    <p>いまの力にあわせて、れんしゅうをえらぼう。</p>
                 </div>
                 <div class="keyboard-category-guide">
                     <span>おすすめ</span>
@@ -811,29 +811,29 @@
                         <span class="keyboard-category-step">①</span>
                         <span class="keyboard-category-icon">🅰️</span>
                         <strong>きほんれんしゅう</strong>
-                        <small>キーの場所を覚える</small>
-                        <em>ホームポジションから数字まで</em>
+                        <small>キーのばしょをおぼえる</small>
+                        <em>ホームポジションからすうじまで</em>
                     </button>
                     <button class="keyboard-category-card keyboard-card-blind" onclick="goToKeyboardMenu('blind')">
                         <span class="keyboard-category-step">②</span>
                         <span class="keyboard-category-icon">🙈</span>
                         <strong>タッチタイピング</strong>
                         <small>見ないでうつ</small>
-                        <em>手の位置だけで入力する練習</em>
+                        <em>手のいちだけでうつ</em>
                     </button>
                     <button class="keyboard-category-card keyboard-card-hiragana" onclick="goToKeyboardMenu('hiragana')">
                         <span class="keyboard-category-step">③</span>
                         <span class="keyboard-category-icon">あ</span>
                         <strong>ひらがなれんしゅう</strong>
                         <small>ローマ字でかなをうつ</small>
-                        <em>かな入力へつなげる練習</em>
+                        <em>かなをうつ前のれんしゅう</em>
                     </button>
                     <button class="keyboard-category-card keyboard-card-word" onclick="goToKeyboardMenu('word')">
                         <span class="keyboard-category-step">④</span>
                         <span class="keyboard-category-icon">📝</span>
                         <strong>ことばのれんしゅう</strong>
-                        <small>単語や短文をうつ</small>
-                        <em>文章入力の前のステップ</em>
+                        <small>ことばやみじかいぶんをうつ</small>
+                        <em>ぶんしょうをうつ前のれんしゅう</em>
                     </button>
                 </div>
                 <button id="keyboard-weak-training-card" class="keyboard-category-card keyboard-card-weak" onclick="goToWeakTraining()">
@@ -841,7 +841,7 @@
                     <span class="keyboard-category-icon">🔥</span>
                     <strong>にがて とっくん</strong>
                     <small>よくまちがえるキーを練習</small>
-                    <em>記録から自動で選びます</em>
+                        <em>きろくからえらびます</em>
                 </button>
             </div>
         </div>
@@ -869,7 +869,7 @@
                 <div class="minigame-sub-actions">
                     <button class="minigame-ranking-button" onclick="openTypingRankingPage('meteor')">
                         <span class="minigame-sub-icon">🏅</span>
-                        <span class="minigame-sub-main">ランキングを見る</span>
+                        <span class="minigame-sub-main">ランキングをみる</span>
                         <span class="minigame-sub-note">メテオ / Dチャレンジ</span>
                     </button>
                     <div class="minigame-external-actions">
@@ -894,7 +894,7 @@
     <div id="screen-typing-ranking" class="screen">
         <div class="screen-content typing-ranking-page">
             <h2>タイピングランキング</h2>
-            <p>クラスの上位記録を、実名を出さずに確認できます。</p>
+            <p>みんなのきろくを、名前を出さずにみられます。</p>
             <div class="typing-ranking-tabs">
                 <button class="btn-primary typing-ranking-tab" data-ranking-mode="meteor" onclick="openTypingRankingPage('meteor')">メテオ</button>
                 <button class="btn-primary typing-ranking-tab" data-ranking-mode="d_challenge" onclick="openTypingRankingPage('d_challenge')">Dチャレンジ</button>
@@ -909,7 +909,7 @@
     <div id="screen-free-time-menu" class="screen">
         <div class="screen-content free-time-page">
             <h2>じゆうじかん</h2>
-            <p>外部サイトを開いた時間と閉じた時間を記録します。</p>
+            <p>ひらいた時間と、とじた時間をきろくします。</p>
             <div class="free-time-menu-layout">
                 <button class="free-time-site-button free-time-rhythm-button" onclick="startMinigame('rhythm')">
                     <span class="minigame-sub-icon">♪</span>
@@ -919,12 +919,12 @@
                 <button class="free-time-site-button" onclick="openFreeTimeSite('youtube')">
                     <span class="minigame-sub-icon">▶</span>
                     <span class="minigame-sub-main">YouTube</span>
-                    <span class="minigame-sub-note">開始・終了を記録</span>
+                    <span class="minigame-sub-note">はじめ・おわりをきろく</span>
                 </button>
                 <button class="free-time-site-button" onclick="openFreeTimeSite('poki')">
                     <span class="minigame-sub-icon">P</span>
                     <span class="minigame-sub-main">Poki</span>
-                    <span class="minigame-sub-note">開始・終了を記録</span>
+                    <span class="minigame-sub-note">はじめ・おわりをきろく</span>
                 </button>
             </div>
         </div>
@@ -952,10 +952,10 @@
     <!-- 5. キーボードメニュー -->
     <div id="screen-keyboard-menu" class="screen">
         <h2 id="kb-menu-title" style="margin-top: 10px; margin-bottom: 0;">キーボードのれんしゅう</h2>
-        <div id="kb-chapter-container" style="display:flex; flex-wrap:wrap; gap:20px; justify-content:center; max-width:1000px; margin-top:20px;"></div>
-        <div id="kb-stage-container" style="display:none; flex-direction:column; align-items:center; width:100%; max-width:1000px; flex:1; min-height:0;">
+        <div id="kb-chapter-container" class="screen-fade-panel" style="display:grid; flex-wrap:wrap; gap:20px; justify-content:center; max-width:1000px; margin-top:20px;"></div>
+        <div id="kb-stage-container" class="screen-fade-panel" style="display:none; flex-direction:column; align-items:center; width:100%; max-width:1000px; flex:1; min-height:0;">
             <div style="width:100%; display:flex; justify-content:flex-start; margin-bottom:10px;">
-                <button class="btn-secondary" onclick="backToKbChapter()" tabindex="0">⬅ 章をえらびなおす</button>
+                <button class="btn-secondary" onclick="backToKbChapter()" tabindex="0">⬅ れんしゅうをえらびなおす</button>
             </div>
             <h3 id="kb-stage-title" style="margin-top:0;"></h3>
             <div id="kb-stage-guide" class="kb-stage-guide"></div>
@@ -968,7 +968,7 @@
     <!-- 文章入力メニュー -->
     <div id="screen-text-menu" class="screen">
         <div style="width: 100%; display: flex; justify-content: center; position: relative;">
-            <h2 style="margin-top: 10px; margin-bottom: 0;">文章入力れんしゅう</h2>
+            <h2 style="margin-top: 10px; margin-bottom: 0;">ぶんしょうをうつ</h2>
             <button class="sys-btn" style="position: absolute; right: 20px; top: 10px; font-size: 20px; background: #fff;" onclick="document.getElementById('text-reward-hint-modal').style.display='flex';" title="コインのヒント">💡</button>
         </div>
         <p>先生が作った課題をえらんでね</p>
@@ -1086,7 +1086,7 @@
             </div>
             <div id="text-game-container">
                 <div id="ref-text-box"></div>
-                <textarea id="type-text-box" placeholder="ここに入力してね" spellcheck="false" onpaste="return false;" ondrop="return false;"></textarea>
+                <textarea id="type-text-box" placeholder="ここにうってね" spellcheck="false" onpaste="return false;" ondrop="return false;"></textarea>
             </div>
         </div>
         <div style="display:flex; gap: 20px; margin-bottom: 5px;" class="bottom-back-btn">
@@ -1101,7 +1101,7 @@
         <div id="text-result-overlay" style="position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.95); display:none; flex-direction:column; justify-content:center; align-items:center; z-index:200;">
             <div style="font-size:60px; color:#0277bd; font-weight:bold; margin-bottom:20px;">けっか はっぴょう！</div>
             <div id="text-result-details" style="font-size:28px; color:#333; text-align:left; background:#e1f5fe; padding:20px 40px; border-radius:15px; border:3px solid #81d4fa; line-height: 1.8; margin-bottom: 30px;">
-                総字数： --- 文字<br>ミス数： --- 箇所<br>純字数： --- 文字 (スコア)
+                うった数： --- 文字<br>ミス： --- か所<br>スコア： --- 文字
             </div>
             <button class="btn-primary" style="font-size: 30px; padding: 15px 40px;" onclick="closeTextResult()">もどる</button>
         </div>
@@ -1144,13 +1144,13 @@
                     <span style="font-size:40px;">🎟️</span><span style="font-size:18px; font-weight:bold; margin-top:5px;">いいね・ガチャ</span>
                 </button>
                 <button class="category-btn records-menu-card" onclick="showRecordSection('rec-theme')" style="background-color:#9C27B0;">
-                    <span style="font-size:40px;">🎨</span><span style="font-size:18px; font-weight:bold; margin-top:5px;">きせかえ・演出</span>
+                    <span style="font-size:40px;">🎨</span><span style="font-size:18px; font-weight:bold; margin-top:5px;">きせかえ・えんしゅつ</span>
                 </button>
                 <button class="category-btn records-menu-card" onclick="showRecordSection('rec-learning')" style="background-color:#E91E63;">
-                    <span style="font-size:40px;">📊</span><span style="font-size:18px; font-weight:bold; margin-top:5px;">せいせき・取り組み</span>
+                    <span style="font-size:40px;">📊</span><span style="font-size:18px; font-weight:bold; margin-top:5px;">せいせき・とりくみ</span>
                 </button>
                 <button class="category-btn records-menu-card" onclick="showRecordSection('rec-achievement')" style="background-color:#4CAF50;">
-                    <span style="font-size:40px;">🏅</span><span style="font-size:18px; font-weight:bold; margin-top:5px;">賞状印刷</span>
+                    <span style="font-size:40px;">🏅</span><span style="font-size:18px; font-weight:bold; margin-top:5px;">しょうじょう</span>
                 </button>
             </div>
 
@@ -1263,9 +1263,9 @@
 
     <div id="admin-effect-modal" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:500; flex-direction:column; justify-content:center; align-items:center;">
         <div style="background:#fff; padding:30px; border-radius:15px; width:500px; text-align:center;">
-            <h3>新しい演出をつくる</h3>
-            <p style="font-size:18px; color:#666;">好きな絵文字を３つまで入力してね</p>
-            <input type="text" id="ce-name" placeholder="演出の名前 (例: ピザパーティ)" style="width:80%; font-size:20px; padding:10px; margin-bottom:20px; text-align:center;"><br>
+            <h3>あたらしいえんしゅつをつくる</h3>
+            <p style="font-size:18px; color:#666;">すきなえもじを3つまでいれてね</p>
+            <input type="text" id="ce-name" placeholder="えんしゅつのなまえ (例: ピザパーティ)" style="width:80%; font-size:20px; padding:10px; margin-bottom:20px; text-align:center;"><br>
             <div style="display:flex; justify-content:center; gap:20px; margin-bottom:20px;">
                 <input type="text" id="ce-emo1" value="🍕" style="width:60px; height:60px; text-align:center; font-size:30px; border-radius:10px; border:2px solid #ccc;"> 
                 <input type="text" id="ce-emo2" value="🍟" style="width:60px; height:60px; text-align:center; font-size:30px; border-radius:10px; border:2px solid #ccc;"> 
@@ -1274,11 +1274,11 @@
             <div style="margin-bottom: 20px; text-align: left; padding-left: 30px;">
                 <label style="font-weight:bold; cursor:pointer; font-size:16px; color:#E91E63;">
                     <input type="checkbox" id="ce-present" style="width:20px; height:20px; vertical-align:middle;">
-                    🎁 ガチャに入れず、全員にプレゼントする
+                    🎁 ガチャに入れず、みんなにプレゼントする
                 </label>
             </div>
             <div style="display:flex; justify-content:center; gap:20px; margin-top:10px;">
-                <button class="btn-primary" onclick="saveCustomEffect()">決定！</button>
+                <button class="btn-primary" onclick="saveCustomEffect()">きめる！</button>
                 <button class="btn-secondary" onclick="closeEffectCreator()">やめる</button>
             </div>
         </div>
@@ -1286,13 +1286,13 @@
 
     <div id="admin-custom-manage-modal" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:500; flex-direction:column; justify-content:center; align-items:center;">
         <div style="background:#fff; padding:30px; border-radius:15px; width:500px; max-height:80vh; overflow-y:auto; text-align:center;">
-            <h3 style="margin-top:0; color:#d32f2f;">作ったテーマ・演出の削除</h3>
+            <h3 style="margin-top:0; color:#d32f2f;">つくったテーマ・えんしゅつをけす</h3>
             <div style="text-align:left; margin-bottom: 20px;">
                 <h4 style="border-bottom: 2px solid #ccc; padding-bottom: 5px;">🎨 カスタムテーマ</h4>
                 <ul id="manage-theme-list" style="list-style:none; padding:0; margin:0; font-size:18px;"></ul>
             </div>
             <div style="text-align:left; margin-bottom: 20px;">
-                <h4 style="border-bottom: 2px solid #ccc; padding-bottom: 5px;">🎉 カスタム演出</h4>
+                <h4 style="border-bottom: 2px solid #ccc; padding-bottom: 5px;">🎉 カスタムえんしゅつ</h4>
                 <ul id="manage-effect-list" style="list-style:none; padding:0; margin:0; font-size:18px;"></ul>
             </div>
             <div style="display:flex; justify-content:center; gap:20px; margin-top:30px;">
@@ -1306,7 +1306,7 @@
         <div style="background:#fff; padding:30px; border-radius:15px; width:450px; text-align:center; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
             <h3 style="margin-top:0; color:#FF9800;">💰 もらえるコインのめやす</h3>
             <table style="width:100%; border-collapse:collapse; font-size:18px; margin-bottom:20px;">
-                <tr style="background:#f2f2f2;"><th style="padding:8px; border:1px solid #ccc;">純字数 (スコア)</th><th style="padding:8px; border:1px solid #ccc;">コイン</th></tr>
+                <tr style="background:#f2f2f2;"><th style="padding:8px; border:1px solid #ccc;">スコア</th><th style="padding:8px; border:1px solid #ccc;">コイン</th></tr>
                 <tr><td style="padding:8px; border:1px solid #ccc;">2001文字〜</td><td style="padding:8px; border:1px solid #ccc; color:#E91E63; font-weight:bold;">15000</td></tr>
                 <tr><td style="padding:8px; border:1px solid #ccc;">1501文字〜</td><td style="padding:8px; border:1px solid #ccc; color:#E91E63; font-weight:bold;">10000</td></tr>
                 <tr><td style="padding:8px; border:1px solid #ccc;">1001文字〜</td><td style="padding:8px; border:1px solid #ccc; color:#E91E63; font-weight:bold;">8500</td></tr>

@@ -31,7 +31,7 @@ function keepThemeEffectPanelOpen(wasOpen) {
 
 export function drawGacha(times = 1, isRareGuaranteed = false) {
     const u = users[currentUser]; const COST = isRareGuaranteed ? 500 : 100 * times;
-    if (!canWriteCurrentUserRow()) return showCustomAlert('先生確認モードでは、ガチャ結果は保存されません。生徒本人または管理者で操作してください。');
+    if (!canWriteCurrentUserRow()) return showCustomAlert('先生のかくにん中は、ガチャのけっかはほぞんされません。児童本人または管理者で操作してください。');
     
     if (u.coins < COST) return showCustomAlert(`コインがたりないよ！\nあと ${COST - u.coins} コイン ひつようです。`);
     
@@ -100,7 +100,7 @@ export function useTicket(idx) {
         return;
     }
     if (!canWriteCurrentUserRow()) {
-        showCustomAlert('先生確認モードでは、いいねポイント使用は保存されません。児童本人の画面で操作してください。');
+        showCustomAlert('先生のかくにん中は、いいねポイントの使用はほぞんされません。児童本人の画面で操作してください。');
         return;
     }
 

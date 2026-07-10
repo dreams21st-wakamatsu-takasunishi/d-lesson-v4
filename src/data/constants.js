@@ -13,14 +13,14 @@ export const VISION_STAGES =[
     { id: 'v10', title: 'ワイドスキャン', sub: 'ひろいはんいをすばやくみよう', icon: '↔️', color: '#00897B' },
     { id: 'v11', title: 'まわりキャッチ', sub: 'まんなかをみながらまわりにきづこう', icon: '✚', color: '#3949AB' },
     { id: 'v12', title: 'かたちあわせ', sub: 'いろとかたちをみくらべよう', icon: '◆', color: '#D81B60' },
-    { id: 'v13', title: 'ダブルチェック', sub: '番号と形を見くらべよう', icon: '✅', color: '#6D4C41' },
-    { id: 'v14', title: '左右チェック', sub: '左右を見くらべて判断しよう', icon: '↔️', color: '#0277BD' },
+    { id: 'v13', title: 'ダブルチェック', sub: 'ばんごうとかたちをみくらべよう', icon: '✅', color: '#6D4C41' },
+    { id: 'v14', title: '左右チェック', sub: 'みぎ・ひだりをみくらべよう', icon: '↔️', color: '#0277BD' },
     { id: 'v15', title: 'カラーキャッチ', sub: 'いろとかたちをすばやくえらぼう', icon: '🎨', color: '#2E7D32' },
-    { id: 'v16', title: 'せんたどり', sub: 'つながったゴールを目でたどろう', icon: '➿', color: '#1565C0' },
-    { id: 'v17', title: 'パターンきおく', sub: '色とかたちのならびをおぼえよう', icon: '🧩', color: '#6A1B9A' },
-    { id: 'v18', title: 'かげあわせ', sub: 'かげと同じ形をえらぼう', icon: '🌗', color: '#455A64' },
-    { id: 'v19', title: 'ばしょきおく', sub: '光った場所をおぼえよう', icon: '📍', color: '#00838F' },
-    { id: 'v20', title: 'かくれたかたち', sub: '一部だけ見える形を考えよう', icon: '🧩', color: '#5D4037' }
+    { id: 'v16', title: 'せんたどり', sub: 'ゴールまで、めでたどろう', icon: '➿', color: '#1565C0' },
+    { id: 'v17', title: 'パターンきおく', sub: 'いろとかたちのならびをおぼえよう', icon: '🧩', color: '#6A1B9A' },
+    { id: 'v18', title: 'かげあわせ', sub: 'かげとおなじかたちをえらぼう', icon: '🌗', color: '#455A64' },
+    { id: 'v19', title: 'ばしょきおく', sub: 'ひかったばしょをおぼえよう', icon: '📍', color: '#00838F' },
+    { id: 'v20', title: 'かくれたかたち', sub: 'すこしだけみえるかたちをかんがえよう', icon: '🧩', color: '#5D4037' }
 ];
 
 export const KANA_MAP = {
@@ -99,19 +99,19 @@ export const ALPHABET_READING_NAMES = {
 };
 
 export const KEYBOARD_STAGES =[
-    {id:1001,keys:['F','J','SPACE'],title:'人差し指(ホーム)'},{id:1002,keys:['D','K','SPACE'],title:'中指(ホーム)'},{id:1003,keys:['S','L','SPACE'],title:'薬指(ホーム)'},{id:1004,keys:['A',';','SPACE'],title:'小指(ホーム)'},{id:1005,keys:['G','H','SPACE'],title:'人差し指(うち)'},
-    {id:1006,keys:['R','U','SPACE'],title:'人差し指(うえ)'},{id:1007,keys:['E','I','SPACE'],title:'中指(うえ)'},{id:1008,keys:['W','O','SPACE'],title:'薬指(うえ)'},{id:1009,keys:['Q','P','SPACE'],title:'小指(うえ)'},{id:1010,keys:['T','Y','SPACE'],title:'人差し指(遠うえ)'},
-    {id:1011,keys:['V','M','SPACE'],title:'人差し指(した)'},{id:1012,keys:['C',',','SPACE'],title:'中指(した)'},{id:1013,keys:['X','.','SPACE'],title:'薬指(した)'},{id:1014,keys:['Z','/','SPACE'],title:'小指(した)'},{id:1015,keys:['B','N','SPACE'],title:'人差し指(遠した)'},
-    {id:1016,keys:['4','7','SPACE'],title:'人差し指(数)'},{id:1017,keys:['3','8','SPACE'],title:'中指(数)'},{id:1018,keys:['2','9','SPACE'],title:'薬指(数)'},{id:1019,keys:['1','0','SPACE'],title:'小指(数)'},{id:1020,keys:['5','6','-','SPACE'],title:'人差/小(遠数)'}
+    {id:1001,keys:['F','J','SPACE'],title:'ひとさしゆび(ホーム)'},{id:1002,keys:['D','K','SPACE'],title:'なかゆび(ホーム)'},{id:1003,keys:['S','L','SPACE'],title:'くすりゆび(ホーム)'},{id:1004,keys:['A',';','SPACE'],title:'こゆび(ホーム)'},{id:1005,keys:['G','H','SPACE'],title:'ひとさしゆび(うち)'},
+    {id:1006,keys:['R','U','SPACE'],title:'ひとさしゆび(うえ)'},{id:1007,keys:['E','I','SPACE'],title:'なかゆび(うえ)'},{id:1008,keys:['W','O','SPACE'],title:'くすりゆび(うえ)'},{id:1009,keys:['Q','P','SPACE'],title:'こゆび(うえ)'},{id:1010,keys:['T','Y','SPACE'],title:'ひとさしゆび(とおいうえ)'},
+    {id:1011,keys:['V','M','SPACE'],title:'ひとさしゆび(した)'},{id:1012,keys:['C',',','SPACE'],title:'なかゆび(した)'},{id:1013,keys:['X','.','SPACE'],title:'くすりゆび(した)'},{id:1014,keys:['Z','/','SPACE'],title:'こゆび(した)'},{id:1015,keys:['B','N','SPACE'],title:'ひとさしゆび(とおいした)'},
+    {id:1016,keys:['4','7','SPACE'],title:'ひとさしゆび(すうじ)'},{id:1017,keys:['3','8','SPACE'],title:'なかゆび(すうじ)'},{id:1018,keys:['2','9','SPACE'],title:'くすりゆび(すうじ)'},{id:1019,keys:['1','0','SPACE'],title:'こゆび(すうじ)'},{id:1020,keys:['5','6','-','SPACE'],title:'ひとさし/こゆび(とおいすうじ)'}
 ];
 export const BLIND_STAGES =[
-    {id:2001,title:'ホーム(練)',ref:'home',type:'practice'},{id:2101,title:'ホーム(試)',ref:'home',type:'exam'},
-    {id:2002,title:'上段(練)',ref:'top',type:'practice'},{id:2102,title:'上段(試)',ref:'top',type:'exam'},
-    {id:2003,title:'下段(練)',ref:'bottom',type:'practice'},{id:2103,title:'下段(試)',ref:'bottom',type:'exam'},
-    {id:2004,title:'数字(練)',ref:'number',type:'practice'},{id:2104,title:'数字(試)',ref:'number',type:'exam'}
+    {id:2001,title:'ホーム(れんしゅう)',ref:'home',type:'practice'},{id:2101,title:'ホーム(テスト)',ref:'home',type:'exam'},
+    {id:2002,title:'うえのキー(れんしゅう)',ref:'top',type:'practice'},{id:2102,title:'うえのキー(テスト)',ref:'top',type:'exam'},
+    {id:2003,title:'したのキー(れんしゅう)',ref:'bottom',type:'practice'},{id:2103,title:'したのキー(テスト)',ref:'bottom',type:'exam'},
+    {id:2004,title:'すうじキー(れんしゅう)',ref:'number',type:'practice'},{id:2104,title:'すうじキー(テスト)',ref:'number',type:'exam'}
 ];
 export const BRIDGE_STAGES =[
-    {id:1051,title:'ホーム総復習',keys:[],refChapter:'home'},{id:1052,title:'上段総復習',keys:[],refChapter:'top'},{id:1053,title:'下段総復習',keys:[],refChapter:'bottom'},{id:1054,title:'数字総復習',keys:[],refChapter:'number'}
+    {id:1051,title:'ホームふくしゅう',keys:[],refChapter:'home'},{id:1052,title:'うえのキーふくしゅう',keys:[],refChapter:'top'},{id:1053,title:'したのキーふくしゅう',keys:[],refChapter:'bottom'},{id:1054,title:'すうじキーふくしゅう',keys:[],refChapter:'number'}
 ];
 export const HIRAGANA_DATA =[
     {id:3001,title:'あ行',chars:[{h:'あ',r:['A']},{h:'い',r:['I']},{h:'う',r:['U']},{h:'え',r:['E']},{h:'お',r:['O']}]},
@@ -155,33 +155,33 @@ export const WORD_DATA =[
     { id: 4014, title: 'くとうてん', chars:[{h:'おはよう、せんせい', r:['OHAYOU,SENSEI','OHAYOU,SENNSEI']},{h:'きょうは、はれです', r:['KYOUHA,HAREDESU']},{h:'まず、てをあらう', r:['MAZU,TEWOARAU']},{h:'つぎに、じゅんびする', r:['TUGINI,JUNBISURU','TUGINI,ZYUNBISURU','TSUGINI,JUNBISURU','TSUGINI,ZYUNBISURU']}]},
     { id: 4015, title: 'ながいことば', chars:[{h:'あさのじゅんび', r:['ASANOJUNBI','ASANOZYUNBI']},{h:'きょうしつそうじ', r:['KYOUSHITUSOUJI','KYOUSITUSOUZI']},{h:'れんしゅうもんだい', r:['RENSHUUMONDAI','RENSYUUMONDAI','RENNSHUUMONNDAI','RENNSYUUMONNDAI']},{h:'やさしいきもち', r:['YASASHIIKIMOCHI','YASASIIKIMOTI']}]},
     { id: 4016, title: 'カタカナことば', chars:[{h:'ゲーム', r:['GE-MU']},{h:'パソコン', r:['PASOKONN']},{h:'メール', r:['ME-RU']},{h:'キーボード', r:['KI-BO-DO']},{h:'マウス', r:['MAUSU']},{h:'プリント', r:['PURINTO','PURINNTO']}]},
-    { id: 4017, title: 'みじかい文', chars:[{h:'あさ、てをあらう', r:['ASA,TEWOARAU']},{h:'きょう、ほんをよむ', r:['KYOU,HONNWOYOMU']},{h:'つぎ、じゅんびする', r:['TUGI,JUNNBISURU','TSUGI,JUNNBISURU','TUGI,ZYUNNBISURU','TSUGI,ZYUNNBISURU']},{h:'みんな、ならぶ', r:['MINNNA,NARABU']},{h:'まず、なまえをかく', r:['MAZU,NAMAEWOKAKU']}]},
-    { id: 4018, title: '教室の文', chars:[{h:'せんせい、できました', r:['SENSEI,DEKIMASITA','SENNSEI,DEKIMASITA','SENSEI,DEKIMASHITA','SENNSEI,DEKIMASHITA']},{h:'きょうしつ、そうじします', r:['KYOUSITU,SOUJISIMASU','KYOUSHITU,SOUJISHIMASU','KYOUSITSU,SOUJISHIMASU']},{h:'プリント、くばります', r:['PURINTO,KUBARIMASU','PURINNTO,KUBARIMASU']},{h:'チャイム、なりました', r:['CHAIMU,NARIMASITA','CHAIMU,NARIMASHITA','TYAIMU,NARIMASITA','TYAIMU,NARIMASHITA']}]},
-    { id: 4019, title: 'パソコンの文', chars:[{h:'マウス、うごかします', r:['MAUSU,UGOKASIMASU','MAUSU,UGOKASHIMASU']},{h:'キーを、ゆっくりおす', r:['KI-WO,YUKKURIOSU']},{h:'もじを、なおします', r:['MOJIWO,NAOSIMASU','MOZIWO,NAOSIMASU','MOJIWO,NAOSHIMASU','MOZIWO,NAOSHIMASU']},{h:'ファイル、ひらきます', r:['FAIRU,HIRAKIMASU']}]},
-    { id: 4020, title: '生活の文', chars:[{h:'あいさつ、だいじです', r:['AISATU,DAIJIDESU','AISATSU,DAIJIDESU']},{h:'みずを、のみます', r:['MIZUWO,NOMIMASU']},{h:'ていねいに、かきます', r:['TEINEINI,KAKIMASU']},{h:'やさしく、はなします', r:['YASASIKU,HANASIMASU','YASASHIKU,HANASHIMASU','YASASIKU,HANASHIMASU','YASASHIKU,HANASIMASU']}]},
-    { id: 4021, title: 'ていねいな文', chars:[{h:'よろしく、おねがいします', r:['YOROSIKU,ONEGAISIMASU','YOROSHIKU,ONEGAISHIMASU','YOROSHIKU,ONEGAISIMASU','YOROSIKU,ONEGAISHIMASU']},{h:'ありがとうございます', r:['ARIGATOUGOZAIMASU']},{h:'もういちど、おねがいします', r:['MOUITIDO,ONEGAISIMASU','MOUICHIDO,ONEGAISHIMASU','MOUICHIDO,ONEGAISIMASU','MOUITIDO,ONEGAISHIMASU']},{h:'ゆっくり、かくにんします', r:['YUKKURI,KAKUNINNSIMASU','YUKKURI,KAKUNINNSHIMASU']}]},
-    { id: 4022, title: '操作の文', chars:[{h:'クリックして、ひらきます', r:['KURIKKUSITE,HIRAKIMASU','KURIKKUSHITE,HIRAKIMASU']},{h:'ドラッグして、うごかします', r:['DORAGGUSITE,UGOKASIMASU','DORAGGUSHITE,UGOKASHIMASU','DORAGGUSITE,UGOKASHIMASU','DORAGGUSHITE,UGOKASIMASU']},{h:'ファイルを、ほぞんします', r:['FAIRUWO,HOZONNSIMASU','FAIRUWO,HOZONNSHIMASU']},{h:'パスワードを、いれます', r:['PASUWA-DOWO,IREMASU']}]},
-    { id: 4023, title: '連絡の文', chars:[{h:'あした、プリントをもってくる', r:['ASITA,PURINTOWOMOTTEKURU','ASHITA,PURINNTOWOMOTTEKURU','ASHITA,PURINTOWOMOTTEKURU','ASITA,PURINNTOWOMOTTEKURU']},{h:'きょうは、れんしゅうします', r:['KYOUHA,RENNSYUUSIMASU','KYOUHA,RENNSHUUSHIMASU','KYOUHA,RENNSYUUSHIMASU','KYOUHA,RENNSHUUSIMASU']},{h:'つぎに、なまえをかきます', r:['TUGINI,NAMAEWOKAKIMASU','TSUGINI,NAMAEWOKAKIMASU']},{h:'おわったら、ほうこくします', r:['OWATTARA,HOUKOKUSIMASU','OWATTARA,HOUKOKUSHIMASU']}]},
-    { id: 4024, title: '記号の入力', chars:[{h:'A-1', r:['A-1']},{h:'B-2', r:['B-2']},{h:'1/2', r:['1/2']},{h:'3/4', r:['3/4']},{h:'A,B,C', r:['A,B,C']},{h:'NO.1', r:['NO.1']}]},
-    { id: 4025, title: '日付と番号', chars:[{h:'2026/05/15', r:['2026/05/15']},{h:'05/15', r:['05/15']},{h:'1-2-3', r:['1-2-3']},{h:'D-LESSON', r:['D-LESSON']},{h:'PAGE.10', r:['PAGE.10']}]},
-    { id: 4026, title: '実用メモ', chars:[{h:'ファイル1', r:['FAIRU1']},{h:'プリント2', r:['PURINTO2','PURINNTO2']},{h:'れんしゅう3', r:['RENNSHUU3','RENNSYUU3']},{h:'ページ4', r:['PE-JI4','PE-ZI4']},{h:'メモA-1', r:['MEMOA-1']}]},
-    { id: 4027, title: '番号入りの文', chars:[{h:'1ばんを、えらびます', r:['1BANNWO,ERABIMASU']},{h:'2ページを、ひらきます', r:['2PE-JIWO,HIRAKIMASU','2PE-ZIWO,HIRAKIMASU']},{h:'3こ、できました', r:['3KO,DEKIMASITA','3KO,DEKIMASHITA']},{h:'4ばんに、すすみます', r:['4BANNNI,SUSUMIMASU']}]},
-    { id: 4028, title: '記号入りの文', chars:[{h:'A-1を、みます', r:['A-1WO,MIMASU']},{h:'B-2を、なおします', r:['B-2WO,NAOSIMASU','B-2WO,NAOSHIMASU']},{h:'1/2まで、できました', r:['1/2MADE,DEKIMASITA','1/2MADE,DEKIMASHITA']},{h:'NO.1を、えらびます', r:['NO.1WO,ERABIMASU']}]},
-    { id: 4029, title: '報告の文', chars:[{h:'きょうは、3こできました。', r:['KYOUHA,3KODEKIMASITA.','KYOUHA,3KODEKIMASHITA.']},{h:'プリント2を、ひらきます。', r:['PURINTO2WO,HIRAKIMASU.','PURINNTO2WO,HIRAKIMASU.']},{h:'A-1まで、おわりました。', r:['A-1MADE,OWARIMASITA.','A-1MADE,OWARIMASHITA.']},{h:'ページ4を、かくにんします。', r:['PE-JI4WO,KAKUNINNSIMASU.','PE-ZI4WO,KAKUNINNSIMASU.']}]},
-    { id: 4030, title: '読点で区切る文', chars:[{h:'まず、1ばんを見ます。', r:['MAZU,1BANNWOMIMASU.']},{h:'つぎに、名前を書きます。', r:['TUGINI,NAMAEWOKAKIMASU.','TSUGINI,NAMAEWOKAKIMASU.']},{h:'さいごに、保存します。', r:['SAIGONI,HOZONNSIMASU.','SAIGONI,HOZONNSHIMASU.']},{h:'ゆっくり、確認します。', r:['YUKKURI,KAKUNINNSIMASU.','YUKKURI,KAKUNINNSHIMASU.']}]},
-    { id: 4031, title: '二つの文', chars:[{h:'ファイルを開きます。名前を見ます。', r:['FAIRUWOHIRAKIMASU.NAMAEWOMIMASU.']},{h:'1ばんを選びます。つぎへ進みます。', r:['1BANNWOERABIMASU.TUGIHESUSUMIMASU.','1BANNWOERABIMASU.TSUGIHESUSUMIMASU.']},{h:'まちがいを直します。もう一度見ます。', r:['MATIGAIWONAOSIMASU.MOUITIDOMIMASU.','MACHIGAIWONAOSHIMASU.MOUICHIDOMIMASU.','MACHIGAIWONAOSIMASU.MOUICHIDOMIMASU.']},{h:'できたら、先生に知らせます。', r:['DEKITARA,SENSEINISIRASEMASU.','DEKITARA,SENNSEINISIRASEMASU.','DEKITARA,SENSEINISHIRASEMASU.','DEKITARA,SENNSEINISHIRASEMASU.']}]},
-    { id: 4032, title: '短い説明文', chars:[{h:'上のボタンを押します。', r:['UENOBOTANNWOOSIMASU.','UENOBOTANNWOOSHIMASU.']},{h:'青いカードを選びます。', r:['AOIKA-DOWOERABIMASU.']},{h:'まちがえたら、やり直します。', r:['MATIGAETARA,YARINAOSIMASU.','MACHIGAETARA,YARINAOSHIMASU.','MACHIGAETARA,YARINAOSIMASU.']},{h:'終わったら、もどります。', r:['OWATTARA,MODORIMASU.']}]}
+    { id: 4017, title: 'みじかいぶん', chars:[{h:'あさ、てをあらう', r:['ASA,TEWOARAU']},{h:'きょう、ほんをよむ', r:['KYOU,HONNWOYOMU']},{h:'つぎ、じゅんびする', r:['TUGI,JUNNBISURU','TSUGI,JUNNBISURU','TUGI,ZYUNNBISURU','TSUGI,ZYUNNBISURU']},{h:'みんな、ならぶ', r:['MINNNA,NARABU']},{h:'まず、なまえをかく', r:['MAZU,NAMAEWOKAKU']}]},
+    { id: 4018, title: 'きょうしつのぶん', chars:[{h:'せんせい、できました', r:['SENSEI,DEKIMASITA','SENNSEI,DEKIMASITA','SENSEI,DEKIMASHITA','SENNSEI,DEKIMASHITA']},{h:'きょうしつ、そうじします', r:['KYOUSITU,SOUJISIMASU','KYOUSHITU,SOUJISHIMASU','KYOUSITSU,SOUJISHIMASU']},{h:'プリント、くばります', r:['PURINTO,KUBARIMASU','PURINNTO,KUBARIMASU']},{h:'チャイム、なりました', r:['CHAIMU,NARIMASITA','CHAIMU,NARIMASHITA','TYAIMU,NARIMASITA','TYAIMU,NARIMASHITA']}]},
+    { id: 4019, title: 'パソコンのぶん', chars:[{h:'マウス、うごかします', r:['MAUSU,UGOKASIMASU','MAUSU,UGOKASHIMASU']},{h:'キーを、ゆっくりおす', r:['KI-WO,YUKKURIOSU']},{h:'もじを、なおします', r:['MOJIWO,NAOSIMASU','MOZIWO,NAOSIMASU','MOJIWO,NAOSHIMASU','MOZIWO,NAOSHIMASU']},{h:'ファイル、ひらきます', r:['FAIRU,HIRAKIMASU']}]},
+    { id: 4020, title: 'くらしのぶん', chars:[{h:'あいさつ、だいじです', r:['AISATU,DAIJIDESU','AISATSU,DAIJIDESU']},{h:'みずを、のみます', r:['MIZUWO,NOMIMASU']},{h:'ていねいに、かきます', r:['TEINEINI,KAKIMASU']},{h:'やさしく、はなします', r:['YASASIKU,HANASIMASU','YASASHIKU,HANASHIMASU','YASASIKU,HANASHIMASU','YASASHIKU,HANASIMASU']}]},
+    { id: 4021, title: 'ていねいなぶん', chars:[{h:'よろしく、おねがいします', r:['YOROSIKU,ONEGAISIMASU','YOROSHIKU,ONEGAISHIMASU','YOROSHIKU,ONEGAISIMASU','YOROSIKU,ONEGAISHIMASU']},{h:'ありがとうございます', r:['ARIGATOUGOZAIMASU']},{h:'もういちど、おねがいします', r:['MOUITIDO,ONEGAISIMASU','MOUICHIDO,ONEGAISHIMASU','MOUICHIDO,ONEGAISIMASU','MOUITIDO,ONEGAISHIMASU']},{h:'ゆっくり、かくにんします', r:['YUKKURI,KAKUNINNSIMASU','YUKKURI,KAKUNINNSHIMASU']}]},
+    { id: 4022, title: 'そうさのぶん', chars:[{h:'クリックして、ひらきます', r:['KURIKKUSITE,HIRAKIMASU','KURIKKUSHITE,HIRAKIMASU']},{h:'ドラッグして、うごかします', r:['DORAGGUSITE,UGOKASIMASU','DORAGGUSHITE,UGOKASHIMASU','DORAGGUSITE,UGOKASHIMASU','DORAGGUSHITE,UGOKASIMASU']},{h:'ファイルを、ほぞんします', r:['FAIRUWO,HOZONNSIMASU','FAIRUWO,HOZONNSHIMASU']},{h:'パスワードを、いれます', r:['PASUWA-DOWO,IREMASU']}]},
+    { id: 4023, title: 'れんらくのぶん', chars:[{h:'あした、プリントをもってくる', r:['ASITA,PURINTOWOMOTTEKURU','ASHITA,PURINNTOWOMOTTEKURU','ASHITA,PURINTOWOMOTTEKURU','ASITA,PURINNTOWOMOTTEKURU']},{h:'きょうは、れんしゅうします', r:['KYOUHA,RENNSYUUSIMASU','KYOUHA,RENNSHUUSHIMASU','KYOUHA,RENNSYUUSHIMASU','KYOUHA,RENNSHUUSIMASU']},{h:'つぎに、なまえをかきます', r:['TUGINI,NAMAEWOKAKIMASU','TSUGINI,NAMAEWOKAKIMASU']},{h:'おわったら、ほうこくします', r:['OWATTARA,HOUKOKUSIMASU','OWATTARA,HOUKOKUSHIMASU']}]},
+    { id: 4024, title: 'きごうをうつ', chars:[{h:'A-1', r:['A-1']},{h:'B-2', r:['B-2']},{h:'1/2', r:['1/2']},{h:'3/4', r:['3/4']},{h:'A,B,C', r:['A,B,C']},{h:'NO.1', r:['NO.1']}]},
+    { id: 4025, title: 'ひづけとばんごう', chars:[{h:'2026/05/15', r:['2026/05/15']},{h:'05/15', r:['05/15']},{h:'1-2-3', r:['1-2-3']},{h:'D-LESSON', r:['D-LESSON']},{h:'PAGE.10', r:['PAGE.10']}]},
+    { id: 4026, title: 'メモをうつ', chars:[{h:'ファイル1', r:['FAIRU1']},{h:'プリント2', r:['PURINTO2','PURINNTO2']},{h:'れんしゅう3', r:['RENNSHUU3','RENNSYUU3']},{h:'ページ4', r:['PE-JI4','PE-ZI4']},{h:'メモA-1', r:['MEMOA-1']}]},
+    { id: 4027, title: 'ばんごう入りのぶん', chars:[{h:'1ばんを、えらびます', r:['1BANNWO,ERABIMASU']},{h:'2ページを、ひらきます', r:['2PE-JIWO,HIRAKIMASU','2PE-ZIWO,HIRAKIMASU']},{h:'3こ、できました', r:['3KO,DEKIMASITA','3KO,DEKIMASHITA']},{h:'4ばんに、すすみます', r:['4BANNNI,SUSUMIMASU']}]},
+    { id: 4028, title: 'きごう入りのぶん', chars:[{h:'A-1を、みます', r:['A-1WO,MIMASU']},{h:'B-2を、なおします', r:['B-2WO,NAOSIMASU','B-2WO,NAOSHIMASU']},{h:'1/2まで、できました', r:['1/2MADE,DEKIMASITA','1/2MADE,DEKIMASHITA']},{h:'NO.1を、えらびます', r:['NO.1WO,ERABIMASU']}]},
+    { id: 4029, title: 'ほうこくのぶん', chars:[{h:'きょうは、3こできました。', r:['KYOUHA,3KODEKIMASITA.','KYOUHA,3KODEKIMASHITA.']},{h:'プリント2を、ひらきます。', r:['PURINTO2WO,HIRAKIMASU.','PURINNTO2WO,HIRAKIMASU.']},{h:'A-1まで、おわりました。', r:['A-1MADE,OWARIMASITA.','A-1MADE,OWARIMASHITA.']},{h:'ページ4を、かくにんします。', r:['PE-JI4WO,KAKUNINNSIMASU.','PE-ZI4WO,KAKUNINNSIMASU.']}]},
+    { id: 4030, title: 'てんでくぎるぶん', chars:[{h:'まず、1ばんをみます。', r:['MAZU,1BANNWOMIMASU.']},{h:'つぎに、なまえをかきます。', r:['TUGINI,NAMAEWOKAKIMASU.','TSUGINI,NAMAEWOKAKIMASU.']},{h:'さいごに、ほぞんします。', r:['SAIGONI,HOZONNSIMASU.','SAIGONI,HOZONNSHIMASU.']},{h:'ゆっくり、かくにんします。', r:['YUKKURI,KAKUNINNSIMASU.','YUKKURI,KAKUNINNSHIMASU.']}]},
+    { id: 4031, title: '2つのぶん', chars:[{h:'ファイルをひらきます。なまえをみます。', r:['FAIRUWOHIRAKIMASU.NAMAEWOMIMASU.']},{h:'1ばんをえらびます。つぎへすすみます。', r:['1BANNWOERABIMASU.TUGIHESUSUMIMASU.','1BANNWOERABIMASU.TSUGIHESUSUMIMASU.']},{h:'まちがいをなおします。もういちどみます。', r:['MATIGAIWONAOSIMASU.MOUITIDOMIMASU.','MACHIGAIWONAOSHIMASU.MOUICHIDOMIMASU.','MACHIGAIWONAOSIMASU.MOUICHIDOMIMASU.']},{h:'できたら、せんせいにしらせます。', r:['DEKITARA,SENSEINISIRASEMASU.','DEKITARA,SENNSEINISIRASEMASU.','DEKITARA,SENSEINISHIRASEMASU.','DEKITARA,SENNSEINISHIRASEMASU.']}]},
+    { id: 4032, title: 'みじかいせつめい', chars:[{h:'うえのボタンをおします。', r:['UENOBOTANNWOOSIMASU.','UENOBOTANNWOOSHIMASU.']},{h:'あおいカードをえらびます。', r:['AOIKA-DOWOERABIMASU.']},{h:'まちがえたら、やりなおします。', r:['MATIGAETARA,YARINAOSIMASU.','MACHIGAETARA,YARINAOSHIMASU.','MACHIGAETARA,YARINAOSIMASU.']},{h:'おわったら、もどります。', r:['OWATTARA,MODORIMASU.']}]}
 ];
 
 export const EXAMS =[
-    {id:1101, title:'ホーム試験', gold: 30, silver: 45},{id:1102, title:'上段試験', gold: 35, silver: 50},{id:1103, title:'下段試験', gold: 35, silver: 50},{id:1104, title:'数字試験', gold: 40, silver: 60},
-    {id:3301, title:'あ～さ試験', gold: 40, silver: 60},{id:3302, title:'た～は試験', gold: 40, silver: 60},{id:3303, title:'ま～ん試験', gold: 50, silver: 70},{id:3304, title:'濁点試験', gold: 70, silver: 100},
-    {id:4101, title:'ことばまとめ(基本)', gold: 60, silver: 90},{id:4102, title:'ことばまとめ(特殊)', gold: 60, silver: 90},{id:4103, title:'ことばまとめ(レベルアップ)', gold: 60, silver: 90},
-    {id:4104, title:'ことばまとめ(実用)', gold: 70, silver: 100},{id:4105, title:'ことばまとめ(文)', gold: 80, silver: 120},{id:4106, title:'ことばまとめ(短文)', gold: 90, silver: 130},{id:4107, title:'ことばまとめ(実践文)', gold: 100, silver: 140},{id:4108, title:'ことばまとめ(記号)', gold: 110, silver: 150},{id:4109, title:'ことばまとめ(実用文)', gold: 120, silver: 160},{id:4110, title:'ことばまとめ(文章準備)', gold: 130, silver: 170},
-    {id:1999, title:'総合試験(きほん)', gold: 100, silver: 150},
-    {id:2999, title:'総合試験(ブラインド)', gold: 120, silver: 180},
-    {id:3999, title:'総合試験(ひらがな)', gold: 150, silver: 200},
-    {id:4999, title:'総合試験(ことば)', gold: 150, silver: 200}
+    {id:1101, title:'ホームテスト', gold: 30, silver: 45},{id:1102, title:'うえのキーテスト', gold: 35, silver: 50},{id:1103, title:'したのキーテスト', gold: 35, silver: 50},{id:1104, title:'すうじキーテスト', gold: 40, silver: 60},
+    {id:3301, title:'あ～さテスト', gold: 40, silver: 60},{id:3302, title:'た～はテスト', gold: 40, silver: 60},{id:3303, title:'ま～んテスト', gold: 50, silver: 70},{id:3304, title:'だくてんテスト', gold: 70, silver: 100},
+    {id:4101, title:'ことばまとめ(きほん)', gold: 60, silver: 90},{id:4102, title:'ことばまとめ(むずかしいおと)', gold: 60, silver: 90},{id:4103, title:'ことばまとめ(レベルアップ)', gold: 60, silver: 90},
+    {id:4104, title:'ことばまとめ(つかうことば)', gold: 70, silver: 100},{id:4105, title:'ことばまとめ(ぶん)', gold: 80, silver: 120},{id:4106, title:'ことばまとめ(みじかいぶん)', gold: 90, silver: 130},{id:4107, title:'ことばまとめ(れんしゅうぶん)', gold: 100, silver: 140},{id:4108, title:'ことばまとめ(きごう)', gold: 110, silver: 150},{id:4109, title:'ことばまとめ(つかうぶん)', gold: 120, silver: 160},{id:4110, title:'ことばまとめ(ぶんしょうじゅんび)', gold: 130, silver: 170},
+    {id:1999, title:'まとめテスト(きほん)', gold: 100, silver: 150},
+    {id:2999, title:'まとめテスト(みないで)', gold: 120, silver: 180},
+    {id:3999, title:'まとめテスト(ひらがな)', gold: 150, silver: 200},
+    {id:4999, title:'まとめテスト(ことば)', gold: 150, silver: 200}
 ];
 
 export const STAGE_ORDER =[
@@ -194,41 +194,41 @@ export const STAGE_ORDER =[
 
 export const KB_CHAPTERS =[
     {id:'alphabet',title:'ABCをおぼえる',stages: ALPHABET_READING_STAGES.map(stage => stage.id),bridge:null,exam:null},
-    {id:'home',title:'ホームポジション編',stages:[1001,1002,1003,1004,1005],bridge:1051,exam:1101},
-    {id:'top',title:'上の段編',stages:[1006,1007,1008,1009,1010],bridge:1052,exam:1102},
-    {id:'bottom',title:'下の段編',stages:[1011,1012,1013,1014,1015],bridge:1053,exam:1103},
-    {id:'number',title:'数字の段編',stages:[1016,1017,1018,1019,1020],bridge:1054,exam:1104},
+    {id:'home',title:'ホームポジション',stages:[1001,1002,1003,1004,1005],bridge:1051,exam:1101},
+    {id:'top',title:'うえのキー',stages:[1006,1007,1008,1009,1010],bridge:1052,exam:1102},
+    {id:'bottom',title:'したのキー',stages:[1011,1012,1013,1014,1015],bridge:1053,exam:1103},
+    {id:'number',title:'すうじキー',stages:[1016,1017,1018,1019,1020],bridge:1054,exam:1104},
     {id:'blind',title:'ブラインドタッチ',stages:[2001,2101,2002,2102,2003,2103,2004,2104],bridge:null,exam:null},
     {id:'h_1',title:'ひらがな(あ〜さ)',stages:[3001,3101,3201,3002,3102,3202,3003,3103,3203],bridge:null,exam:3301},
     {id:'h_2',title:'ひらがな(た〜は)',stages:[3004,3104,3204,3005,3105,3205,3006,3106,3206],bridge:null,exam:3302},
     {id:'h_3',title:'ひらがな(ま〜ん)',stages:[3007,3107,3207,3008,3108,3208,3009,3109,3209,3010,3110,3210],bridge:null,exam:3303},
-    {id:'h_4',title:'ひらがな(濁点)',stages:[3011,3111,3211,3012,3112,3212,3013,3113,3213,3014,3114,3214,3015,3115,3215],bridge:null,exam:3304},
+    {id:'h_4',title:'ひらがな(だくてん)',stages:[3011,3111,3211,3012,3112,3212,3013,3113,3213,3014,3114,3214,3015,3115,3215],bridge:null,exam:3304},
     {id:'word1',title:'ことばのれんしゅう(きほん)',stages:[4001,4002,4003,4004],bridge:null,exam:4101}, 
     {id:'word2',title:'ことばのれんしゅう(とくしゅ)',stages:[4005,4006,4007,4008],bridge:null,exam:4102},
     {id:'word3',title:'ことばのれんしゅう(レベルアップ)',stages:[4009,4010],bridge:null,exam:4103},
-    {id:'word4',title:'ことばのれんしゅう(実用)',stages:[4011,4012,4013],bridge:null,exam:4104},
-    {id:'word5',title:'ことばのれんしゅう(文・カタカナ)',stages:[4014,4015,4016],bridge:null,exam:4105},
-    {id:'word6',title:'ことばのれんしゅう(短文)',stages:[4017,4018,4019,4020],bridge:null,exam:4106},
-    {id:'word7',title:'ことばのれんしゅう(実践)',stages:[4021,4022,4023],bridge:null,exam:4107},
-    {id:'word8',title:'ことばのれんしゅう(記号)',stages:[4024,4025,4026],bridge:null,exam:4108},
-    {id:'word9',title:'ことばのれんしゅう(実用文)',stages:[4027,4028,4029],bridge:null,exam:4109},
-    {id:'word10',title:'ことばのれんしゅう(文章準備)',stages:[4030,4031,4032],bridge:null,exam:4110}
+    {id:'word4',title:'ことばのれんしゅう(つかうことば)',stages:[4011,4012,4013],bridge:null,exam:4104},
+    {id:'word5',title:'ことばのれんしゅう(ぶん・カタカナ)',stages:[4014,4015,4016],bridge:null,exam:4105},
+    {id:'word6',title:'ことばのれんしゅう(みじかいぶん)',stages:[4017,4018,4019,4020],bridge:null,exam:4106},
+    {id:'word7',title:'ことばのれんしゅう(れんしゅうぶん)',stages:[4021,4022,4023],bridge:null,exam:4107},
+    {id:'word8',title:'ことばのれんしゅう(きごう)',stages:[4024,4025,4026],bridge:null,exam:4108},
+    {id:'word9',title:'ことばのれんしゅう(つかうぶん)',stages:[4027,4028,4029],bridge:null,exam:4109},
+    {id:'word10',title:'ことばのれんしゅう(ぶんしょうじゅんび)',stages:[4030,4031,4032],bridge:null,exam:4110}
 ];
 
 export const KB_LAYOUT = [['1','2','3','4','5','6','7','8','9','0','-'],['Q','W','E','R','T','Y','U','I','O','P'],['A','S','D','F','G','H','J','K','L',';'],['Z','X','C','V','B','N','M',',','.','/'],['SPACE']];
 
 export const WORD_STAGES =[
     // --- 初級1 ---
-    { id: 'w_b1_1', title: '初級1: 第1章', sub: 'Wordの基本操作', pdf: 'https://drive.google.com/file/d/1-FqZ40jUKyyBt3HT2rGAfYVgV8htaqHi/view?usp=drive_link' },
-    { id: 'w_b1_2', title: '初級1: 第2章', sub: '文書を入力しましょう', pdf: 'https://drive.google.com/file/d/1PNhSTRREzR0DOk-ka8-zIpSzOWxDtSko/view?usp=drive_link' },
-    { id: 'w_b1_3', title: '初級1: 第3章', sub: '『潮干狩りの案内』を作る', pdf: 'https://drive.google.com/file/d/1SQrbBR2dfIg1e5QpJGuyLH4ehAIz184X/view?usp=drive_link' },
-    { id: 'w_b1_4', title: '初級1: 第4章', sub: '表の作成', pdf: 'https://drive.google.com/file/d/1S72do7S7pP0mtxaADaaLC2iLUiy8MKV0/view?usp=drive_link' },
-    { id: 'w_b1_5', title: '初級1: 第5章', sub: '総合問題', pdf: 'https://drive.google.com/file/d/1dfuPSPAku_ixixSNU5FHCE3IK8vNwpPb/view?usp=drive_link' },
+    { id: 'w_b1_1', title: 'Word 1-1', sub: 'きほんそうさ', pdf: 'https://drive.google.com/file/d/1-FqZ40jUKyyBt3HT2rGAfYVgV8htaqHi/view?usp=drive_link' },
+    { id: 'w_b1_2', title: 'Word 1-2', sub: 'ぶんしょうをうつ', pdf: 'https://drive.google.com/file/d/1PNhSTRREzR0DOk-ka8-zIpSzOWxDtSko/view?usp=drive_link' },
+    { id: 'w_b1_3', title: 'Word 1-3', sub: 'あんないをつくる', pdf: 'https://drive.google.com/file/d/1SQrbBR2dfIg1e5QpJGuyLH4ehAIz184X/view?usp=drive_link' },
+    { id: 'w_b1_4', title: 'Word 1-4', sub: 'ひょうをつくる', pdf: 'https://drive.google.com/file/d/1S72do7S7pP0mtxaADaaLC2iLUiy8MKV0/view?usp=drive_link' },
+    { id: 'w_b1_5', title: 'Word 1-5', sub: 'まとめもんだい', pdf: 'https://drive.google.com/file/d/1dfuPSPAku_ixixSNU5FHCE3IK8vNwpPb/view?usp=drive_link' },
     // --- 中級4 ---
     // ※他の級や章を追加する場合は、ここにコピーして増やしてください
-    { id: 'w_m4_1', title: '中級4: 第1章', sub: '図形を自由に加工する', pdf: 'https://drive.google.com/file/d/18mNWptnEPEI1tAffHsKfMpoYivD0nrkZ/view?usp=drive_link' },
-    { id: 'w_m4_2', title: '中級4: 第2章', sub: 'パイプの老人のイラストを描く', pdf: 'https://drive.google.com/file/d/1FC_zSLHj-oB78huF3sw2QGsHhCkr0wpZ/view?usp=drive_link' },
-    { id: 'w_m4_3', title: '中級4: 第3章', sub: '総合問題', pdf: 'https://drive.google.com/file/d/1_cktFg6o3rNPrSsGB-YyUSubAu4khlht/view?usp=drive_link' }
+    { id: 'w_m4_1', title: 'Word 4-1', sub: 'かたちをつくる', pdf: 'https://drive.google.com/file/d/18mNWptnEPEI1tAffHsKfMpoYivD0nrkZ/view?usp=drive_link' },
+    { id: 'w_m4_2', title: 'Word 4-2', sub: 'イラストをかく', pdf: 'https://drive.google.com/file/d/1FC_zSLHj-oB78huF3sw2QGsHhCkr0wpZ/view?usp=drive_link' },
+    { id: 'w_m4_3', title: 'Word 4-3', sub: 'まとめもんだい', pdf: 'https://drive.google.com/file/d/1_cktFg6o3rNPrSsGB-YyUSubAu4khlht/view?usp=drive_link' }
 ];
 
 export const ROMAJI_TABLE_DATA = {

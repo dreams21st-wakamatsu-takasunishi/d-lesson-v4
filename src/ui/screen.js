@@ -9,7 +9,9 @@ export function showScreen(id) {
     });
 
     const target = document.getElementById(id);
-    if (target) target.classList.add('active');
+    if (target) {
+        target.classList.add('active');
+    }
 
     const header = document.getElementById('global-header');
     if (header) {

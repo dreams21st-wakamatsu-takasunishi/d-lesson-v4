@@ -163,14 +163,14 @@ function openTrackedExternalSite(site, options) {
 
     popup.opener = null;
     popup.location.href = site.url;
-    recordExternalLog(site, options, '開始', `開始 ${formatLogTime(openedAt)}`);
+    recordExternalLog(site, options, 'はじめた', `はじめ ${formatLogTime(openedAt)}`);
 
     const closeCheck = setInterval(() => {
         if (!popup.closed) return;
         clearInterval(closeCheck);
         const closedAt = new Date();
         const elapsedMinutes = Math.max(0, Math.round((closedAt.getTime() - openedAt.getTime()) / 60000));
-        recordExternalLog(site, options, '終了', `開始 ${formatLogTime(openedAt)} / 終了 ${formatLogTime(closedAt)} / 約${elapsedMinutes}分`);
+        recordExternalLog(site, options, 'おわり', `はじめ ${formatLogTime(openedAt)} / おわり ${formatLogTime(closedAt)} / 約${elapsedMinutes}分`);
     }, 2000);
 }
 
@@ -250,7 +250,7 @@ function validateRankingNickname(rawNickname, userId = currentUser) {
     const compactNickname = compactForNicknameSafety(nickname);
     const compactUserId = compactForNicknameSafety(userId);
 
-    if (!nickname) return { ok: false, message: 'ニックネームを入力してください。' };
+    if (!nickname) return { ok: false, message: 'ニックネームをいれてください。' };
     if (Array.from(nickname).length > NICKNAME_MAX_LENGTH) {
         return { ok: false, message: `ニックネームは${NICKNAME_MAX_LENGTH}文字までです。` };
     }
@@ -261,7 +261,7 @@ function validateRankingNickname(rawNickname, userId = currentUser) {
         return { ok: false, message: 'メールアドレス、URL、電話番号のような文字は使えません。' };
     }
     if (getNicknameBlockWords().some(word => compactNickname.includes(compactForNicknameSafety(word)))) {
-        return { ok: false, message: 'その言葉はニックネームに使えません。' };
+        return { ok: false, message: 'そのことばはニックネームに使えません。' };
     }
     if (
         compactUserId
@@ -361,7 +361,7 @@ function renderTypingRankingBoard(rankBoard, ranking, options = {}) {
     let rankHtml = `<h3 class="typing-ranking-title">${escapeHtml(sourceLabel)}</h3>${statusHtml}`;
 
     if (topRows.length === 0) {
-        rankHtml += '<div class="typing-ranking-empty">まだランキング記録がありません。</div>';
+        rankHtml += '<div class="typing-ranking-empty">まだランキングきろくがありません。</div>';
     } else {
         rankHtml += '<ol class="typing-ranking-list">';
         topRows.forEach((row, index) => {
@@ -382,13 +382,13 @@ function renderTypingRankingBoard(rankBoard, ranking, options = {}) {
     rankHtml += `<div class="typing-ranking-my-rank">${escapeHtml(myRankText)}</div>`;
 
     if (options.isNewRecord) {
-        rankHtml += '<div class="typing-ranking-new-record">★しんきろく 達成！★</div>';
+        rankHtml += '<div class="typing-ranking-new-record">★しんきろく！★</div>';
     }
 
     if (showNicknameForm) {
         rankHtml += `
             <div class="typing-ranking-nickname-panel">
-                <div class="typing-ranking-nickname-title">上位5位に入りました。ニックネームを登録できます。</div>
+                <div class="typing-ranking-nickname-title">5い以内です。ニックネームをとうろくできます。</div>
                 <div class="typing-ranking-warning">実名、名字、学校名、人を傷つける言葉、電話番号やメールアドレスは使わないでください。</div>
                 <div class="typing-ranking-nickname-form">
                     <input id="${inputId}" type="text" maxlength="${NICKNAME_MAX_LENGTH}" value="${escapeHtml(getEditableNickname(currentRow))}" placeholder="ニックネーム">
@@ -573,7 +573,7 @@ export async function openTypingRankingPage(modeKey = 'meteor', nicknameMessage 
 
 export async function saveTypingRankingNickname(modeKey = 'meteor', context = 'page') {
     if (!canUseCloudTypingRanking() || !currentUser) {
-        setNicknameMessage(context, 'クラウドランキング利用時だけ登録できます。', true);
+        setNicknameMessage(context, 'クラウドランキングのときだけ、とうろくできます。', true);
         return;
     }
 
@@ -585,10 +585,10 @@ export async function saveTypingRankingNickname(modeKey = 'meteor', context = 'p
     }
 
     try {
-        setNicknameMessage(context, '保存中です...');
+        setNicknameMessage(context, 'ほぞん中です...');
         await updateCloudTypingRankingNickname(modeKey, validation.nickname);
         if (context === 'page') {
-            await openTypingRankingPage(modeKey, 'ニックネームを保存しました。');
+            await openTypingRankingPage(modeKey, 'ニックネームをほぞんしました。');
         } else {
             const cloudRanking = await loadCloudMinigameRanking(normalizeRankingMode(modeKey));
             renderMinigameRanking(cloudRanking || [], {
@@ -596,7 +596,7 @@ export async function saveTypingRankingNickname(modeKey = 'meteor', context = 'p
                 sourceLabel: 'クラス匿名ランキング',
                 status: '名前は表示せず、匿名ラベルとスコアだけを表示しています。',
                 allowNickname: true,
-                nicknameMessage: 'ニックネームを保存しました。'
+                nicknameMessage: 'ニックネームをほぞんしました。'
             });
         }
     } catch (err) {
@@ -1596,13 +1596,13 @@ function recordMinigameInterrupt(shouldRecord) {
     if (!shouldRecord || !wasRunning || !mgStartedAt || !canWriteCurrentUserRow()) return;
     const elapsed = Math.max(0, (Date.now() - mgStartedAt) / 1000);
     const rhythmDetail = currentMinigameType === 'rhythm'
-        ? ` / ${rhythmCurrentSong?.title || '曲未選択'} / ${getRhythmDifficultyConfig().label} / コンボ ${rhythmMaxCombo} / ミス ${rhythmMissCount}`
+        ? ` / ${rhythmCurrentSong?.title || 'きょくなし'} / ${getRhythmDifficultyConfig().label} / コンボ ${rhythmMaxCombo} / ミス ${rhythmMissCount}`
         : '';
     recordPracticeActivity({
         category: getCurrentMinigameActivityCategory(),
         title: getCurrentMinigameActivityTitle(),
-        detail: '中断',
-        amount: `スコア ${mgScore}点 / 経過 ${elapsed.toFixed(0)}秒${rhythmDetail}`,
+        detail: 'とちゅうでやめた',
+        amount: `スコア ${mgScore}点 / ${elapsed.toFixed(0)}秒${rhythmDetail}`,
         coins: 0
     });
     saveUsers(false);
@@ -1651,7 +1651,7 @@ function endMinigame() {
         recordPracticeActivity({
             category: getCurrentMinigameActivityCategory(),
             title: getCurrentMinigameActivityTitle(),
-            detail: isNewRecord ? '新記録' : '練習完了',
+            detail: isNewRecord ? 'しんきろく' : 'れんしゅうできた',
             amount: currentMinigameType === 'rhythm'
                 ? `スコア ${mgScore}点 / ${rhythmCurrentSong?.title || 'ぽんぽんリズム'} / ${getRhythmDifficultyConfig().label} / ぴったり ${rhythmPerfectCount} / いいね ${rhythmGreatCount} / OK ${rhythmGoodCount} / コンボ ${rhythmMaxCombo} / ミス ${rhythmMissCount}`
                 : `スコア ${mgScore}点`,

@@ -27,7 +27,7 @@ const htmlSource = readProjectFile('index.html');
 assertIncludes(coreSource, 'function recordPracticeInterrupt(shouldRecord)', 'Core practice interrupt recorder');
 assertPattern(
   coreSource,
-  /function recordPracticeInterrupt\(shouldRecord\)[\s\S]*recordPracticeActivity\(\{[\s\S]*detail:\s*'中断'[\s\S]*saveUsers\(false\);/,
+  /function recordPracticeInterrupt\(shouldRecord\)[\s\S]*recordPracticeActivity\(\{[\s\S]*detail:\s*'(中断|とちゅうでやめた)'[\s\S]*saveUsers\(false\);/,
   'Core practice interrupt log save'
 );
 assertPattern(
@@ -39,7 +39,7 @@ assertPattern(
 assertIncludes(textSource, 'function recordTextPracticeInterrupt()', 'Text practice interrupt recorder');
 assertPattern(
   textSource,
-  /function recordTextPracticeInterrupt\(\)[\s\S]*recordPracticeActivity\(\{[\s\S]*detail:\s*'中断'[\s\S]*saveUsers\(false\);/,
+  /function recordTextPracticeInterrupt\(\)[\s\S]*recordPracticeActivity\(\{[\s\S]*detail:\s*'(中断|とちゅうでやめた)'[\s\S]*saveUsers\(false\);/,
   'Text practice interrupt log save'
 );
 assertPattern(
@@ -51,7 +51,7 @@ assertPattern(
 assertIncludes(minigameSource, 'function recordMinigameInterrupt(shouldRecord)', 'Typing game interrupt recorder');
 assertPattern(
   minigameSource,
-  /function recordMinigameInterrupt\(shouldRecord\)[\s\S]*recordPracticeActivity\(\{[\s\S]*detail:\s*'中断'[\s\S]*saveUsers\(false\);/,
+  /function recordMinigameInterrupt\(shouldRecord\)[\s\S]*recordPracticeActivity\(\{[\s\S]*detail:\s*'(中断|とちゅうでやめた)'[\s\S]*saveUsers\(false\);/,
   'Typing game interrupt log save'
 );
 assertPattern(
