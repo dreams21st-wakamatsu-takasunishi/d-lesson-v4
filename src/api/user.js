@@ -69,6 +69,7 @@ export const IS_DEV_MODE = import.meta.env.VITE_SUPABASE_USE_TEST_TABLE === 'tru
 const TARGET_TABLE = import.meta.env.VITE_SUPABASE_TABLE || (IS_DEV_MODE ? 'test_user_data' : 'user_data');
 const STUDENT_LOGIN_EMAIL_DOMAIN = (import.meta.env.VITE_STUDENT_LOGIN_EMAIL_DOMAIN || '').trim().replace(/^@/, '');
 const STUDENT_LOGIN_EMAIL_PREFIX = import.meta.env.VITE_STUDENT_LOGIN_EMAIL_PREFIX || 'dlesson-student-';
+const STUDENT_LOGIN_CAMPUS_CODES = parseEnvList(import.meta.env.VITE_STUDENT_LOGIN_CAMPUS_CODES);
 const STUDENT_LOGIN_NUMBER_PAD = parseEnvInteger(import.meta.env.VITE_STUDENT_LOGIN_NUMBER_PAD || import.meta.env.VITE_STUDENT_LOGIN_PAD, 3, 1, 8);
 const STUDENT_LOGIN_MIN = parseEnvInteger(import.meta.env.VITE_STUDENT_LOGIN_MIN, 1, 1, 999);
 const STUDENT_LOGIN_MAX = Math.max(STUDENT_LOGIN_MIN, parseEnvInteger(import.meta.env.VITE_STUDENT_LOGIN_MAX, 40, STUDENT_LOGIN_MIN, 999));
@@ -137,6 +138,13 @@ function parseEnvInteger(value, fallback, min, max) {
     const parsed = Number.parseInt(value, 10);
     if (!Number.isFinite(parsed)) return fallback;
     return Math.min(max, Math.max(min, parsed));
+}
+
+function parseEnvList(value) {
+    return String(value || '')
+        .split(',')
+        .map(item => item.trim())
+        .filter(Boolean);
 }
 
 function forEachBrowserStorage(callback) {
@@ -894,21 +902,50 @@ function padStudentLoginNumber(number) {
     return String(number).padStart(STUDENT_LOGIN_NUMBER_PAD, '0');
 }
 
+function normalizeStudentLoginCampusCode(value) {
+    return String(value || '').trim().replace(/[^a-zA-Z0-9_-]/g, '');
+}
+
 function getStudentLoginCampusCode() {
     if (typeof window === 'undefined') return '';
     try {
         const params = new URLSearchParams(window.location.search);
         const value = params.get('campus') || params.get('campusCode') || import.meta.env.VITE_STUDENT_LOGIN_CAMPUS_CODE || '';
-        return String(value || '').trim().replace(/[^a-zA-Z0-9_-]/g, '');
+        return normalizeStudentLoginCampusCode(value);
     } catch (_err) {
         return '';
     }
 }
 
-function buildStudentLoginEmail(number) {
-    const campusCode = getStudentLoginCampusCode();
+function buildStudentLoginEmailForCampus(number, campusCode = '') {
     const campusPart = campusCode ? `${campusCode}-` : '';
     return `${STUDENT_LOGIN_EMAIL_PREFIX}${campusPart}${padStudentLoginNumber(number)}@${STUDENT_LOGIN_EMAIL_DOMAIN}`;
+}
+
+function getStudentLoginCampusCodesToTry() {
+    const codes = [];
+    const addCode = value => {
+        const code = normalizeStudentLoginCampusCode(value);
+        if (!codes.includes(code)) codes.push(code);
+    };
+
+    addCode(getStudentLoginCampusCode());
+    STUDENT_LOGIN_CAMPUS_CODES.forEach(addCode);
+    try {
+        getCampusList().forEach(campus => addCode(campus?.code || campus?.id));
+    } catch (_err) {
+        // Campus settings may not be loaded yet on the login screen.
+    }
+    addCode('');
+    return codes;
+}
+
+function buildStudentLoginEmail(number) {
+    return buildStudentLoginEmailForCampus(number, getStudentLoginCampusCode());
+}
+
+function buildStudentLoginEmailCandidates(number) {
+    return getStudentLoginCampusCodesToTry().map(campusCode => buildStudentLoginEmailForCampus(number, campusCode));
 }
 
 function buildStaffAuthFormHtml(isPrimary = false) {
@@ -1357,14 +1394,21 @@ async function handleStudentAuthFormSubmit(event) {
     try {
         guestMode = false;
         const normalizedNumber = String(studentNumber);
-        const email = buildStudentLoginEmail(normalizedNumber);
-        const { error } = await supabase.auth.signInWithPassword({
-            email,
-            password: studentLoginState.passcode
-        });
-        if (error) throw error;
-        pendingStudentLoginNumber = normalizedNumber;
-        completeAuthGateLogin();
+        const emails = buildStudentLoginEmailCandidates(normalizedNumber);
+        let lastError = null;
+        for (const email of emails) {
+            const { error } = await supabase.auth.signInWithPassword({
+                email,
+                password: studentLoginState.passcode
+            });
+            if (!error) {
+                pendingStudentLoginNumber = normalizedNumber;
+                completeAuthGateLogin();
+                return;
+            }
+            lastError = error;
+        }
+        throw lastError || new Error('Student auth sign-in failed.');
     } catch (err) {
         console.error('Student auth sign-in failed:', err);
         setAuthGateBusy(false);
