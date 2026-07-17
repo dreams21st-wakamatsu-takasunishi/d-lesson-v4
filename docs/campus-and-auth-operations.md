@@ -39,6 +39,39 @@ supabase/sql/campus_scope_policies.sql
 児童追加時に校舎を選択します。
 既存児童は児童一覧の `校舎` プルダウンから変更できます。
 
+Auth連携済みの教室児童を変更すると、次も同時に更新されます。
+
+- Supabase Authの内部ログインメール
+- Authの `campus_id` メタデータ
+- `user_data` の `campusId`
+- 同じ校舎内での児童番号重複チェック
+
+途中で失敗した場合は、画面上の校舎とAuth情報を変更前へ戻します。
+過去に校舎だけ変更してAuthが古いままの児童は、児童一覧の `Auth同期` を1回押してください。
+
+この機能を反映する前に、PowerShellでEdge Functionを再デプロイします。
+
+```powershell
+cd "C:\Users\conta\Desktop\【開発】\Dレッスン5.0\d-lesson-v4"
+npx.cmd supabase functions deploy admin-create-student --use-api
+```
+
+### 校舎別ログインURLを厳格に分ける
+
+校舎別URLは次の形式です。
+
+```text
+https://dreams21st-wakamatsu-takasunishi.github.io/d-lesson-v4/?campus=wakamatsu
+```
+
+既存児童の `Auth同期` がすべて終わるまでは、GitHub Actionsの変数を次のままにします。
+
+```text
+VITE_STUDENT_LOGIN_STRICT_CAMPUS=false
+```
+
+全児童の同期後に `true` へ変更すると、`?campus=wakamatsu` では若松校コードのAuthだけを試します。別校舎へ移動した児童は、移動先校舎のURLからログインします。
+
 ## 4. 先生の担当範囲を設定
 
 `Auth連携` の先生登録で、担当範囲を選びます。

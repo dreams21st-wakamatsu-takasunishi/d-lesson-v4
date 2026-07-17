@@ -4,6 +4,7 @@ import {
     DEFAULT_CAMPUS_ID,
     GLOBAL_SETTINGS_ID,
     getCampusList,
+    getCampusCode,
     getCampusName,
     getUserCampusId,
     getUserAccountType,
@@ -12,7 +13,8 @@ import {
     getUserDisplayName,
     isSystemUserId,
     USER_ACCOUNT_TYPES,
-    userDisplayNameExists
+    userDisplayNameExists,
+    invokeLessonFunction
 } from '../api/user.js';
 import { STAGE_ORDER } from '../data/constants.js';
 import { calculateGrade, sortGrades } from '../utils/helpers.js';
@@ -53,6 +55,42 @@ function renderAccountTypeBadge(accountType) {
     };
     const style = styles[accountType] || styles[USER_ACCOUNT_TYPES.CLASSROOM];
     return `<span style="display:inline-flex; align-items:center; justify-content:center; min-width:64px; padding:3px 7px; border-radius:999px; font-size:12px; font-weight:800; ${style}">${label}</span>`;
+}
+
+function cleanStudentLoginNumber(value) {
+    return String(value || '').replace(/\D/g, '');
+}
+
+function studentLoginNumberExistsInCampus(loginNumber, campusId, ignoreUserId = '') {
+    const cleanNumber = cleanStudentLoginNumber(loginNumber);
+    if (!cleanNumber) return false;
+    return Object.keys(users).some(userId => {
+        if (userId === ignoreUserId || isSystemUserId(userId)) return false;
+        const user = users[userId];
+        return user
+            && cleanStudentLoginNumber(user.loginNumber) === cleanNumber
+            && getUserCampusId(user) === campusId;
+    });
+}
+
+async function moveStudentCampusAuth(userId, campusId) {
+    const user = users[userId];
+    const studentNumber = cleanStudentLoginNumber(user?.loginNumber);
+    if (!user?.authUserId) return null;
+    if (!studentNumber) {
+        throw new Error('児童番号が登録されていないため、Authの校舎情報を変更できません。');
+    }
+
+    return invokeLessonFunction('admin-create-student', {
+        userDataId: userId,
+        displayName: getUserDisplayName(userId),
+        studentNumber,
+        authUserId: user.authUserId,
+        mode: 'move',
+        campusId,
+        campusCode: getCampusCode(campusId),
+        group: user.group || ''
+    });
 }
 
 export function updateAdminUserTable(options = {}) {
@@ -211,8 +249,27 @@ export function updateAdminUserTable(options = {}) {
             campusSelect.appendChild(opt);
         });
         campusSelect.value = item.campusId || DEFAULT_CAMPUS_ID;
-        campusSelect.onchange = () => updateUserCampus(item.id, campusSelect.value, options);
+        campusSelect.onchange = async () => {
+            campusSelect.disabled = true;
+            await updateUserCampus(item.id, campusSelect.value, options);
+        };
         campusTd.appendChild(campusSelect);
+        if (
+            item.accountType === USER_ACCOUNT_TYPES.CLASSROOM
+            && item.user.authUserId
+            && item.user.loginNumber
+        ) {
+            const syncButton = document.createElement('button');
+            syncButton.type = 'button';
+            syncButton.innerText = 'Auth同期';
+            syncButton.title = '児童番号ログインの校舎情報を、現在の校舎に合わせます';
+            syncButton.style.cssText = 'display:block; width:100px; margin-top:4px; padding:3px 5px; border:1px solid #0f766e; background:#f0fdfa; color:#115e59; font-size:11px; font-weight:bold; cursor:pointer;';
+            syncButton.onclick = async () => {
+                syncButton.disabled = true;
+                await syncUserCampusAuth(item.id, options);
+            };
+            campusTd.appendChild(syncButton);
+        }
         tr.appendChild(campusTd);
 
         const groupTd = document.createElement('td');
@@ -306,21 +363,95 @@ export function updateUserBirthdate(userId, newBirthdate, options = {}) {
     runUserChanged(options);
 }
 
-export function updateUserCampus(userId, newCampusId, options = {}) {
-    if (!users[userId]) return;
+export async function updateUserCampus(userId, newCampusId, options = {}) {
+    if (!users[userId]) return false;
 
     const oldCampusId = getUserCampusId(users[userId]);
     const campusId = normalizeCampusId(newCampusId);
-    users[userId].campusId = campusId;
+    if (oldCampusId === campusId) {
+        updateAdminUserTable(options);
+        return true;
+    }
+
+    const user = users[userId];
+    const loginNumber = cleanStudentLoginNumber(user.loginNumber);
+    if (loginNumber && studentLoginNumberExistsInCampus(loginNumber, campusId, userId)) {
+        showCustomAlert(`${getCampusName(campusId)}には、児童番号 ${loginNumber} がすでに登録されています。`);
+        updateAdminUserTable(options);
+        return false;
+    }
+
+    let authMoved = false;
+    try {
+        if (getUserAccountType(userId) === USER_ACCOUNT_TYPES.CLASSROOM && user.authUserId) {
+            await moveStudentCampusAuth(userId, campusId);
+            authMoved = true;
+        }
+
+        user.campusId = campusId;
+        const saved = await saveUsers(true);
+        if (!saved) throw new Error('児童データを保存できませんでした。');
+    } catch (error) {
+        user.campusId = oldCampusId;
+        if (authMoved) {
+            try {
+                await moveStudentCampusAuth(userId, oldCampusId);
+            } catch (rollbackError) {
+                console.error('Auth校舎変更の巻き戻しに失敗しました:', rollbackError);
+            }
+        }
+        console.error('校舎変更に失敗しました:', error);
+        showCustomAlert(`校舎を変更できませんでした。\n${error.message || error}`);
+        updateAdminUserTable(options);
+        return false;
+    }
+
     recordAdminAudit('campus_changed', {
         user: getUserDisplayName(userId),
         userDataId: userId,
         before: oldCampusId,
-        after: campusId
+        after: campusId,
+        authSynced: authMoved
     });
-    saveUsers(true);
     updateAdminUserTable(options);
     runUserChanged(options);
+    return true;
+}
+
+export async function syncUserCampusAuth(userId, options = {}) {
+    const user = users[userId];
+    if (!user) return false;
+
+    const campusId = getUserCampusId(user);
+    const loginNumber = cleanStudentLoginNumber(user.loginNumber);
+    if (!user.authUserId || !loginNumber) {
+        showCustomAlert('Auth User IDと児童番号の両方が必要です。');
+        updateAdminUserTable(options);
+        return false;
+    }
+    if (studentLoginNumberExistsInCampus(loginNumber, campusId, userId)) {
+        showCustomAlert(`${getCampusName(campusId)}には、児童番号 ${loginNumber} が重複しています。`);
+        updateAdminUserTable(options);
+        return false;
+    }
+
+    try {
+        await moveStudentCampusAuth(userId, campusId);
+        recordAdminAudit('campus_auth_synced', {
+            user: getUserDisplayName(userId),
+            userDataId: userId,
+            campusId,
+            loginNumber
+        });
+        showCustomAlert(`${getUserDisplayName(userId)} さんのAuth校舎情報を同期しました。`);
+        updateAdminUserTable(options);
+        return true;
+    } catch (error) {
+        console.error('Auth校舎同期に失敗しました:', error);
+        showCustomAlert(`Auth校舎情報を同期できませんでした。\n${error.message || error}`);
+        updateAdminUserTable(options);
+        return false;
+    }
 }
 
 export function updateUserGroup(userId, newGroup, options = {}) {

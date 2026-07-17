@@ -70,6 +70,7 @@ const TARGET_TABLE = import.meta.env.VITE_SUPABASE_TABLE || (IS_DEV_MODE ? 'test
 const STUDENT_LOGIN_EMAIL_DOMAIN = (import.meta.env.VITE_STUDENT_LOGIN_EMAIL_DOMAIN || '').trim().replace(/^@/, '');
 const STUDENT_LOGIN_EMAIL_PREFIX = import.meta.env.VITE_STUDENT_LOGIN_EMAIL_PREFIX || 'dlesson-student-';
 const STUDENT_LOGIN_CAMPUS_CODES = parseEnvList(import.meta.env.VITE_STUDENT_LOGIN_CAMPUS_CODES);
+const STUDENT_LOGIN_STRICT_CAMPUS = import.meta.env.VITE_STUDENT_LOGIN_STRICT_CAMPUS === 'true';
 const STUDENT_LOGIN_NUMBER_PAD = parseEnvInteger(import.meta.env.VITE_STUDENT_LOGIN_NUMBER_PAD || import.meta.env.VITE_STUDENT_LOGIN_PAD, 3, 1, 8);
 const STUDENT_LOGIN_MIN = parseEnvInteger(import.meta.env.VITE_STUDENT_LOGIN_MIN, 1, 1, 999);
 const STUDENT_LOGIN_MAX = Math.max(STUDENT_LOGIN_MIN, parseEnvInteger(import.meta.env.VITE_STUDENT_LOGIN_MAX, 40, STUDENT_LOGIN_MIN, 999));
@@ -929,7 +930,10 @@ function getStudentLoginCampusCodesToTry() {
         if (!codes.includes(code)) codes.push(code);
     };
 
-    addCode(getStudentLoginCampusCode());
+    const selectedCampusCode = getStudentLoginCampusCode();
+    addCode(selectedCampusCode);
+    if (STUDENT_LOGIN_STRICT_CAMPUS && selectedCampusCode) return codes;
+
     STUDENT_LOGIN_CAMPUS_CODES.forEach(addCode);
     try {
         getCampusList().forEach(campus => addCode(campus?.code || campus?.id));

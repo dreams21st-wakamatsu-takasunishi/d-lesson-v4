@@ -5,9 +5,9 @@ type CreateStudentPayload = {
   userDataId: string;
   displayName?: string;
   studentNumber: string | number;
-  passcode: string;
+  passcode?: string;
   authUserId?: string;
-  mode?: 'create' | 'reset';
+  mode?: 'create' | 'reset' | 'move';
   campusId?: string;
   campusCode?: string;
   group?: string;
@@ -128,6 +128,45 @@ async function getAllowedLessonAccessRows(serviceClient: SupabaseAdminClient, au
   throw new Error('Admin or scoped teacher lesson access is required.');
 }
 
+async function ensureStudentNumberAvailable(
+  serviceClient: SupabaseAdminClient,
+  userDataTable: string,
+  userDataId: string,
+  campusId: string,
+  studentNumber: string,
+) {
+  const { data, error } = await serviceClient
+    .from(userDataTable)
+    .select('id')
+    .eq('data->>campusId', campusId)
+    .eq('data->>loginNumber', studentNumber)
+    .neq('id', userDataId)
+    .limit(1);
+  if (error) throw error;
+  if ((data || []).length > 0) {
+    throw new Error(`Campus ${campusId} already has student number ${studentNumber}.`);
+  }
+}
+
+type AuthSnapshot = {
+  email: string;
+  userMetadata: Record<string, unknown>;
+};
+
+async function restoreMovedAuth(
+  serviceClient: SupabaseAdminClient,
+  authUserId: string,
+  snapshot: AuthSnapshot | null,
+) {
+  if (!snapshot) return '';
+  const { error } = await serviceClient.auth.admin.updateUserById(authUserId, {
+    email: snapshot.email,
+    email_confirm: true,
+    user_metadata: snapshot.userMetadata,
+  });
+  return error?.message || '';
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return jsonResponse({ error: 'Method not allowed' }, 405);
@@ -152,10 +191,12 @@ serve(async (req) => {
     const userDataId = String(payload.userDataId || '').trim();
     const passcode = String(payload.passcode || '').trim();
     const studentNumber = String(payload.studentNumber || '').replace(/\D/g, '');
-    const mode = payload.mode === 'reset' ? 'reset' : 'create';
+    const mode = payload.mode === 'reset' || payload.mode === 'move' ? payload.mode : 'create';
     if (!userDataId) return jsonResponse({ error: 'userDataId is required.' }, 400);
     if (!studentNumber) return jsonResponse({ error: 'studentNumber is required.' }, 400);
-    if (!/^\d{6,32}$/.test(passcode)) return jsonResponse({ error: 'passcode must be 6-32 digits.' }, 400);
+    if (mode !== 'move' && !/^\d{6,32}$/.test(passcode)) {
+      return jsonResponse({ error: 'passcode must be 6-32 digits.' }, 400);
+    }
 
     let allowedAccessRows: LessonAccessRow[] = [];
     try {
@@ -163,11 +204,19 @@ serve(async (req) => {
     } catch (accessError) {
       return jsonResponse({ error: errorMessage(accessError) }, 403);
     }
-    const { data: currentRow } = await serviceClient
+    if (mode === 'move' && !allowedAccessRows.some((row) => row.role === 'admin')) {
+      return jsonResponse({ error: 'Only lesson admins can move a student to another campus.' }, 403);
+    }
+
+    const { data: currentRow, error: currentRowError } = await serviceClient
       .from(userDataTable)
       .select('data')
       .eq('id', userDataId)
       .maybeSingle();
+    if (currentRowError) return jsonResponse({ error: currentRowError.message }, 400);
+    if (mode === 'move' && (!currentRow?.data || typeof currentRow.data !== 'object')) {
+      return jsonResponse({ error: `${userDataTable} row was not found for ${userDataId}.` }, 404);
+    }
 
     if (
       currentRow?.data
@@ -177,25 +226,49 @@ serve(async (req) => {
       return jsonResponse({ error: 'Teacher access does not match the existing student row.' }, 403);
     }
 
+    const targetCampusId = String(payload.campusId || 'main').trim() || 'main';
+    try {
+      await ensureStudentNumberAvailable(serviceClient, userDataTable, userDataId, targetCampusId, studentNumber);
+    } catch (duplicateError) {
+      return jsonResponse({ error: errorMessage(duplicateError) }, 409);
+    }
+
     const email = buildStudentEmail(payload);
     let authUserId = String(payload.authUserId || (currentRow?.data as Record<string, unknown> | undefined)?.authUserId || '').trim();
-    let action: 'created' | 'reset' = 'created';
+    let action: 'created' | 'reset' | 'moved' = 'created';
+    let movedAuthSnapshot: AuthSnapshot | null = null;
 
-    if (mode === 'reset') {
-      if (!authUserId) authUserId = await findAuthUserIdByEmail(serviceClient, email);
+    if (mode === 'reset' || mode === 'move') {
+      if (!authUserId && mode === 'reset') authUserId = await findAuthUserIdByEmail(serviceClient, email);
       if (!authUserId) return jsonResponse({ error: `Auth user was not found for ${email}.` }, 404);
+
+      const { data: existingAuthData, error: existingAuthError } = await serviceClient.auth.admin.getUserById(authUserId);
+      if (existingAuthError || !existingAuthData.user) {
+        return jsonResponse({ error: existingAuthError?.message || `Auth user was not found for ${authUserId}.` }, 404);
+      }
+      const existingMetadata = (existingAuthData.user.user_metadata || {}) as Record<string, unknown>;
+      if (mode === 'move') {
+        movedAuthSnapshot = {
+          email: String(existingAuthData.user.email || ''),
+          userMetadata: existingMetadata,
+        };
+        if (!movedAuthSnapshot.email) return jsonResponse({ error: 'The current Auth email is missing.' }, 400);
+      }
+
       const { error: updateError } = await serviceClient.auth.admin.updateUserById(authUserId, {
         email,
-        password: passcode,
+        ...(mode === 'reset' ? { password: passcode } : {}),
         email_confirm: true,
         user_metadata: {
+          ...existingMetadata,
           user_data_id: userDataId,
-          display_name: payload.displayName || '',
-          campus_id: payload.campusId || 'main',
+          display_name: payload.displayName || existingMetadata.display_name || '',
+          campus_id: targetCampusId,
+          login_number: studentNumber,
         },
       });
-      if (updateError) return jsonResponse({ error: updateError.message || 'Auth user password update failed.', email }, 400);
-      action = 'reset';
+      if (updateError) return jsonResponse({ error: getCreateAuthErrorMessage(updateError, email), email }, 400);
+      action = mode === 'move' ? 'moved' : 'reset';
     } else {
       const { data: created, error: createError } = await serviceClient.auth.admin.createUser({
         email,
@@ -204,7 +277,8 @@ serve(async (req) => {
         user_metadata: {
           user_data_id: userDataId,
           display_name: payload.displayName || '',
-          campus_id: payload.campusId || 'main',
+          campus_id: targetCampusId,
+          login_number: studentNumber,
         },
       });
       if (createError) return jsonResponse({ error: getCreateAuthErrorMessage(createError, email), email }, 400);
@@ -221,25 +295,37 @@ serve(async (req) => {
         scope_type: 'all',
         scope_value: '',
       }, { onConflict: 'auth_user_id,user_data_id' });
-    if (accessError) return jsonResponse({ error: accessError.message || 'lesson_user_access update failed.' }, 400);
+    if (accessError) {
+      const rollbackError = await restoreMovedAuth(serviceClient, authUserId, movedAuthSnapshot);
+      return jsonResponse({
+        error: accessError.message || 'lesson_user_access update failed.',
+        rollbackError: rollbackError || undefined,
+      }, rollbackError ? 500 : 400);
+    }
 
     if (currentRow?.data && typeof currentRow.data === 'object') {
+      const nextUserData: Record<string, unknown> = {
+        ...currentRow.data,
+        userDataId,
+        campusId: targetCampusId,
+        group: payload.group ?? currentRow.data.group ?? '',
+        loginNumber: studentNumber,
+        authUserId,
+      };
+      if (mode !== 'move') nextUserData.authPasscodeIssuedAt = new Date().toISOString();
+
       const { error: updateUserDataError } = await serviceClient
         .from(userDataTable)
         .update({
-          data: {
-            ...currentRow.data,
-            userDataId,
-            campusId: payload.campusId || currentRow.data.campusId || 'main',
-            group: payload.group ?? currentRow.data.group ?? '',
-            loginNumber: studentNumber,
-            authUserId,
-            authPasscodeIssuedAt: new Date().toISOString(),
-          },
+          data: nextUserData,
         })
         .eq('id', userDataId);
       if (updateUserDataError) {
-        return jsonResponse({ error: updateUserDataError.message || `${userDataTable} update failed.` }, 400);
+        const rollbackError = await restoreMovedAuth(serviceClient, authUserId, movedAuthSnapshot);
+        return jsonResponse({
+          error: updateUserDataError.message || `${userDataTable} update failed.`,
+          rollbackError: rollbackError || undefined,
+        }, rollbackError ? 500 : 400);
       }
     }
 
