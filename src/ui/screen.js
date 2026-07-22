@@ -3,6 +3,7 @@ import { currentUser, users, setCurrentUser, setCurrentSelectedGrade, signOutSup
 
 export function showScreen(id) {
     const practiceScreenIds = new Set(['screen-game', 'screen-text-game', 'screen-minigame']);
+    const gameContainer = document.getElementById('game-container');
 
     document.querySelectorAll('.screen').forEach(screen => {
         screen.classList.remove('active');
@@ -16,6 +17,12 @@ export function showScreen(id) {
     const header = document.getElementById('global-header');
     if (header) {
         header.style.display = id === 'screen-title' || practiceScreenIds.has(id) ? 'none' : 'flex';
+    }
+
+    // A screen change must not inherit the previous screen's scroll position.
+    if (gameContainer) {
+        gameContainer.scrollTop = 0;
+        gameContainer.scrollLeft = 0;
     }
 
     if (document.activeElement) document.activeElement.blur();

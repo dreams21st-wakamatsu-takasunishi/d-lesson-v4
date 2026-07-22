@@ -1,7 +1,6 @@
 import {
     VISION_STAGES,
     EXAMS,
-    STAGE_ORDER,
     KB_LAYOUT,
     THEMES,
     EFFECTS
@@ -18,6 +17,10 @@ import { renderCertificateSection } from './certificates.js';
 import { renderPracticeHistorySection } from './practice-history.js';
 import { showCustomAlert } from './modal.js';
 import { getValidMistakeEntries, normalizeMistakeCount } from '../utils/weak-mistakes.js';
+import {
+    getActiveKeyboardStageIds,
+    getCompletedActiveKeyboardStageIds
+} from '../utils/keyboard-progression.js';
 import {
     buildVisionRadarData,
     buildVisionRadarBenchmarkData,
@@ -398,12 +401,14 @@ function renderGraphSection(container, user) {
     graphGrid.className = 'record-graph-grid';
 
     const mouseLevel = user.mouseLevel || 0;
-    const keyboardSequence = user.keyboardSequence || 0;
+    const keyboardCompleted = getCompletedActiveKeyboardStageIds(user.keyboardSequence).length;
+    const keyboardTotal = getActiveKeyboardStageIds().length;
+    const keyboardPercent = keyboardTotal ? Math.floor((keyboardCompleted / keyboardTotal) * 100) : 0;
     const visionPercent = Math.min(100, Math.floor((countCurrentVisionClears(user) / (VISION_STAGES.length * 3)) * 100));
     graphGrid.innerHTML += `<div class="record-graph-card">
         <h4 style="margin-top:0; color:#555; border-bottom:2px solid #eee; padding-bottom:10px;">🎮 ぜんたいのすすみ</h4>
         <div class="record-progress-row"><span>🖱️ マウス</span><b>${Math.floor((mouseLevel / 7) * 100)}%</b></div><div class="record-progress"><div style="width:${Math.floor((mouseLevel / 7) * 100)}%; background:#2196F3;"></div></div>
-        <div class="record-progress-row"><span>⌨️ キーボード</span><b>${Math.floor((keyboardSequence / STAGE_ORDER.length) * 100)}%</b></div><div class="record-progress"><div style="width:${Math.floor((keyboardSequence / STAGE_ORDER.length) * 100)}%; background:#FF9800;"></div></div>
+        <div class="record-progress-row"><span>⌨️ キーボード</span><b>${keyboardPercent}%</b></div><div class="record-progress"><div style="width:${keyboardPercent}%; background:#FF9800;"></div></div>
         <div class="record-progress-row"><span>👁️ ビジョン</span><b>${visionPercent}%</b></div><div class="record-progress"><div style="width:${visionPercent}%; background:#9C27B0;"></div></div>
     </div>`;
 

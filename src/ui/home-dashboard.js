@@ -1,4 +1,4 @@
-import { ALPHABET_READING_STAGES, STAGE_ORDER, VISION_STAGES, WORD_STAGES } from '../data/constants.js';
+import { ALPHABET_READING_STAGES, VISION_STAGES, WORD_STAGES } from '../data/constants.js';
 import {
     users,
     currentUser,
@@ -6,6 +6,12 @@ import {
     hasLessonRole
 } from '../api/user.js';
 import { getStageName } from '../utils/stages.js';
+import {
+    getActiveKeyboardStageIds,
+    getCompletedActiveKeyboardStageIds,
+    getKeyboardTargetStage,
+    normalizeKeyboardSequence
+} from '../utils/keyboard-progression.js';
 import { renderLastPracticeCard } from './practice-history.js';
 import { showScreen } from './screen.js';
 import { startGame, startDailyMissionPractice } from '../games/core.js';
@@ -45,10 +51,12 @@ function updateTitleRoleActions() {
 function getLearningPathLabel(user) {
     const mouseLevel = Number(user?.mouseLevel || 0);
     const alphabetSeq = Number(user?.alphabetSequence || 0);
-    const keyboardSeq = Number(user?.keyboardSequence || 0);
+    const keyboardSeq = normalizeKeyboardSequence(user?.keyboardSequence);
     if (mouseLevel < 7) return `マウス M-${mouseLevel + 1}`;
     if (alphabetSeq < ALPHABET_READING_STAGES.length) return `ABC ${alphabetSeq + 1}/${ALPHABET_READING_STAGES.length}`;
-    if (keyboardSeq < STAGE_ORDER.length) return `キーボード ${keyboardSeq + 1}/${STAGE_ORDER.length}`;
+    const keyboardDone = getCompletedActiveKeyboardStageIds(keyboardSeq).length;
+    const keyboardTotal = getActiveKeyboardStageIds().length;
+    if (keyboardDone < keyboardTotal) return `キーボード ${keyboardDone + 1}/${keyboardTotal}`;
     return 'あそび';
 }
 
@@ -56,7 +64,7 @@ function buildNextLearningActions(user, progressMap) {
     const actions = [];
     const mouseLevel = Number(user?.mouseLevel || 0);
     const alphabetSeq = Number(user?.alphabetSequence || 0);
-    const keyboardSeq = Number(user?.keyboardSequence || 0);
+    const keyboardSeq = normalizeKeyboardSequence(user?.keyboardSequence);
 
     if (mouseLevel < 7) {
         actions.push({
@@ -81,8 +89,8 @@ function buildNextLearningActions(user, progressMap) {
         });
     }
 
-    if (keyboardSeq < STAGE_ORDER.length) {
-        const nextId = STAGE_ORDER[keyboardSeq];
+    const nextId = getKeyboardTargetStage(keyboardSeq);
+    if (nextId) {
         const stageName = getStageName(nextId).replace(/\[ID:\d+\]\s*/, '');
         actions.push({
             title: 'キーボードれんしゅう',
@@ -209,8 +217,8 @@ export function updateHomeDashboard() {
     if (mouseLvDisplay) mouseLvDisplay.innerText = mLv >= 7 ? 'Lv.MAX' : `Lv.${mLv} / 7`;
     if (mouseBar) mouseBar.style.width = `${mPct}%`;
 
-    const maxKb = STAGE_ORDER.length;
-    const kSeq = u.keyboardSequence || 0;
+    const maxKb = getActiveKeyboardStageIds().length;
+    const kSeq = getCompletedActiveKeyboardStageIds(u.keyboardSequence).length;
     const alphabetSeq = Number(u.alphabetSequence || 0);
     const maxAlphabet = ALPHABET_READING_STAGES.length;
     const kPct = Math.floor((kSeq / maxKb) * 100);
@@ -311,15 +319,16 @@ function cleanStageName(stageId) {
 function buildPracticeCategoryStatus(user, progressMap) {
     const mouseLevel = Number(user?.mouseLevel || 0);
     const alphabetSeq = Number(user?.alphabetSequence || 0);
-    const keyboardSeq = Number(user?.keyboardSequence || 0);
+    const keyboardSeq = normalizeKeyboardSequence(user?.keyboardSequence);
     const wordLocked = !user?.isMaster && !user?.examRecords?.romaji_daku_exam;
 
     const keyboardNext = (() => {
         if (alphabetSeq < ALPHABET_READING_STAGES.length) {
             return `つぎ: ${ALPHABET_READING_STAGES[alphabetSeq]?.title || `ABC ${alphabetSeq + 1}`}`;
         }
-        if (keyboardSeq < STAGE_ORDER.length) {
-            return `つぎ: ${cleanStageName(STAGE_ORDER[keyboardSeq])}`;
+        const nextStage = getKeyboardTargetStage(keyboardSeq);
+        if (nextStage) {
+            return `つぎ: ${cleanStageName(nextStage)}`;
         }
         return 'できた';
     })();

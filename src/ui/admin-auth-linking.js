@@ -4,15 +4,13 @@ import {
     refreshCurrentLessonAccess,
     REQUIRE_SUPABASE_AUTH,
     supabase,
-    getCampusCode,
-    getUserCampusId,
     getUserDisplayName,
-    invokeLessonFunction,
     isSystemUserId
 } from '../api/user.js';
 import { showCustomAlert, showCustomConfirm } from './modal.js';
 import { recordAdminAudit } from './admin-audit.js';
 import { openStudentLoginCardsPrintWindow } from './student-login-cards.js';
+import { adminCreateExistingStudentAuth } from './admin-student-data.js';
 import {
     buildAccessSql,
     getRoleAccessDataId,
@@ -135,58 +133,10 @@ export async function linkStudentAuthUser(userDataId, inputId) {
 
 async function createStudentAuthAccount(userDataId, inputId) {
     if (!ensureAuthLinkingReady()) return;
-    const user = users[userDataId];
-    const displayName = getUserDisplayName(userDataId);
-    const defaultNumber = user?.loginNumber || '';
-    const studentNumber = window.prompt(`${displayName} さんの児童番号を入力してください。`, defaultNumber);
-    if (studentNumber === null) return;
-    const cleanNumber = String(studentNumber || '').replace(/\D/g, '');
-    if (!cleanNumber) {
-        showCustomAlert('児童番号を入力してください。');
-        return;
-    }
-    const passcode = window.prompt(`${displayName} さんのあいことばを6けた以上の数字で入力してください。`, '');
-    if (passcode === null) return;
-    const cleanPasscode = String(passcode || '').replace(/\D/g, '');
-    if (cleanPasscode.length < 6) {
-        showCustomAlert('あいことばは6けた以上の数字で入力してください。');
-        return;
-    }
-
-    const campusId = getUserCampusId(user);
-    const campusCode = getCampusCode(campusId);
-    let data = null;
-    try {
-        data = await invokeLessonFunction('admin-create-student', {
-            userDataId,
-            displayName,
-            studentNumber: cleanNumber,
-            passcode: cleanPasscode,
-            campusId,
-            campusCode,
-            group: user?.group || ''
-        });
-    } catch (error) {
-        showCustomAlert(`Auth作成に失敗しました: ${error.message}`);
-        return;
-    }
-
-    if (inputId && data?.authUserId) {
-        const input = document.getElementById(inputId);
-        if (input) input.value = data.authUserId;
-    }
-    user.loginNumber = cleanNumber;
-    user.authUserId = data.authUserId;
-    await saveUsers(true);
-    await refreshCurrentLessonAccess();
-    recordAdminAudit('auth_student_created', {
-        user: displayName,
-        userDataId,
-        authUserId: data.authUserId,
-        email: data.email
-    });
-    showCustomAlert(`${displayName} さんのAuthアカウントを作成しました。\n${data.email}`);
-    await renderAuthLinkingAdmin();
+    const created = await adminCreateExistingStudentAuth(userDataId, renderAuthLinkingAdmin);
+    if (!created || !inputId) return;
+    const input = document.getElementById(inputId);
+    if (input) input.value = users[userDataId]?.authUserId || '';
 }
 
 export function openStudentLoginCardForUser(userDataId, defaultPasscode = '') {
@@ -348,7 +298,8 @@ export async function renderAuthLinkingAdmin() {
         const createBtn = document.createElement('button');
         createBtn.className = 'btn-primary';
         createBtn.style.cssText = 'font-size:13px; padding:6px 10px; margin-right:6px;';
-        createBtn.innerText = 'Auth作成';
+        createBtn.innerText = item.user.authUserId ? '連携済み' : 'Auth作成';
+        createBtn.disabled = Boolean(item.user.authUserId);
         createBtn.onclick = () => createStudentAuthAccount(item.id, inputId);
         actionTd.appendChild(createBtn);
 

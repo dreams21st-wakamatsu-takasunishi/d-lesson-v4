@@ -1,5 +1,10 @@
 import { DEFAULT_CAMPUS_ID } from '../api/user.js';
-import { ALPHABET_READING_STAGES, STAGE_ORDER, VISION_STAGES, WORD_STAGES } from '../data/constants.js';
+import { ALPHABET_READING_STAGES, VISION_STAGES, WORD_STAGES } from '../data/constants.js';
+import {
+    getActiveKeyboardStageIds,
+    getCompletedActiveKeyboardStageIds,
+    getKeyboardTargetStage
+} from './keyboard-progression.js';
 
 export const STANDARD_ROUTE_SETTING_KEY = 'standardRouteSettings';
 export const STANDARD_ROUTE_MODE_STANDARD = 'standard';
@@ -154,14 +159,15 @@ function getStepStatus(step, done, total, meta = {}) {
 function buildRouteSteps(user, globalSettings) {
     const mouseTotal = 7;
     const alphabetTotal = ALPHABET_READING_STAGES.length;
-    const keyboardTotal = STAGE_ORDER.length;
+    const keyboardTotal = getActiveKeyboardStageIds().length;
     const text = getTextProgress(user, globalSettings);
     const vision = getVisionProgress(user);
     const word = getWordProgress(user);
 
     const mouseLevel = Number(user?.mouseLevel || 0);
     const alphabetSequence = Number(user?.alphabetSequence || 0);
-    const keyboardSequence = Number(user?.keyboardSequence || 0);
+    const keyboardCompleted = getCompletedActiveKeyboardStageIds(user?.keyboardSequence).length;
+    const keyboardTarget = getKeyboardTargetStage(user?.keyboardSequence);
     const wordLocked = !user?.isMaster && !user?.examRecords?.romaji_daku_exam;
 
     return {
@@ -177,10 +183,10 @@ function buildRouteSteps(user, globalSettings) {
             detail: `ABC ${clampDone(alphabetSequence, alphabetTotal)}/${alphabetTotal}`,
             tone: 'active'
         }),
-        keyboard: getStepStatus('keyboard', keyboardSequence, keyboardTotal, {
+        keyboard: getStepStatus('keyboard', keyboardCompleted, keyboardTotal, {
             phase: '文字入力',
-            next: `キーボード ${Math.min(keyboardSequence + 1, keyboardTotal)}/${keyboardTotal}`,
-            detail: `キー ${clampDone(keyboardSequence, keyboardTotal)}/${keyboardTotal}`,
+            next: keyboardTarget ? `キーボード ${Math.min(keyboardCompleted + 1, keyboardTotal)}/${keyboardTotal}` : 'キーボード できた',
+            detail: `キー ${clampDone(keyboardCompleted, keyboardTotal)}/${keyboardTotal}`,
             tone: 'active'
         }),
         text: getStepStatus('text', text.done, text.total, {

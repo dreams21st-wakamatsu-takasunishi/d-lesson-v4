@@ -117,6 +117,7 @@ import {
     adminAddCoins as addCoinsData,
     adminAddCampus as addCampusData,
     renderCampusAdmin,
+    adminCreateExistingStudentAuth as createExistingStudentAuthData,
     adminResetStudentPasscode as resetStudentPasscodeData
 } from './admin-student-data.js';
 
@@ -287,7 +288,10 @@ export function saveEditProgress() {
 }
 
 function adminUserTableOptions() {
-    return { onUserChanged: renderDashboardTable };
+    return {
+        onUserChanged: renderDashboardTable,
+        onCreateStudentAuth: userDataId => createExistingStudentAuthData(userDataId, refreshAdminStudentDataViews)
+    };
 }
 
 export function updateAdminUserTable() {

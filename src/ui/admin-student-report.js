@@ -7,9 +7,14 @@ import {
     hasLessonRole,
     isSystemUserId
 } from '../api/user.js';
-import { STAGE_ORDER, VISION_STAGES, WORD_DATA } from '../data/constants.js';
+import { VISION_STAGES, WORD_DATA } from '../data/constants.js';
 import { calculateGrade } from '../utils/helpers.js';
 import { getStageName } from '../utils/stages.js';
+import {
+    getActiveKeyboardStageIds,
+    getCompletedActiveKeyboardStageIds,
+    getKeyboardTargetStage
+} from '../utils/keyboard-progression.js';
 import { showCustomAlert } from './modal.js';
 import { recordAdminAudit } from './admin-audit.js';
 import {
@@ -74,14 +79,16 @@ function buildStudentReportHtml(userId) {
     const wordProgress = user.wordProgress || {};
     const textTasks = users[GLOBAL_SETTINGS_ID]?.textTasks || [];
     const mouseLevel = user.mouseLevel || 0;
-    const keyboardSequence = user.keyboardSequence || 0;
+    const keyboardCompleted = getCompletedActiveKeyboardStageIds(user.keyboardSequence).length;
+    const keyboardTotal = getActiveKeyboardStageIds().length;
     const visionDone = VISION_STAGES.reduce((count, stage) => {
         return count + ['_easy', '', '_hard'].filter(suffix => records[stage.id + suffix]).length;
     }, 0);
     const wordDone = Object.values(wordProgress).filter(progress => progress?.status === 'cleared').length;
 
-    const keyboardNext = keyboardSequence < STAGE_ORDER.length
-        ? getStageName(STAGE_ORDER[keyboardSequence]).replace(/\[ID:\d+\]\s*/, '')
+    const keyboardTarget = getKeyboardTargetStage(user.keyboardSequence);
+    const keyboardNext = keyboardTarget
+        ? getStageName(keyboardTarget).replace(/\[ID:\d+\]\s*/, '')
         : '完了';
 
     const textRows = Object.keys(textRecords)
@@ -153,7 +160,7 @@ function buildStudentReportHtml(userId) {
             <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:12px; margin-bottom:12px;">
                 ${reportSection('全体進捗', `
                     ${reportBar('マウス', mouseLevel, 7, '#2196F3')}
-                    ${reportBar('キーボード', keyboardSequence, STAGE_ORDER.length, '#FF9800')}
+                    ${reportBar('キーボード', keyboardCompleted, keyboardTotal, '#FF9800')}
                     ${reportBar('ビジョン記録', visionDone, VISION_STAGES.length * 3, '#9C27B0')}
                     ${reportBar('ことば入力', wordDone, WORD_DATA.length, '#4CAF50')}
                 `)}

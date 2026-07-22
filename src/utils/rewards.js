@@ -1,5 +1,6 @@
 import { currentUser, users } from '../api/user.js';
 import { STAGE_ORDER } from '../data/constants.js';
+import { isKeyboardStageCleared } from './keyboard-progression.js';
 
 export function getRewardText(mode, sid) {
     const u = users[currentUser];
@@ -23,7 +24,7 @@ export function getRewardText(mode, sid) {
     if (mode === 'keyboard') {
         if (sid === 9888) return '💰10';
         const idx = STAGE_ORDER.indexOf(sid);
-        const isFirst = idx !== -1 && u.keyboardSequence <= idx;
+        const isFirst = idx !== -1 && !isKeyboardStageCleared(u.keyboardSequence, sid);
         const cat = Math.floor(sid / 1000);
         if (cat === 1) return isFirst ? '💰100' : '💰10';
         if (cat === 2) return isFirst ? '💰150' : '💰20';

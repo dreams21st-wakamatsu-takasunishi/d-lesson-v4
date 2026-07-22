@@ -13,12 +13,39 @@ import { users, currentUser } from '../api/user.js';
 import { createBtn } from '../utils/dom.js';
 import { getRewardText } from '../utils/rewards.js';
 import { hasTrainableMistakes } from '../utils/weak-mistakes.js';
+import {
+    getKeyboardExamReviewRequirement,
+    getKeyboardTargetStage,
+    isKeyboardStageCleared,
+    isKeyboardStageUnlocked,
+    normalizeKeyboardSequence
+} from '../utils/keyboard-progression.js';
 import { showCustomAlert } from './modal.js';
 import { showScreen } from './screen.js';
 import { setCurrentKeyboardChapter } from './keyboard-state.js';
 import { startGame } from '../games/core.js';
 
 let currentKeyboardCategory = 'basic';
+let currentKeyboardChapterGroup = null;
+
+const TOUCH_TYPING_CHAPTER_GROUPS = [
+    {
+        id: 'hiragana',
+        label: 'ひらがな',
+        chapterIds: ['h_1', 'h_2', 'h_3', 'h_4', 'h_summary'],
+        showRomajiList: true
+    },
+    {
+        id: 'sounds',
+        label: 'ことば・むずかしいおと',
+        chapterIds: ['word1', 'word2', 'word3', 'word4_special', 'word5_special', 'word_summary']
+    },
+    {
+        id: 'sentences',
+        label: 'ぶん',
+        chapterIds: ['word4', 'word5', 'word6', 'word7', 'word8', 'word9', 'word10']
+    }
+];
 
 const KEYBOARD_CHAPTER_GUIDE = {
     alphabet: {
@@ -61,25 +88,41 @@ const KEYBOARD_CHAPTER_GUIDE = {
         focus: 'だくてん',
         goal: 'が、ざ、だ、ば、ぱをれんしゅうします。'
     },
+    h_summary: {
+        focus: 'ひらがなまとめ',
+        goal: 'ここまでのひらがなをたしかめます。'
+    },
     word1: {
-        focus: 'みじかいことば',
-        goal: 'みじかいことばをうちます。'
+        focus: 'ひらがなのことば',
+        goal: 'おぼえたひらがなで、ことばをうちます。'
     },
     word2: {
-        focus: 'むずかしいおと',
-        goal: 'ん、っ、ゃゅょ、ーをれんしゅうします。'
+        focus: '小さい「ゃ・ゅ・ょ」',
+        goal: 'きゃ、しゅ、ちょなどをれんしゅうします。'
     },
     word3: {
-        focus: 'レベルアップ',
-        goal: 'すこしながいことばにちょうせんします。'
+        focus: '小さい母音',
+        goal: 'ぁ、ぃ、ぅ、ぇ、ぉをれんしゅうします。'
+    },
+    word4_special: {
+        focus: '小さい「っ」',
+        goal: 'きって、ピッピなどをれんしゅうします。'
+    },
+    word5_special: {
+        focus: 'のばす音「ー」',
+        goal: 'けーき、こーひーなどをれんしゅうします。'
+    },
+    word_summary: {
+        focus: 'むずかしい音まとめ',
+        goal: '小さい文字とのばす音をたしかめます。'
     },
     word4: {
         focus: 'つかうことば',
         goal: 'よくつかうことばをうちます。'
     },
     word5: {
-        focus: 'ぶん・カタカナ',
-        goal: 'みじかいぶんやカタカナをうちます。'
+        focus: 'ぶんのきほん',
+        goal: '「、」のあるぶんや、ながいことばをうちます。'
     },
     word6: {
         focus: 'みじかいぶん',
@@ -107,7 +150,7 @@ const KEYBOARD_CATEGORY_SUMMARY = {
     alphabet: { label: 'ABC', copy: 'ABCのかたちとよみをおぼえます。' },
     basic: { label: 'きほん', copy: '手のばしょとキーのいちをおぼえます。' },
     blind: { label: 'みないで', copy: 'キーボードを見ないでうつれんしゅうです。' },
-    hiragana: { label: 'ひらがな', copy: 'ローマ字でひらがなをうちます。' },
+    hiragana: { label: 'タッチタイピング', copy: 'ひらがなをおぼえてから、みないでうちます。' },
     word: { label: 'ことば', copy: 'ことばやみじかいぶんをうちます。' }
 };
 
@@ -122,11 +165,15 @@ const KEYBOARD_CHAPTER_SHORT_TEXT = {
     h_2: 'た な は',
     h_3: 'ま や ら わ',
     h_4: 'だくてん',
-    word1: 'みじかいことば',
-    word2: 'むずかしいおと',
-    word3: 'レベルアップ',
+    h_summary: 'ひらがなまとめ',
+    word1: 'ひらがなのことば',
+    word2: 'ゃ ゅ ょ',
+    word3: 'ぁ ぃ ぅ ぇ ぉ',
+    word4_special: '小さい「っ」',
+    word5_special: 'のばす音「ー」',
+    word_summary: 'むずかしい音まとめ',
     word4: 'つかうことば',
-    word5: 'みじかいぶん',
+    word5: '「、」と ながいことば',
     word6: '「、」のぶん',
     word7: 'れんしゅうぶん',
     word8: 'きごう',
@@ -138,7 +185,7 @@ function getKeyboardTargetId(user, sequence) {
     if (currentKeyboardCategory === 'alphabet') {
         return ALPHABET_READING_STAGES[Math.min(Number(user.alphabetSequence || 0), ALPHABET_READING_STAGES.length - 1)]?.id;
     }
-    return STAGE_ORDER[sequence];
+    return getKeyboardTargetStage(sequence);
 }
 
 function getKeyboardChapterStageIds(chap) {
@@ -188,7 +235,11 @@ function updateWeakTrainingEntryVisibility() {
 }
 
 export function goToKeyboardMenu(type) {
-    if (type) currentKeyboardCategory = type;
+    if (type === 'word' || type === 'blind') type = 'hiragana';
+    if (type) {
+        currentKeyboardCategory = type;
+        if (type === 'hiragana') currentKeyboardChapterGroup = null;
+    }
     document.getElementById('kb-chapter-container').style.display = 'grid';
     document.getElementById('kb-stage-container').style.display = 'none';
     document.getElementById('kb-bottom-back-btn').style.display = 'block';
@@ -196,8 +247,7 @@ export function goToKeyboardMenu(type) {
     let title = 'キーボードのれんしゅう';
     if (type === 'alphabet') title = 'ABCをおぼえる';
     if (type === 'basic') title = 'きほんれんしゅう';
-    if (type === 'blind') title = 'タッチタイピング';
-    if (type === 'hiragana') title = 'ひらがなれんしゅう';
+    if (type === 'hiragana') title = 'タッチタイピング';
     if (type === 'word') title = 'ことばのれんしゅう';
     document.getElementById('kb-menu-title').innerText = title;
 
@@ -213,7 +263,7 @@ export function updateKeyboardButtons() {
 function renderKeyboardChapters() {
     const u = getActiveUserOrTitle();
     if (!u) return;
-    const seq = u.keyboardSequence || 0;
+    const seq = normalizeKeyboardSequence(u.keyboardSequence);
     const cont = document.getElementById('kb-chapter-container');
     cont.innerHTML = '';
 
@@ -225,12 +275,8 @@ function renderKeyboardChapters() {
         showMasterExam = 1999;
     } else if (currentKeyboardCategory === 'alphabet') {
         displayChapters = KB_CHAPTERS.filter(c => c.id === 'alphabet');
-    } else if (currentKeyboardCategory === 'blind') {
-        displayChapters = KB_CHAPTERS.filter(c => c.id === 'blind');
-        showMasterExam = 2999;
     } else if (currentKeyboardCategory === 'hiragana') {
-        displayChapters = KB_CHAPTERS.filter(c => c.id.startsWith('h_'));
-        showMasterExam = 3999;
+        displayChapters = KB_CHAPTERS.filter(c => c.id.startsWith('h_') || c.id.startsWith('word'));
     } else if (currentKeyboardCategory === 'word') {
         displayChapters = KB_CHAPTERS.filter(c => c.id.startsWith('word'));
         showMasterExam = 4999;
@@ -241,16 +287,14 @@ function renderKeyboardChapters() {
             const index = ALPHABET_READING_STAGES.findIndex(stage => stage.id === id);
             return index === 0 || (index !== -1 && Number(u.alphabetSequence || 0) >= index);
         }
-        const x = STAGE_ORDER.indexOf(id);
-        return x === 0 || (x !== -1 && seq >= x);
+        return isKeyboardStageUnlocked(seq, id);
     };
     const isCleared = (id) => {
         if (currentKeyboardCategory === 'alphabet') {
             const index = ALPHABET_READING_STAGES.findIndex(stage => stage.id === id);
             return index !== -1 && Number(u.alphabetSequence || 0) > index;
         }
-        const x = STAGE_ORDER.indexOf(id);
-        return x !== -1 && seq > x;
+        return isKeyboardStageCleared(seq, id);
     };
 
     const targetId = getKeyboardTargetId(u, seq);
@@ -265,16 +309,27 @@ function renderKeyboardChapters() {
         const ids = getKeyboardChapterStageIds(chap);
         return ids.includes(targetId) && !ids.every(isCleared);
     });
+    const targetIndex = STAGE_ORDER.indexOf(targetId);
+    const firstCategoryStageIndex = Math.min(
+        ...allStageIds.map(stageId => STAGE_ORDER.indexOf(stageId)).filter(index => index >= 0)
+    );
+    const prerequisitePending = targetIndex >= 0
+        && Number.isFinite(firstCategoryStageIndex)
+        && targetIndex < firstCategoryStageIndex;
     const summaryInfo = KEYBOARD_CATEGORY_SUMMARY[currentKeyboardCategory] || KEYBOARD_CATEGORY_SUMMARY.basic;
     const summary = document.createElement('section');
     summary.className = 'kb-chapter-summary';
     if (allTotalCount && allDoneCount >= allTotalCount) summary.classList.add('is-complete');
     const nextTitle = allTotalCount && allDoneCount >= allTotalCount
         ? 'このれんしゅうは できています'
-        : (nextChapter ? `つぎは「${nextChapter.title}」` : 'つぎは「まとめテスト」');
+        : (nextChapter
+            ? `つぎは「${nextChapter.title}」`
+            : (prerequisitePending ? 'まえのれんしゅうを さきにやろう' : 'つぎは「まとめテスト」'));
     const nextCopy = allTotalCount && allDoneCount >= allTotalCount
         ? 'ほかのれんしゅうにも ちょうせんできます。'
-        : (nextChapter ? getKeyboardChapterShortText(nextChapter) : 'ここまでの力をたしかめます。');
+        : (nextChapter
+            ? getKeyboardChapterShortText(nextChapter)
+            : (prerequisitePending ? 'できると、このれんしゅうが ひらきます。' : 'ここまでの力をたしかめます。'));
     summary.innerHTML = `
         <div class="kb-chapter-summary-main">
             <span class="kb-chapter-summary-kicker">${summaryInfo.label}</span>
@@ -292,7 +347,7 @@ function renderKeyboardChapters() {
     `;
     cont.appendChild(summary);
 
-    if (currentKeyboardCategory === 'hiragana') {
+    const appendRomajiButton = (target = cont) => {
         const btn = document.createElement('button');
         btn.className = 'category-btn kb-chapter-card kb-romaji-card';
         btn.innerHTML = `
@@ -306,10 +361,10 @@ function renderKeyboardChapters() {
             </span>
         `;
         btn.onclick = () => showRomajiMenu();
-        cont.appendChild(btn);
-    }
+        target.appendChild(btn);
+    };
 
-    const appendChapterButton = (chap) => {
+    const appendChapterButton = (chap, target = cont) => {
         let chapUnlocked = isUnlocked(chap.stages[0]);
         let chapCleared = true;
         chap.stages.forEach(sid => {
@@ -347,8 +402,63 @@ function renderKeyboardChapters() {
             </span>
         `;
 
-        cont.appendChild(btn);
+        target.appendChild(btn);
     };
+
+    if (currentKeyboardCategory === 'hiragana') {
+        const recommendedGroup = TOUCH_TYPING_CHAPTER_GROUPS.find(group => (
+            nextChapter && group.chapterIds.includes(nextChapter.id)
+        ));
+        const selectedGroup = TOUCH_TYPING_CHAPTER_GROUPS.find(group => (
+            group.id === currentKeyboardChapterGroup
+        )) || recommendedGroup || TOUCH_TYPING_CHAPTER_GROUPS[0];
+        currentKeyboardChapterGroup = selectedGroup.id;
+
+        const groupTabs = document.createElement('div');
+        groupTabs.className = 'kb-chapter-group-tabs';
+        groupTabs.setAttribute('role', 'tablist');
+        groupTabs.setAttribute('aria-label', 'タッチタイピングの まとまり');
+
+        TOUCH_TYPING_CHAPTER_GROUPS.forEach(group => {
+            const groupChapters = displayChapters.filter(chap => group.chapterIds.includes(chap.id));
+            const groupStageIds = groupChapters.flatMap(getKeyboardChapterStageIds);
+            const groupDoneCount = groupStageIds.filter(isCleared).length;
+            const groupTotalCount = groupStageIds.length;
+            const groupHasNext = Boolean(nextChapter && group.chapterIds.includes(nextChapter.id));
+            const tab = document.createElement('button');
+            tab.type = 'button';
+            tab.className = 'kb-chapter-group-tab';
+            if (group.id === selectedGroup.id) tab.classList.add('is-active');
+            if (groupTotalCount > 0 && groupDoneCount >= groupTotalCount) tab.classList.add('is-complete');
+            if (groupHasNext) tab.classList.add('has-next');
+            tab.setAttribute('role', 'tab');
+            tab.setAttribute('aria-selected', group.id === selectedGroup.id ? 'true' : 'false');
+            tab.setAttribute('aria-controls', `kb-chapter-group-${group.id}`);
+            tab.innerHTML = `
+                <span>${group.label}</span>
+                <b>${groupDoneCount}/${groupTotalCount}</b>
+            `;
+            tab.onclick = () => {
+                currentKeyboardChapterGroup = group.id;
+                renderKeyboardChapters();
+            };
+            groupTabs.appendChild(tab);
+        });
+        cont.appendChild(groupTabs);
+
+        const groupGrid = document.createElement('div');
+        groupGrid.id = `kb-chapter-group-${selectedGroup.id}`;
+        groupGrid.className = 'kb-chapter-group-grid';
+        groupGrid.setAttribute('role', 'tabpanel');
+        groupGrid.setAttribute('aria-label', `${selectedGroup.label}の れんしゅう`);
+        cont.appendChild(groupGrid);
+
+        if (selectedGroup.showRomajiList) appendRomajiButton(groupGrid);
+        displayChapters
+            .filter(chap => selectedGroup.chapterIds.includes(chap.id))
+            .forEach(chap => appendChapterButton(chap, groupGrid));
+        return;
+    }
 
     const masterExamIndex = showMasterExam ? STAGE_ORDER.indexOf(showMasterExam) : -1;
     const primaryChapters = masterExamIndex === -1
@@ -358,7 +468,21 @@ function renderKeyboardChapters() {
         ? []
         : displayChapters.filter(chap => STAGE_ORDER.indexOf(chap.stages[0]) > masterExamIndex);
 
-    primaryChapters.forEach(appendChapterButton);
+    primaryChapters.forEach(chap => {
+        if (chap.id === 'word1') {
+            const divider = document.createElement('div');
+            divider.className = 'kb-advanced-divider';
+            divider.textContent = 'ことばと むずかしい音';
+            cont.appendChild(divider);
+        }
+        if (chap.id === 'word4') {
+            const divider = document.createElement('div');
+            divider.className = 'kb-advanced-divider';
+            divider.textContent = 'もっと れんしゅう';
+            cont.appendChild(divider);
+        }
+        appendChapterButton(chap);
+    });
 
     if (showMasterExam) {
         const mid = showMasterExam;
@@ -437,7 +561,13 @@ function getKeyboardStageDisplay(sid, index = 0) {
     let sub = '';
     let exCls = '';
 
-    if (sid >= 9000 && sid < 9100) {
+    const exam = EXAMS.find(item => item.id === sid);
+    if (exam) {
+        title = 'まとめ';
+        keys = 'テスト';
+        sub = exam.title;
+        exCls = 'blind-exam';
+    } else if (sid >= 9000 && sid < 9100) {
         const st = ALPHABET_READING_STAGES.find(s => s.id === sid);
         if (st) {
             title = st.title;
@@ -450,7 +580,13 @@ function getKeyboardStageDisplay(sid, index = 0) {
         if (st) {
             keys = st.chars.slice(0, 1).map(c => c.h).join('');
             sub = st.title;
-            exCls = 'word-practice';
+            if (st.mode === 'blind') {
+                title = 'みないでテスト';
+                exCls = 'word-practice blind-exam';
+            } else {
+                title = 'みながられんしゅう';
+                exCls = 'word-practice';
+            }
         }
     } else if (sid >= 3000 && sid < 4000) {
         let base = sid;
@@ -460,13 +596,16 @@ function getKeyboardStageDisplay(sid, index = 0) {
         if (st) {
             keys = st.chars.slice(0, 3).map(c => c.h).join('');
             if (sid >= 3200) {
-                sub = '(みないでテスト)';
+                title = 'かくにん';
+                sub = 'みないでうつ・ミス5まで';
                 exCls = 'blind-exam';
             } else if (sid >= 3100) {
-                sub = '(みないでれんしゅう)';
+                title = 'おぼえてうつ';
+                sub = 'じゅんばん → みないで3かい';
                 exCls = 'blind-practice';
             } else {
-                sub = st.title.split('(')[0];
+                title = 'みながら3かい';
+                sub = 'じゅんばんに3かいずつ';
             }
         }
     } else if (sid >= 2000 && sid < 3000) {
@@ -549,26 +688,24 @@ export function renderKeyboardStages(chap) {
 
     const u = getActiveUserOrTitle();
     if (!u) return;
-    const seq = u.keyboardSequence || 0;
+    const seq = normalizeKeyboardSequence(u.keyboardSequence);
     const isUnlocked = (id) => {
         if (currentKeyboardCategory === 'alphabet') {
             const index = ALPHABET_READING_STAGES.findIndex(stage => stage.id === id);
             return index === 0 || (index !== -1 && Number(u.alphabetSequence || 0) >= index);
         }
-        const x = STAGE_ORDER.indexOf(id);
-        return x === 0 || (x !== -1 && seq >= x);
+        return isKeyboardStageUnlocked(seq, id);
     };
     const isCleared = (id) => {
         if (currentKeyboardCategory === 'alphabet') {
             const index = ALPHABET_READING_STAGES.findIndex(stage => stage.id === id);
             return index !== -1 && Number(u.alphabetSequence || 0) > index;
         }
-        const x = STAGE_ORDER.indexOf(id);
-        return x !== -1 && seq > x;
+        return isKeyboardStageCleared(seq, id);
     };
     const targetId = currentKeyboardCategory === 'alphabet'
         ? ALPHABET_READING_STAGES[Math.min(Number(u.alphabetSequence || 0), ALPHABET_READING_STAGES.length - 1)]?.id
-        : STAGE_ORDER[seq];
+        : (getKeyboardExamReviewRequirement(u, chap.exam) || getKeyboardTargetStage(seq));
 
     const grid = document.getElementById('kb-stage-grid');
     grid.innerHTML = '';
@@ -621,18 +758,23 @@ export function renderKeyboardStages(chap) {
     if (chap.exam) {
         const eid = chap.exam;
         const ed = EXAMS.find(x => x.id === eid);
+        const requiredReviewStage = getKeyboardExamReviewRequirement(u, eid);
         const b = document.createElement('div');
         b.className = 'exam-btn';
         b.tabIndex = -1;
         b.style.width = '300px';
-        if (isUnlocked(eid)) {
+        if (isUnlocked(eid) && !requiredReviewStage) {
             b.classList.add('unlocked');
             createBtn(b, () => startGame(eid, 'keyboard'));
             if (eid === targetId) b.classList.add('next-target');
         } else {
             b.style.opacity = '0.5';
         }
-        if (isCleared(eid)) {
+        if (requiredReviewStage) {
+            b.classList.add('review-required');
+            b.innerText = 'ひとつまえを もういちど';
+            b.title = 'ひとつまえの れんしゅうを クリアすると、また ちょうせんできます。';
+        } else if (isCleared(eid)) {
             b.classList.add('cleared');
             b.innerText = ed.title + '合格';
         } else {

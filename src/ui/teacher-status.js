@@ -1,4 +1,8 @@
-import { STAGE_ORDER, VISION_STAGES } from '../data/constants.js';
+import { VISION_STAGES } from '../data/constants.js';
+import {
+    getActiveKeyboardStageIds,
+    getCompletedActiveKeyboardStageIds
+} from '../utils/keyboard-progression.js';
 import {
     canManageScopedUserRow,
     createUserDataId,
@@ -242,9 +246,10 @@ function getStudentRows() {
                 : calculateGrade(birthdate);
             const campusId = getUserCampusId(user);
             const mouseLevel = Number(user.mouseLevel || 0);
-            const keyboardSequence = Number(user.keyboardSequence || 0);
-            const keyboardPercent = STAGE_ORDER.length
-                ? Math.round((keyboardSequence / STAGE_ORDER.length) * 100)
+            const keyboardCompleted = getCompletedActiveKeyboardStageIds(user.keyboardSequence).length;
+            const keyboardTotal = getActiveKeyboardStageIds().length;
+            const keyboardPercent = keyboardTotal
+                ? Math.round((keyboardCompleted / keyboardTotal) * 100)
                 : 0;
             const routeStatus = getStandardRouteStatus(user, users[GLOBAL_SETTINGS_ID] || {});
 

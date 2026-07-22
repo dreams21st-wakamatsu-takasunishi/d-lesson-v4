@@ -7,8 +7,12 @@ import {
     formatPracticeActivity,
     isSystemUserId
 } from '../api/user.js';
-import { STAGE_ORDER, VISION_STAGES } from '../data/constants.js';
+import { VISION_STAGES } from '../data/constants.js';
 import { calculateGrade, sortGrades } from '../utils/helpers.js';
+import {
+    getActiveKeyboardStageIds,
+    getCompletedActiveKeyboardStageIds
+} from '../utils/keyboard-progression.js';
 import { getStandardRouteStatus, renderStandardRouteCell } from '../utils/standard-route.js';
 import {
     getDashboardProgressPercent,
@@ -198,7 +202,10 @@ export function renderDashboardTable() {
 
         const list = filterRows(rows, { grade: gradeSelect.value, group: grpSelect.value });
         if (sortVal === 'mouse_desc') list.sort((a, b) => (b.user.mouseLevel || 0) - (a.user.mouseLevel || 0));
-        else if (sortVal === 'kb_desc') list.sort((a, b) => (b.user.keyboardSequence || 0) - (a.user.keyboardSequence || 0));
+        else if (sortVal === 'kb_desc') list.sort((a, b) => (
+            getCompletedActiveKeyboardStageIds(b.user.keyboardSequence).length
+            - getCompletedActiveKeyboardStageIds(a.user.keyboardSequence).length
+        ));
         else if (sortVal === 'route_asc') list.sort((a, b) => a.routeStatus.percent - b.routeStatus.percent || a.name.localeCompare(b.name, 'ja'));
         else list.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
 
@@ -210,7 +217,7 @@ export function renderDashboardTable() {
                 <td style="border:1px solid #ccc; padding:8px; font-weight:bold;">${escapeHtml(item.name)}${groupBadge}</td>
                 <td style="border:1px solid #ccc; padding:8px;">${escapeHtml(item.grade || '-')}</td>
                 <td style="border:1px solid #ccc; padding:8px;">${renderProgressCell(item.user.mouseLevel || 0, 7, '#2196F3')}</td>
-                <td style="border:1px solid #ccc; padding:8px;">${renderProgressCell(item.user.keyboardSequence || 0, STAGE_ORDER.length, '#FF9800')}</td>
+                <td style="border:1px solid #ccc; padding:8px;">${renderProgressCell(getCompletedActiveKeyboardStageIds(item.user.keyboardSequence).length, getActiveKeyboardStageIds().length, '#FF9800')}</td>
                 <td style="border:1px solid #ccc; padding:8px;">${renderStandardRouteCell(item.routeStatus)}</td>
                 <td style="border:1px solid #ccc; padding:8px; text-align:center;"><button class="btn-secondary" style="font-size:13px; padding:6px 10px;" onclick="openStudentReportById('${escapeJsString(item.id)}')">レポート</button></td>
             `;

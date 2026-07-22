@@ -35,6 +35,16 @@ assertPattern(
   /export function backToMenu\(recordInterrupt = false\)[\s\S]*recordPracticeInterrupt\(recordInterrupt\);/,
   'Core backToMenu interrupt hook'
 );
+assertPattern(
+  coreSource,
+  /function showCarefulTypingWarning\(\)[\s\S]*backToMenu\(true\);/,
+  'Rapid mistype forced interruption'
+);
+assertIncludes(
+  coreSource,
+  'ていねいに タイピングしよう！',
+  'Rapid mistype warning text'
+);
 
 assertIncludes(textSource, 'function recordTextPracticeInterrupt()', 'Text practice interrupt recorder');
 assertPattern(

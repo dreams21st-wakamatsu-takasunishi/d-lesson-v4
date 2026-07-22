@@ -16,8 +16,11 @@ import {
     userDisplayNameExists,
     invokeLessonFunction
 } from '../api/user.js';
-import { STAGE_ORDER } from '../data/constants.js';
 import { calculateGrade, sortGrades } from '../utils/helpers.js';
+import {
+    getActiveKeyboardStageIds,
+    getCompletedActiveKeyboardStageIds
+} from '../utils/keyboard-progression.js';
 import { getStandardRouteStatus, renderStandardRouteCell } from '../utils/standard-route.js';
 import { showCustomAlert } from './modal.js';
 import { recordAdminAudit } from './admin-audit.js';
@@ -112,6 +115,14 @@ export function updateAdminUserTable(options = {}) {
         th.style.cssText = 'padding:8px; border:1px solid #ddd;';
         th.innerText = '校舎';
         headerRow.insertBefore(th, headerRow.children[5] || null);
+    }
+    if (headerRow && !headerRow.querySelector('[data-auth-header="true"]')) {
+        const th = document.createElement('th');
+        th.dataset.authHeader = 'true';
+        th.style.cssText = 'padding:8px; border:1px solid #ddd;';
+        th.innerText = 'Auth';
+        const routeHeader = headerRow.querySelector('[data-standard-route-header="true"]');
+        headerRow.insertBefore(th, routeHeader || null);
     }
     if (headerRow && !headerRow.querySelector('[data-standard-route-header="true"]')) {
         const th = document.createElement('th');
@@ -254,22 +265,6 @@ export function updateAdminUserTable(options = {}) {
             await updateUserCampus(item.id, campusSelect.value, options);
         };
         campusTd.appendChild(campusSelect);
-        if (
-            item.accountType === USER_ACCOUNT_TYPES.CLASSROOM
-            && item.user.authUserId
-            && item.user.loginNumber
-        ) {
-            const syncButton = document.createElement('button');
-            syncButton.type = 'button';
-            syncButton.innerText = 'Auth同期';
-            syncButton.title = '児童番号ログインの校舎情報を、現在の校舎に合わせます';
-            syncButton.style.cssText = 'display:block; width:100px; margin-top:4px; padding:3px 5px; border:1px solid #0f766e; background:#f0fdfa; color:#115e59; font-size:11px; font-weight:bold; cursor:pointer;';
-            syncButton.onclick = async () => {
-                syncButton.disabled = true;
-                await syncUserCampusAuth(item.id, options);
-            };
-            campusTd.appendChild(syncButton);
-        }
         tr.appendChild(campusTd);
 
         const groupTd = document.createElement('td');
@@ -289,8 +284,52 @@ export function updateAdminUserTable(options = {}) {
 
         const keyboardTd = document.createElement('td');
         keyboardTd.style.cssText = 'padding:5px; border:1px solid #ddd;';
-        keyboardTd.innerText = `${item.user.keyboardSequence || 0}/${STAGE_ORDER.length}`;
+        keyboardTd.innerText = `${getCompletedActiveKeyboardStageIds(item.user.keyboardSequence).length}/${getActiveKeyboardStageIds().length}`;
         tr.appendChild(keyboardTd);
+
+        const authTd = document.createElement('td');
+        authTd.style.cssText = 'padding:5px; border:1px solid #ddd; min-width:104px;';
+        if (item.accountType !== USER_ACCOUNT_TYPES.CLASSROOM) {
+            authTd.innerHTML = '<span style="color:#64748b; font-size:11px; font-weight:bold;">対象外</span>';
+        } else if (item.user.authUserId) {
+            const linkedLabel = document.createElement('span');
+            linkedLabel.innerText = '連携済み';
+            linkedLabel.style.cssText = 'display:block; color:#047857; font-size:11px; font-weight:bold;';
+            authTd.appendChild(linkedLabel);
+
+            const syncButton = document.createElement('button');
+            syncButton.type = 'button';
+            syncButton.innerText = 'Auth同期';
+            syncButton.title = '児童番号ログインの校舎情報を、現在の校舎に合わせます';
+            syncButton.style.cssText = 'width:96px; margin-top:4px; padding:4px 5px; border:1px solid #0f766e; background:#f0fdfa; color:#115e59; font-size:11px; font-weight:bold; cursor:pointer;';
+            syncButton.onclick = async () => {
+                syncButton.disabled = true;
+                await syncUserCampusAuth(item.id, options);
+            };
+            authTd.appendChild(syncButton);
+        } else {
+            const unlinkedLabel = document.createElement('span');
+            unlinkedLabel.innerText = '未連携';
+            unlinkedLabel.style.cssText = 'display:block; color:#b45309; font-size:11px; font-weight:bold;';
+            authTd.appendChild(unlinkedLabel);
+
+            const createButton = document.createElement('button');
+            createButton.type = 'button';
+            createButton.innerText = 'Auth作成';
+            createButton.title = 'この児童のログイン用Authアカウントを作成します';
+            createButton.style.cssText = 'width:96px; margin-top:4px; padding:4px 5px; border:1px solid #2563eb; background:#eff6ff; color:#1d4ed8; font-size:11px; font-weight:bold; cursor:pointer;';
+            createButton.onclick = async () => {
+                if (typeof options.onCreateStudentAuth !== 'function') return;
+                createButton.disabled = true;
+                try {
+                    await options.onCreateStudentAuth(item.id);
+                } finally {
+                    updateAdminUserTable(options);
+                }
+            };
+            authTd.appendChild(createButton);
+        }
+        tr.appendChild(authTd);
 
         const routeTd = document.createElement('td');
         routeTd.style.cssText = 'padding:5px; border:1px solid #ddd; min-width:150px;';

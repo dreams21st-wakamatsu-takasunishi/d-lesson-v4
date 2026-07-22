@@ -26,7 +26,22 @@ import { showScreen, showImeWarning } from '../ui/screen.js';
 import { showCustomAlert, showCustomConfirm } from '../ui/modal.js';
 import { getStageName } from '../utils/stages.js';
 import { convertNameToRomaji, shuffle } from '../utils/helpers.js';
+import { createRomajiInputMatcher } from '../utils/romaji-input.js';
+import { buildSequentialPracticeRounds, registerRapidMistype } from '../utils/typing-practice.js';
 import { getTrainableMistakeEntries, getValidMistakeEntries, hasTrainableMistakes, normalizeMistakeCount } from '../utils/weak-mistakes.js';
+import {
+    HIRAGANA_ROW_EXAM_IDS,
+    advanceKeyboardSequence,
+    clearKeyboardExamFailure,
+    completeKeyboardReviewRequirement,
+    getActiveKeyboardStageIds,
+    getCompletedActiveKeyboardStageIds,
+    getKeyboardExamReviewRequirement,
+    getKeyboardTargetStage,
+    isKeyboardStageCleared,
+    normalizeKeyboardSequence,
+    recordKeyboardExamFailure
+} from '../utils/keyboard-progression.js';
 import { createConfetti, showRewardOverlay } from '../ui/reward.js';
 import { getCurrentKeyboardChapter } from '../ui/keyboard-state.js';
 import { renderRecords, showRecordSection } from '../ui/records.js';
@@ -37,7 +52,8 @@ export { getStageName } from '../utils/stages.js';
 let gameMode, currentStage, isProcessing = false;
 let mainQueue =[], currentCount = 0, totalCount = 1;
 let totalKeysTyped = 0, missKeysTyped = 0, targetKey = '', isHomeReturn = false, pendingHome = null;
-let isHiragana = false, isWord = false, currHiraObj = null, activeRomajiList =[], currRomajiIdx = 0;
+let isHiragana = false, isWord = false, currHiraObj = null, activeRomajiList =[], activeRomajiMatcher = null, currRomajiIdx = 0;
+let isHiraganaGuidedPractice = false;
 let isExam = false, mistakeCount = 0, maxMistakes = 3, mistakeStats = {}, hasMissLimit = false;
 let isAlphabetReading = false, isAlphabetChoice = false, alphabetChoiceCurrent = null;
 let timerInterval = null, startTime = 0, isTimeAttackMode = false;
@@ -50,6 +66,8 @@ let isClearProcessing = false;
 let pendingCertificateAward = null;
 let pendingDailyMissionTask = null;
 let isMissionPracticeActive = false;
+let rapidMistypeHistory = [];
+let carefulTypingTimer = null;
 
 export let visionScore = 0;
 export let visionTarget = 0;
@@ -199,7 +217,7 @@ function getNextStageAfterClear() {
         }
 
         const idx = STAGE_ORDER.indexOf(currentStage);
-        const nextStage = idx !== -1 ? STAGE_ORDER[idx + 1] : null;
+        const nextStage = idx !== -1 ? getKeyboardTargetStage(idx + 1) : null;
         if (nextStage) {
             return {
                 label: 'つぎのステージへすすむ',
@@ -297,13 +315,15 @@ function showCertificateAwardOverlay(award) {
 }
 
 function getKeyboardCertificateAward(previousSequence, nextSequence) {
-    const total = STAGE_ORDER.length;
+    const total = getActiveKeyboardStageIds().length;
+    const previousCompleted = getCompletedActiveKeyboardStageIds(previousSequence).length;
+    const nextCompleted = getCompletedActiveKeyboardStageIds(nextSequence).length;
     const awards = [
         { threshold: Math.ceil(total * 0.25), title: 'キーボード がんばりしょう' },
         { threshold: Math.ceil(total * 0.5), title: 'キーボード じょうたつしょう' },
         { threshold: total, title: 'キーボード たっせいしょう' }
     ];
-    return awards.find(award => previousSequence < award.threshold && nextSequence >= award.threshold) || null;
+    return awards.find(award => previousCompleted < award.threshold && nextCompleted >= award.threshold) || null;
 }
 
 function getPracticeInterruptAmount(elapsed) {
@@ -343,6 +363,13 @@ export function startGame(sid, mode, options = {}) {
         showScreen('screen-keyboard-category');
         return;
     }
+    if (mode === 'keyboard' && HIRAGANA_ROW_EXAM_IDS.includes(Number(sid))) {
+        const requiredStage = getKeyboardExamReviewRequirement(users[currentUser], sid);
+        if (requiredStage) {
+            showCustomAlert(`テストのまえに「${getStageName(requiredStage)}」を もういちど クリアしよう！`);
+            return;
+        }
+    }
 
     SoundManager.init(); currentStage = sid; gameMode = mode; isProcessing = false;
     isClearProcessing = false;
@@ -350,25 +377,29 @@ export function startGame(sid, mode, options = {}) {
     pendingDailyMissionTask = null;
     isMissionPracticeActive = options.fromMission === true;
     mainQueue =[]; currentCount = 0; totalCount = 1; pendingHome = null; isHomeReturn = false;
-    mistakeCount = 0; mistakeStats = {}; currRomajiIdx = 0; activeRomajiList =[]; currHiraObj = null; totalKeysTyped = 0; missKeysTyped = 0;
+    mistakeCount = 0; mistakeStats = {}; currRomajiIdx = 0; activeRomajiList =[]; activeRomajiMatcher = null; currHiraObj = null; totalKeysTyped = 0; missKeysTyped = 0;
+    rapidMistypeHistory = [];
+    if (carefulTypingTimer) clearTimeout(carefulTypingTimer);
+    carefulTypingTimer = null;
     typedRomajiStr = ""; 
     startTime = 0;
     
-    isExam = EXAMS.some(ex => ex.id === sid) || [2101, 2102, 2103, 2104].includes(sid) || (sid >= 3200 && sid < 3300);
+    isExam = EXAMS.some(ex => ex.id === sid) || [2101, 2102, 2103, 2104, 4002].includes(sid) || (sid >= 3200 && sid < 3300);
     const alphabetStage = mode === 'keyboard' ? ALPHABET_READING_STAGES.find(stage => stage.id === sid) : null;
     isAlphabetReading = Boolean(alphabetStage);
     isAlphabetChoice = alphabetStage?.type === 'choice';
     alphabetChoiceCurrent = null;
     isHiragana = (sid >= 3000 && sid < 4000) || sid === 9888;
+    isHiraganaGuidedPractice = (sid >= 3101 && sid <= 3115)
+        || WORD_DATA.some(stage => stage.id === sid && stage.mode === 'blind' && stage.id !== 4002);
     isWord = (sid >= 4000 && sid < 5000);
     hasMissLimit = isExam;
     
-    if (hasMissLimit) maxMistakes = ((sid >= 2100 && sid < 2200) || (sid >= 3200 && sid <= 3300) || isHiragana) ? 5 : 3;
+    if (hasMissLimit) maxMistakes = (sid === 4002 || (sid >= 2100 && sid < 2200) || (sid >= 3200 && sid <= 3300) || isHiragana) ? 5 : 3;
 
     let alreadyCleared = false;
     if (mode === 'keyboard' && sid !== 9888) {
-        const idx = STAGE_ORDER.indexOf(sid);
-        alreadyCleared = (idx !== -1 && users[currentUser].keyboardSequence > idx);
+        alreadyCleared = isKeyboardStageCleared(users[currentUser]?.keyboardSequence, sid);
     }
     isTimeAttackMode = isExam && alreadyCleared;
 
@@ -464,6 +495,7 @@ export function backToMenu(recordInterrupt = false) {
         if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
         if (visionInterval) { clearInterval(visionInterval); visionInterval = null; }
         if (visionTimeout) { clearTimeout(visionTimeout); visionTimeout = null; }
+        if (carefulTypingTimer) { clearTimeout(carefulTypingTimer); carefulTypingTimer = null; }
         
         if (cancelStartHandler) {
             document.removeEventListener('keydown', cancelStartHandler);
@@ -517,6 +549,19 @@ export function retryExam() { startGame(currentStage, gameMode); }
 
 function isTextInputQuestion() {
     return Boolean(currHiraObj) && (isHiragana || isWord || currentStage === 9888);
+}
+
+function updateBlindRomajiProgress() {
+    const progress = document.getElementById('blind-romaji-progress');
+    if (!progress) return;
+
+    const keyboardWrapper = document.getElementById('keyboard-wrapper');
+    const shouldShow = Boolean(
+        keyboardWrapper?.classList.contains('blind-active')
+        && isTextInputQuestion()
+    );
+    progress.classList.toggle('is-visible', shouldShow);
+    progress.textContent = shouldShow ? typedRomajiStr : '';
 }
 
 function speakAlphabetName(key) {
@@ -615,6 +660,50 @@ function handleAlphabetChoiceAnswer(answerKey) {
     return true;
 }
 
+function retryHiraganaBlindQuestion() {
+    const failedItem = mainQueue.shift();
+    if (!failedItem) return;
+
+    const differentIndex = mainQueue.findIndex(item => item?.h && item.h !== failedItem.h);
+    if (differentIndex > 0 && mainQueue[0]?.h === failedItem.h) {
+        const [differentItem] = mainQueue.splice(differentIndex, 1);
+        mainQueue.unshift(differentItem);
+    }
+    const retryIndex = Math.min(mainQueue.length, Math.max(2, Math.floor(mainQueue.length / 2)));
+    mainQueue.splice(retryIndex, 0, failedItem);
+
+    const wrap = document.getElementById('keyboard-wrapper');
+    const mq = document.getElementById('main-q');
+    const hq = document.getElementById('romaji-hint');
+    isProcessing = true;
+    wrap.classList.add('blind-active', 'hiragana-correction-active');
+    mq.innerHTML = '<span class="hiragana-correction-message">あれれ？ ちがうよ？</span>';
+    hq.innerText = `このキーを たしかめよう：${targetKey === 'SPACE' ? 'スペース' : targetKey}`;
+    updateVisuals();
+
+    setTimeout(() => {
+        currRomajiIdx = 0;
+        activeRomajiList = [];
+        activeRomajiMatcher = null;
+        typedRomajiStr = '';
+        currHiraObj = null;
+        wrap.classList.remove('hiragana-correction-active');
+        nextKeyQ();
+    }, 3200);
+}
+
+function showCarefulTypingWarning() {
+    const warning = document.getElementById('careful-typing-warning');
+    isProcessing = true;
+    warning?.classList.add('is-visible');
+    if (carefulTypingTimer) clearTimeout(carefulTypingTimer);
+    carefulTypingTimer = setTimeout(() => {
+        warning?.classList.remove('is-visible');
+        carefulTypingTimer = null;
+        backToMenu(true);
+    }, 1800);
+}
+
 function handleKeyDown(e) {
     if (typeof e.key !== 'string') return;
     if (isProcessing ||['Enter', 'Shift', 'Control', 'Alt', 'Meta', 'Tab', 'CapsLock', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
@@ -631,11 +720,12 @@ function handleKeyDown(e) {
             SoundManager.playHover();
             currRomajiIdx--;
             typedRomajiStr = typedRomajiStr.slice(0, -1);
-            let baseList = Array.isArray(currHiraObj.r) ?[...currHiraObj.r] :[currHiraObj.r];
-            activeRomajiList = baseList.filter(r => r.startsWith(typedRomajiStr));
-            let nextChar = activeRomajiList[0].charAt(currRomajiIdx);
+            const suggestion = activeRomajiMatcher?.getSuggestion(typedRomajiStr) || '';
+            activeRomajiList = suggestion ? [suggestion] : [];
+            let nextChar = suggestion.charAt(currRomajiIdx);
             targetKey = (nextChar === ' ') ? 'SPACE' : nextChar;
             if (!document.getElementById('keyboard-wrapper').classList.contains('blind-active')) updRomaji();
+            updateBlindRomajiProgress();
             updateVisuals();
         }
         return;
@@ -655,8 +745,8 @@ function handleKeyDown(e) {
     let isCorrect = false;
     let inputChar = (k === ' ') ? ' ' : upper; 
     if (textInputQuestion) {
-        const validPatterns = activeRomajiList.filter(r => r[currRomajiIdx] === inputChar);
-        if (validPatterns.length > 0) { isCorrect = true; activeRomajiList = validPatterns; }
+        const nextInput = typedRomajiStr + inputChar;
+        isCorrect = Boolean(activeRomajiMatcher?.acceptsPrefix(nextInput));
     } else { isCorrect = (targetKey === 'SPACE' ? k === ' ' : upper === targetKey); }
 
     if (isCorrect) {
@@ -675,9 +765,12 @@ function handleKeyDown(e) {
         if (textInputQuestion) {
             typedRomajiStr += inputChar; 
             currRomajiIdx++;
-            if (activeRomajiList.some(r => currRomajiIdx >= r.length)) finishItemSuccess();
+            updateBlindRomajiProgress();
+            if (activeRomajiMatcher?.isComplete(typedRomajiStr)) finishItemSuccess();
             else {
-                let nextChar = activeRomajiList[0].charAt(currRomajiIdx);
+                const suggestion = activeRomajiMatcher?.getSuggestion(typedRomajiStr) || '';
+                activeRomajiList = suggestion ? [suggestion] : [];
+                let nextChar = suggestion.charAt(currRomajiIdx);
                 targetKey = (nextChar === ' ') ? 'SPACE' : nextChar;
                 if (!document.getElementById('keyboard-wrapper').classList.contains('blind-active')) updRomaji();
                 updateVisuals();
@@ -691,6 +784,10 @@ function handleKeyDown(e) {
         }
     } else {
         missKeysTyped++; SoundManager.playError(); if (el) { el.classList.add('error-flash'); setTimeout(() => el.classList.remove('error-flash'), 300); }
+        const rapidMistype = gameMode === 'keyboard'
+            ? registerRapidMistype(rapidMistypeHistory, inputChar)
+            : { history: [], shouldWarn: false };
+        rapidMistypeHistory = rapidMistype.history;
         if (gameMode === 'keyboard' && currentStage !== 9888) { 
             let sk = textInputQuestion ? currHiraObj.h : targetKey; 
             if (users[currentUser]) {
@@ -698,10 +795,18 @@ function handleKeyDown(e) {
                 users[currentUser].globalMistakes[sk] = normalizeMistakeCount(users[currentUser].globalMistakes[sk]) + 1;
             }
         }
+        if (rapidMistype.shouldWarn) {
+            showCarefulTypingWarning();
+            return;
+        }
+        if (isHiraganaGuidedPractice && currHiraObj?.practicePhase === 'blind-repeat') {
+            retryHiraganaBlindQuestion();
+            return;
+        }
         if (hasMissLimit) {
             let sk = textInputQuestion ? currHiraObj.h : targetKey; 
             mistakeStats[sk] = (mistakeStats[sk] || 0) + 1; mistakeCount++; els.missCounter.innerText = `ミス：${mistakeCount} / ${maxMistakes}`;
-            if (mistakeCount >= maxMistakes) { els.missCounter.classList.add('status-danger'); isProcessing = true; setTimeout(failExam, 500); }
+            if (mistakeCount >= maxMistakes) { els.missCounter.classList.add('status-danger'); isProcessing = true; setTimeout(failExam, 500); return; }
         }
     }
 }
@@ -864,14 +969,52 @@ function setupKeyboard(s) {
         else if ([3301, 3302, 3303, 3304].includes(s)) { 
             let targetIds =[]; if (s === 3301) targetIds =[3001, 3002, 3003]; else if (s === 3302) targetIds =[3004, 3005, 3006]; else if (s === 3303) targetIds =[3007, 3008, 3009, 3010]; else if (s === 3304) targetIds =[3011, 3012, 3013, 3014, 3015]; 
             HIRAGANA_DATA.forEach(d => { if (targetIds.includes(d.id)) { d.chars.forEach(c => { for (let i = 0; i < 2; i++) raw.push({...c, blind: true}) }); } }); pool = shuffle(raw); 
-        } else if (s >= 3100 && s < 3200) { const d = HIRAGANA_DATA.find(x => x.id === (s - 100)); let tmp = shuffle(d.chars); tmp.forEach(c => { pool.push({...c, blind: false}); pool.push({...c, blind: true}); }); } 
+        } else if (s >= 3100 && s < 3200) {
+            const d = HIRAGANA_DATA.find(x => x.id === (s - 100));
+            const guided = d.chars.map(c => ({...c, blind: false, practicePhase: 'guided'}));
+            const blind = [];
+            d.chars.forEach(c => {
+                for (let i = 0; i < 3; i++) blind.push({...c, blind: true, practicePhase: 'blind-repeat'});
+            });
+            pool = [...guided, {type: 'hide-keyboard'}, ...shuffle(blind)];
+        }
         else if (s >= 3200 && s < 3300) { const d = HIRAGANA_DATA.find(x => x.id === (s - 200)); d.chars.forEach(c => { for (let i = 0; i < 3; i++) raw.push({...c, blind: true}) }); pool = shuffle(raw); } 
-        else { const d = HIRAGANA_DATA.find(x => x.id === s); d.chars.forEach(c => { for (let i = 0; i < 3; i++) raw.push(c); }); pool = shuffle(raw); }
+        else {
+            const d = HIRAGANA_DATA.find(x => x.id === s);
+            pool = buildSequentialPracticeRounds(d.chars, 3, {
+                blind: false,
+                practicePhase: 'guided-three'
+            });
+        }
     } else if (isWord) { 
-        let raw =[]; if (s === 4999) { const finalExamIndex = STAGE_ORDER.indexOf(4999); WORD_DATA.forEach(d => { if (STAGE_ORDER.indexOf(d.id) !== -1 && STAGE_ORDER.indexOf(d.id) < finalExamIndex) d.chars.forEach(c => { raw.push({...c, blind: false}) }); }); pool = shuffle(raw).slice(0, 20); }
-        else if (EXAMS.some(ex => ex.id === s)) { const chap = KB_CHAPTERS.find(c => c.exam === s); const stageIds = chap ? chap.stages : []; WORD_DATA.forEach(d => { if (stageIds.includes(d.id)) d.chars.forEach(c => raw.push({...c, blind: false})); }); raw = shuffle(raw).slice(0, 18); }
-        else { const d = WORD_DATA.find(x => x.id === s); if(d) { d.chars.forEach(c => { for (let i = 0; i < 2; i++) raw.push({...c, blind: false}) }); raw = shuffle(raw); } }
-        if (s !== 4999) { const displayName = getUserDisplayName(currentUser); const nameRomaji = convertNameToRomaji(displayName); raw.unshift({ h: displayName, r:[nameRomaji], blind: false }); } pool = raw;
+        let raw =[];
+        if (s === 4999) {
+            const finalExamIndex = STAGE_ORDER.indexOf(4999);
+            WORD_DATA.forEach(d => {
+                if (STAGE_ORDER.indexOf(d.id) !== -1 && STAGE_ORDER.indexOf(d.id) < finalExamIndex) {
+                    d.chars.forEach(c => raw.push({...c, blind: true}));
+                }
+            });
+            pool = shuffle(raw).slice(0, 24);
+        } else if (EXAMS.some(ex => ex.id === s)) {
+            const chap = KB_CHAPTERS.find(c => c.exam === s);
+            const stageIds = chap ? chap.stages : [];
+            WORD_DATA.forEach(d => {
+                if (stageIds.includes(d.id)) d.chars.forEach(c => raw.push({...c, blind: true}));
+            });
+            pool = shuffle(raw).slice(0, 18);
+        } else {
+            const d = WORD_DATA.find(x => x.id === s);
+            if (d) {
+                const blind = d.mode === 'blind';
+                raw = d.chars.map(c => ({
+                    ...c,
+                    blind,
+                    practicePhase: blind ? 'blind-repeat' : 'word-guided'
+                }));
+                pool = blind ? shuffle(raw) : raw;
+            }
+        }
     } else if (s === 1999) { 
         const keys = new Set(); KEYBOARD_STAGES.forEach(st => st.keys.forEach(k => keys.add(k))); let raw =[]; Array.from(keys).forEach(k => { raw.push(k); raw.push(k); }); pool = shuffle(raw); 
     } else if ([1051, 1052, 1053, 1054, 1101, 1102, 1103, 1104].includes(s)) { 
@@ -879,7 +1022,9 @@ function setupKeyboard(s) {
     } else { 
         const st = KEYBOARD_STAGES.find(x => x.id === s); if (st) { let rawList =[]; st.keys.forEach(k => { for (let i = 0; i < 5; i++) rawList.push(k); }); rawList = shuffle(rawList); rawList.forEach(k => { pool.push(k); const f = FINGER_MAP[k], h = FINGER_HOME_MAP[f]; if (h && h !== k && h !== 'SPACE') pool.push({key: h, ret: true}); }); } 
     }
-    mainQueue = pool; totalCount = mainQueue.length; updateProgress();
+    mainQueue = pool;
+    totalCount = mainQueue.filter(item => item?.type !== 'hide-keyboard').length;
+    updateProgress();
 }
 
 function nextTask() {
@@ -898,8 +1043,9 @@ function nextTask() {
 }
 
 function nextKeyQ() {
-    isProcessing = false; const mq = document.getElementById('main-q'), hq = document.getElementById('romaji-hint'); mq.innerText = ''; hq.innerText = ''; if (mainQueue.length === 0) return;
+    isProcessing = false; const mq = document.getElementById('main-q'), hq = document.getElementById('romaji-hint'); mq.innerText = ''; hq.innerText = ''; updateBlindRomajiProgress(); if (mainQueue.length === 0) return;
     const wrap = document.getElementById('keyboard-wrapper');
+    wrap.classList.remove('hiragana-correction-active', 'hiragana-hide-transition');
     wrap.classList.toggle('alphabet-reading-active', isAlphabetReading);
     wrap.classList.toggle('alphabet-choice-active', isAlphabetChoice);
     if (isAlphabetChoice) {
@@ -916,6 +1062,22 @@ function nextKeyQ() {
         return;
     }
     let item = mainQueue[0], isBlindItem = false;
+    if (item?.type === 'hide-keyboard') {
+        isProcessing = true;
+        wrap.classList.add('hiragana-hide-transition');
+        wrap.classList.remove('blind-active');
+        els.instText.innerText = 'つぎは みないで うつよ';
+        mq.innerHTML = '<span class="hiragana-transition-message">キーボードを かくすよ！</span>';
+        hq.innerText = '手を ホームポジションに もどそう';
+        clearKeyboardVisuals();
+        setTimeout(() => {
+            mainQueue.shift();
+            wrap.classList.remove('hiragana-hide-transition');
+            wrap.classList.add('blind-active');
+            nextKeyQ();
+        }, 1500);
+        return;
+    }
     if (typeof item === 'object') { if (item.key) { targetKey = item.key; isBlindItem = !!item.blind; isHomeReturn = !!item.ret; currHiraObj = null; } else if (item.h) { currHiraObj = item; isBlindItem = !!item.blind; isHomeReturn = false; } } else { targetKey = item; isHomeReturn = false; currHiraObj = null; }
     if (isBlindItem) { wrap.classList.add('blind-active'); els.instText.innerText = 'みないで うってみよう！'; } else { wrap.classList.remove('blind-active'); }
     wrap.classList.toggle('alphabet-reading-active', isAlphabetReading);
@@ -925,16 +1087,28 @@ function nextKeyQ() {
         mq.innerHTML = `<span class="alphabet-question-letter">${targetKey}</span>`;
         hq.innerHTML = '<span class="alphabet-reading-hint">できたら よみかたが きこえます</span>';
     } else if (isTextInputItem) {
-        if (currentStage === 9888) els.instText.innerText = 'にがて とっくん！'; else els.instText.innerText = isWord ? 'ローマじで ことばを うとう！' : 'したのローマじを みて おそう！';
+        if (currentStage === 9888) els.instText.innerText = 'にがて とっくん！';
+        else if (isHiraganaGuidedPractice && currHiraObj?.practicePhase === 'guided') els.instText.innerText = 'じゅんばんに キーを おぼえよう！';
+        else if (isHiraganaGuidedPractice && currHiraObj?.practicePhase === 'blind-repeat') els.instText.innerText = 'キーボードを みないで うとう！';
+        else els.instText.innerText = isWord ? 'ローマじで ことばを うとう！' : 'したのローマじを みて おそう！';
         
-        if (currRomajiIdx === 0 || activeRomajiList.length === 0) { 
-            activeRomajiList = Array.isArray(currHiraObj.r) ?[...currHiraObj.r] :[currHiraObj.r]; 
+        if (currRomajiIdx === 0 || !activeRomajiMatcher) {
+            activeRomajiMatcher = createRomajiInputMatcher(currHiraObj.h, currHiraObj.r || []);
+            const suggestion = activeRomajiMatcher.getSuggestion('');
+            activeRomajiList = suggestion ? [suggestion] : [];
             currRomajiIdx = 0; 
             typedRomajiStr = ""; 
         }
         
-        targetKey = (activeRomajiList[0].charAt(currRomajiIdx) === ' ') ? 'SPACE' : activeRomajiList[0].charAt(currRomajiIdx);
+        const nextRomajiChar = (activeRomajiList[0] || '').charAt(currRomajiIdx);
+        targetKey = nextRomajiChar === ' ' ? 'SPACE' : nextRomajiChar;
+        if (!targetKey) {
+            console.error('ローマ字入力候補を作成できませんでした:', currHiraObj);
+            finishItemSuccess();
+            return;
+        }
         mq.innerText = currHiraObj.h; if (!isBlindItem) updRomaji();
+        updateBlindRomajiProgress();
     } else {
         if (currentStage === 9888) els.instText.innerText = 'にがて とっくん！'; else if (!isBlindItem) els.instText.innerText = isExam ? 'もんだいのキーを おそう！' : 'ひかるキーを おそう！';
         if (isHomeReturn) els.instText.innerText = 'ホームポジションに もどろう！'; mq.innerText = (targetKey === 'SPACE' ? 'スペース' : targetKey);
@@ -1021,11 +1195,24 @@ export function markClear() {
                 }
             } else if (currentStage !== 9888) {
                 const idx = STAGE_ORDER.indexOf(currentStage);
-                if (idx !== -1 && users[currentUser] && users[currentUser].keyboardSequence <= idx) {
-                    const previousSequence = Number(users[currentUser].keyboardSequence || 0);
-                    users[currentUser].keyboardSequence = idx + 1; isFirst = true;
+                if (idx !== -1 && users[currentUser]) {
+                    const previousSequence = normalizeKeyboardSequence(users[currentUser].keyboardSequence);
+                    const nextSequence = advanceKeyboardSequence(previousSequence, currentStage);
+                    if (nextSequence > previousSequence) {
+                        users[currentUser].keyboardSequence = nextSequence;
+                        isFirst = true;
+                    }
                     if (canSaveResult) {
-                        pendingCertificateAward = getKeyboardCertificateAward(previousSequence, users[currentUser].keyboardSequence);
+                        pendingCertificateAward = getKeyboardCertificateAward(previousSequence, nextSequence);
+                    }
+                }
+                if (canSaveResult && HIRAGANA_ROW_EXAM_IDS.includes(Number(currentStage))) {
+                    clearKeyboardExamFailure(users[currentUser], currentStage);
+                }
+                if (canSaveResult) {
+                    const unlockedExams = completeKeyboardReviewRequirement(users[currentUser], currentStage);
+                    if (unlockedExams.length > 0) {
+                        clearMsg += '<br><span style="font-size:22px; color:#00897b;">テストに また ちょうせんできるよ！</span>';
                     }
                 }
             }
@@ -1143,24 +1330,51 @@ export function markClear() {
 
 function failExam() {
     if (timerInterval) clearInterval(timerInterval);
-    SoundManager.playError(); const keys = Object.keys(mistakeStats);
-    if (keys.length > 0) {
+    SoundManager.playError();
+    const area = document.getElementById('fail-buttons-area');
+    const retryButton = document.getElementById('btn-retry-exam');
+    area?.querySelectorAll('.keyboard-review-action').forEach(button => button.remove());
+    if (retryButton) retryButton.style.display = '';
+
+    let reviewResult = null;
+    if (canWriteCurrentUserRow() && HIRAGANA_ROW_EXAM_IDS.includes(Number(currentStage)) && users[currentUser]) {
+        reviewResult = recordKeyboardExamFailure(users[currentUser], currentStage);
+        saveUsers(false);
+    }
+
+    if (reviewResult?.requiredStage) {
+        const btn = document.createElement('button');
+        btn.className = 'btn-primary keyboard-review-action';
+        btn.innerText = 'ひとつまえを れんしゅう';
+        btn.onclick = () => startGame(reviewResult.requiredStage, 'keyboard');
+        area?.insertBefore(btn, area.firstChild);
+        if (retryButton) retryButton.style.display = 'none';
+        els.advice.innerHTML = `5かい つづけて むずかしかったね。<br>「${getStageName(reviewResult.requiredStage)}」を もういちど クリアしよう！`;
+        els.advice.style.display = 'block';
+    } else {
+        const keys = Object.keys(mistakeStats);
+        if (keys.length > 0) {
         const worst = keys.reduce((a, b) => mistakeStats[a] > mistakeStats[b] ? a : b);
         const hintId = ADVICE_HINT_MAP[worst];
         if (hintId) {
-            const btn = document.createElement('button'); btn.className = 'btn-primary'; btn.innerText = 'ふくしゅうする';
+            const btn = document.createElement('button'); btn.className = 'btn-primary keyboard-review-action'; btn.innerText = 'ふくしゅうする';
             btn.onclick = () => startGame(hintId, 'keyboard');
-            const area = document.getElementById('fail-buttons-area');
-            if (area.children.length > 2) area.removeChild(area.firstChild);
-            area.insertBefore(btn, area.firstChild);
+            area?.insertBefore(btn, area.firstChild);
         }
         els.advice.innerHTML = `「${worst}」が にがてかも。<br>ふくしゅうしよう！`; els.advice.style.display = 'block';
-    } else { els.advice.style.display = 'none'; }
-    els.failOverlay.style.display = 'flex'; setTimeout(() => { document.getElementById('btn-retry-exam').focus(); }, 100);
+        } else { els.advice.style.display = 'none'; }
+    }
+    els.failOverlay.style.display = 'flex';
+    setTimeout(() => {
+        const focusTarget = reviewResult?.requiredStage
+            ? area?.querySelector('.keyboard-review-action')
+            : retryButton;
+        focusTarget?.focus();
+    }, 100);
 }
 
 function finishItemSuccess() {
-    const cur = mainQueue.shift(); const nxt = mainQueue[0]; currRomajiIdx = 0; activeRomajiList =[];
+    const cur = mainQueue.shift(); const nxt = mainQueue[0]; currRomajiIdx = 0; activeRomajiList =[]; activeRomajiMatcher = null;
     let delay = 500;
     if (isAlphabetReading) delay = 900;
     if (cur && !cur.blind && nxt && nxt.blind && !nxt.ret && ((cur.key && cur.key === nxt.key) || (cur.h && cur.h === nxt.h))) {
@@ -1178,7 +1392,7 @@ function finishItemSuccess() {
 }
 
 function renderKeyboard() {
-    const w = document.createElement('div'); w.id = 'keyboard-wrapper'; w.innerHTML = `<div id="question-display"><div id="romaji-hint"></div><div id="main-q"></div></div>`;
+    const w = document.createElement('div'); w.id = 'keyboard-wrapper'; w.innerHTML = `<div id="question-display"><div id="romaji-hint"></div><div id="main-q"></div><div id="blind-romaji-progress" aria-live="polite"></div><div id="careful-typing-warning" role="alert" aria-live="assertive">ていねいに タイピングしよう！</div></div>`;
     const kb = document.createElement('div'); kb.id = 'virtual-keyboard';
     KB_LAYOUT.forEach((row, i) => { const r = document.createElement('div'); r.className = `kb-row row-${i}`; r.style.setProperty('--key-count', row.length); row.forEach(c => { const k = document.createElement('div'); k.className = 'key' + (c === 'SPACE' ? ' space' : ''); k.dataset.key = c === 'SPACE' ? ' ' : c; k.innerText = c === 'SPACE' ? 'スペース' : c; r.appendChild(k) }); kb.appendChild(r); }); w.appendChild(kb);
     w.innerHTML += `<div id="hands-display"><div class="hand left"><div class="finger f-pinky" data-finger="l-pinky"></div><div class="finger f-ring" data-finger="l-ring"></div><div class="finger f-middle" data-finger="l-middle"></div><div class="finger f-index" data-finger="l-index"></div><div class="finger f-thumb" data-finger="thumb"></div></div><div class="hand right"><div class="finger f-thumb" data-finger="thumb"></div><div class="finger f-index" data-finger="r-index"></div><div class="finger f-middle" data-finger="r-middle"></div><div class="finger f-ring" data-finger="r-ring"></div><div class="finger f-pinky" data-finger="r-pinky"></div></div></div>`; els.playArea.appendChild(w);
@@ -1195,7 +1409,17 @@ function clearKeyboardVisuals() {
 
 function updateVisuals() { if (isAlphabetChoice) { clearKeyboardVisuals(); return; } const fn = targetKey === 'SPACE' ? 'thumb' : FINGER_MAP[targetKey]; const cl = COLOR_CLASS_MAP[fn]; document.querySelectorAll('.key').forEach(k => { k.className = 'key' + (k.classList.contains('space') ? ' space' : ''); if (k.dataset.key === (targetKey === 'SPACE' ? ' ' : targetKey)) { k.classList.add('target'); if (cl) k.classList.add(cl); } }); document.querySelectorAll('.finger').forEach(f => { f.className = f.className.replace(/ active| color-\w+/g, ''); if (f.dataset.finger === fn) { f.classList.add('active'); if (cl) f.classList.add(cl); } }); }
 
-function updRomaji() { let h = ''; let target = activeRomajiList[0]; for (let i = 0; i < target.length; i++) { let dispChar = target[i] === ' ' ? '␣' : target[i]; if (i < currRomajiIdx) h += `<span class="romaji-done">${dispChar}</span>`; else if (i === currRomajiIdx) h += `<span class="romaji-current">${dispChar}</span>`; else h += `<span>${dispChar}</span>`; } document.getElementById('romaji-hint').innerHTML = h; }
+function updRomaji() {
+    let h = '';
+    const target = activeRomajiMatcher?.getSuggestion(typedRomajiStr) || activeRomajiList[0] || '';
+    for (let i = 0; i < target.length; i++) {
+        const dispChar = target[i] === ' ' ? '␣' : target[i];
+        if (i < currRomajiIdx) h += `<span class="romaji-done">${dispChar}</span>`;
+        else if (i === currRomajiIdx) h += `<span class="romaji-current">${dispChar}</span>`;
+        else h += `<span>${dispChar}</span>`;
+    }
+    document.getElementById('romaji-hint').innerHTML = h;
+}
 
 function mkEl(c, h) { const d = document.createElement('div'); d.className = c; d.innerHTML = h; return d; }
 
@@ -1358,9 +1582,10 @@ export function startRecommendedStage() {
         return;
     }
 
-    const keyboardSequence = user.keyboardSequence || 0;
-    if (keyboardSequence < STAGE_ORDER.length) {
-        startGame(STAGE_ORDER[keyboardSequence], 'keyboard');
+    const keyboardSequence = normalizeKeyboardSequence(user.keyboardSequence);
+    const nextKeyboardStage = getKeyboardTargetStage(keyboardSequence);
+    if (nextKeyboardStage) {
+        startGame(nextKeyboardStage, 'keyboard');
         return;
     }
 

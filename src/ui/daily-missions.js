@@ -5,11 +5,14 @@ import {
     canWriteCurrentUserRow,
     recordPracticeActivity
 } from '../api/user.js';
-import {
-    STAGE_ORDER,
-    VISION_STAGES
-} from '../data/constants.js';
+import { VISION_STAGES } from '../data/constants.js';
 import { getStageName } from '../utils/stages.js';
+import {
+    getCompletedActiveKeyboardStageIds,
+    getKeyboardTargetStage,
+    isKeyboardStageCleared,
+    normalizeKeyboardSequence
+} from '../utils/keyboard-progression.js';
 
 export const DAILY_MISSION_DEFAULTS = Object.freeze({
     enabled: true,
@@ -17,7 +20,7 @@ export const DAILY_MISSION_DEFAULTS = Object.freeze({
     reward: 500
 });
 
-const DAILY_MISSION_LOGIC_VERSION = 2;
+const DAILY_MISSION_LOGIC_VERSION = 3;
 const MOUSE_STAGE_COUNT = 7;
 
 function clampInteger(value, fallback, min, max) {
@@ -61,7 +64,7 @@ function getMouseLevel(user) {
 }
 
 function getKeyboardSequence(user) {
-    return clampInteger(user?.keyboardSequence, 0, 0, STAGE_ORDER.length);
+    return normalizeKeyboardSequence(user?.keyboardSequence);
 }
 
 function getNormalVisionClearedSet(user) {
@@ -88,10 +91,14 @@ function makeMouseMission(user, offset = 0) {
 
 function makeKeyboardMission(user, offset = 0) {
     const sequence = getKeyboardSequence(user);
-    if (sequence >= STAGE_ORDER.length) return null;
+    const targetStage = getKeyboardTargetStage(sequence);
+    if (!targetStage) return null;
+    const completedStages = getCompletedActiveKeyboardStageIds(sequence);
     const stage = offset === 0
-        ? STAGE_ORDER[sequence]
-        : (sequence > 0 ? STAGE_ORDER[(hashText(`${currentUser}:keyboard:${getTodayKey()}`) + offset) % sequence] : null);
+        ? targetStage
+        : (completedStages.length > 0
+            ? completedStages[(hashText(`${currentUser}:keyboard:${getTodayKey()}`) + offset) % completedStages.length]
+            : null);
     if (!stage) return null;
     return {
         id: `keyboard:${stage}`,
@@ -161,8 +168,9 @@ function isMissionTaskStillEligible(task, user) {
     if (task.type === 'keyboard') {
         const sequence = getKeyboardSequence(user);
         const stage = Number(task.stage);
-        const index = STAGE_ORDER.indexOf(stage);
-        return sequence < STAGE_ORDER.length && index !== -1 && index <= sequence;
+        const targetStage = getKeyboardTargetStage(sequence);
+        return Boolean(targetStage)
+            && (stage === targetStage || isKeyboardStageCleared(sequence, stage));
     }
 
     if (task.type === 'vision') {

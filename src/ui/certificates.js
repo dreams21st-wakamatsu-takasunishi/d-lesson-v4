@@ -1,5 +1,9 @@
-import { STAGE_ORDER, VISION_STAGES, WORD_STAGES } from '../data/constants.js';
+import { VISION_STAGES, WORD_STAGES } from '../data/constants.js';
 import { currentUser, getUserDisplayName, users } from '../api/user.js';
+import {
+    getActiveKeyboardStageIds,
+    getCompletedActiveKeyboardStageIds
+} from '../utils/keyboard-progression.js';
 import { showCustomAlert } from './modal.js';
 
 const CERTIFICATE_PRINT_WINDOW_FEATURES = 'popup=yes,width=1180,height=840,menubar=no,toolbar=no,location=no,status=no,scrollbars=yes,resizable=yes';
@@ -43,11 +47,11 @@ function getVisionClearCount(user) {
 
 function buildCertificateDefinitions(user) {
     const mouseLevel = Number(user?.mouseLevel || 0);
-    const keyboardSequence = Number(user?.keyboardSequence || 0);
+    const keyboardCompleted = getCompletedActiveKeyboardStageIds(user?.keyboardSequence).length;
     const visionCount = getVisionClearCount(user);
     const textHighScore = getTextHighScore(user);
     const wordClearCount = getWordClearCount(user);
-    const keyboardTotal = STAGE_ORDER.length;
+    const keyboardTotal = getActiveKeyboardStageIds().length;
     const visionTotal = VISION_STAGES.length * 3;
     const keyboard25Target = Math.ceil(keyboardTotal * 0.25);
     const keyboard50Target = Math.ceil(keyboardTotal * 0.5);
@@ -77,27 +81,27 @@ function buildCertificateDefinitions(user) {
             id: 'keyboard-25',
             title: 'キーボード 努力賞',
             requirement: 'キーボード全体の 25% クリア',
-            progressText: `${Math.min(keyboardSequence, keyboard25Target)} / ${keyboard25Target}`,
-            percent: clampPercent(keyboardSequence, keyboard25Target),
-            earned: keyboardSequence >= keyboard25Target,
+            progressText: `${Math.min(keyboardCompleted, keyboard25Target)} / ${keyboard25Target}`,
+            percent: clampPercent(keyboardCompleted, keyboard25Target),
+            earned: keyboardCompleted >= keyboard25Target,
             message: 'ホームポジションを意識して、練習を積み重ねる力が育っています。'
         },
         {
             id: 'keyboard-50',
             title: 'キーボード 上達賞',
             requirement: 'キーボード全体の 50% クリア',
-            progressText: `${Math.min(keyboardSequence, keyboard50Target)} / ${keyboard50Target}`,
-            percent: clampPercent(keyboardSequence, keyboard50Target),
-            earned: keyboardSequence >= keyboard50Target,
+            progressText: `${Math.min(keyboardCompleted, keyboard50Target)} / ${keyboard50Target}`,
+            percent: clampPercent(keyboardCompleted, keyboard50Target),
+            earned: keyboardCompleted >= keyboard50Target,
             message: '指の使い方が安定し、入力の正確さと速さが伸びてきました。'
         },
         {
             id: 'keyboard-master',
             title: 'キーボード 達成賞',
             requirement: 'キーボード全ステージ クリア',
-            progressText: `${Math.min(keyboardSequence, keyboardTotal)} / ${keyboardTotal}`,
-            percent: clampPercent(keyboardSequence, keyboardTotal),
-            earned: keyboardSequence >= keyboardTotal,
+            progressText: `${Math.min(keyboardCompleted, keyboardTotal)} / ${keyboardTotal}`,
+            percent: clampPercent(keyboardCompleted, keyboardTotal),
+            earned: keyboardCompleted >= keyboardTotal,
             message: 'たくさんのキー練習を最後までやりきりました。すばらしい達成です。'
         },
         {
@@ -149,9 +153,9 @@ function buildCertificateDefinitions(user) {
             id: 'd-lesson-total',
             title: 'Dレッスン 総合がんばり賞',
             requirement: 'マウスLv.7 と キーボード50%以上を達成',
-            progressText: `マウス Lv.${Math.min(mouseLevel, 7)} / 7 ・ キーボード ${Math.min(keyboardSequence, keyboard50Target)} / ${keyboard50Target}`,
-            percent: Math.min(100, Math.floor((clampPercent(mouseLevel, 7) + clampPercent(keyboardSequence, keyboard50Target)) / 2)),
-            earned: mouseLevel >= 7 && keyboardSequence >= keyboard50Target,
+            progressText: `マウス Lv.${Math.min(mouseLevel, 7)} / 7 ・ キーボード ${Math.min(keyboardCompleted, keyboard50Target)} / ${keyboard50Target}`,
+            percent: Math.min(100, Math.floor((clampPercent(mouseLevel, 7) + clampPercent(keyboardCompleted, keyboard50Target)) / 2)),
+            earned: mouseLevel >= 7 && keyboardCompleted >= keyboard50Target,
             message: 'いろいろな練習にこつこつ取り組み、自分の力を伸ばし続けました。'
         }
     ];

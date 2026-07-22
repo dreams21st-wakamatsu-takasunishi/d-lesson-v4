@@ -11,9 +11,11 @@ import {
     getCampusCode,
     getCampusName,
     getUserCampusId,
+    getUserAccountType,
     normalizeCampusId,
     getUserDisplayName,
     isSystemUserId,
+    USER_ACCOUNT_TYPES,
     invokeLessonFunction,
     deleteCloudStudentAccount,
     deleteCloudUserRows,
@@ -319,6 +321,79 @@ export async function adminAddUser(afterChange) {
     showCustomAlert(shouldCreateAuth
         ? `${name} さんを追加し、Authアカウントを作成しました！\n児童番号: ${loginNumber}`
         : `${name} さんを追加しました！`);
+}
+
+export async function adminCreateExistingStudentAuth(userDataId, afterChange) {
+    if (!userDataId || !users[userDataId] || isSystemUserId(userDataId)) {
+        showCustomAlert('Auth連携する児童を選択してください。');
+        return false;
+    }
+
+    const user = users[userDataId];
+    const displayName = getUserDisplayName(userDataId);
+    if (getUserAccountType(userDataId) !== USER_ACCOUNT_TYPES.CLASSROOM) {
+        showCustomAlert('Auth作成は教室児童だけが対象です。');
+        return false;
+    }
+    if (user.authUserId) {
+        showCustomAlert(`${displayName} さんはすでにAuth連携済みです。`);
+        return false;
+    }
+
+    const campusId = getUserCampusId(user);
+    const numberInput = window.prompt(`${displayName} さんの児童番号を入力してください。`, user.loginNumber || '');
+    if (numberInput === null) return false;
+    const studentNumber = String(numberInput || '').replace(/\D/g, '');
+    if (!studentNumber) {
+        showCustomAlert('児童番号を入力してください。');
+        return false;
+    }
+    if (studentLoginNumberExists(studentNumber, campusId, userDataId)) {
+        showCustomAlert(`${getCampusName(campusId)}では、児童番号 ${studentNumber} がすでに使われています。`);
+        return false;
+    }
+
+    const defaultPasscode = generatePasscode(6);
+    const passcodeInput = window.prompt(
+        `${displayName} さんのあいことばを入力してください。\n6けた以上の数字を設定します。\nこの値は保存されず、作成直後のカードにだけ表示します。`,
+        defaultPasscode
+    );
+    if (passcodeInput === null) return false;
+    const passcode = String(passcodeInput || '').replace(/\D/g, '');
+    if (passcode.length < 6) {
+        showCustomAlert('あいことばは6けた以上の数字で入力してください。');
+        return false;
+    }
+
+    try {
+        const authData = await createAdminStudentAuthAccount(userDataId, studentNumber, passcode, 'create');
+        const saved = await saveUsers(true);
+        if (!saved) throw new Error('児童データの保存に失敗しました。');
+
+        recordAdminAudit('auth_existing_student_created', {
+            user: displayName,
+            userDataId,
+            campusId,
+            authUserId: authData.authUserId,
+            email: authData.email,
+            loginNumber: studentNumber
+        });
+        runAfterChange(afterChange);
+        openStudentLoginCardsPrintWindow([{
+            student_number: studentNumber,
+            display_name: displayName,
+            password: passcode
+        }], {
+            title: 'Dレッスン ログインカード',
+            cardsPerPage: 6
+        });
+        showCustomAlert(`${displayName} さんのAuthアカウントを作成しました。\n児童番号: ${studentNumber}\nログインカードを本人に渡してください。`);
+        return true;
+    } catch (error) {
+        console.error('Existing student auth creation failed:', error);
+        showCustomAlert(`Auth作成に失敗しました。\n${error.message || error}`);
+        return false;
+    }
 }
 
 export async function adminResetStudentPasscode(userDataId, afterChange) {
