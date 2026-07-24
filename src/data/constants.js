@@ -148,7 +148,48 @@ const BASIC_HIRAGANA_WORDS = [
     'がく','にじ','ちぢむ','まど','かべ'
 ].map(h => ({ h, r: [] }));
 
+const LEARNED_HIRAGANA_WORD_CANDIDATES = {
+    4301: [
+        'あさ', 'いえ', 'うし', 'いす', 'あお', 'かさ', 'かき', 'くさ', 'けさ', 'こい',
+        'しお', 'すし', 'すいか', 'せかい', 'おかし', 'さけ'
+    ],
+    4302: [
+        'はな', 'ひと', 'ふね', 'ほし', 'たこ', 'とけい', 'なつ', 'にく', 'ぬの', 'ねこ',
+        'はこ', 'ほね', 'さかな', 'て', 'とし', 'した'
+    ],
+    4303: [
+        'やま', 'みみ', 'ゆめ', 'もり', 'よる', 'りす', 'うみ', 'そら', 'まくら', 'くるま',
+        'ほん', 'わに', 'あめ', 'もも', 'はる', 'よみ'
+    ],
+    4304: [
+        'かぎ', 'ぐみ', 'ごま', 'ざりがに', 'だるま', 'でんわ', 'ぶた', 'べる', 'ぼうし', 'ぱん',
+        'ぴあの', 'ぷりん', 'ぽすと', 'ばら', 'びん', 'ぶどう'
+    ]
+};
+
+function getLearnedHiraganaChars(stageIds) {
+    return new Set(HIRAGANA_DATA
+        .filter(stage => stageIds.includes(stage.id))
+        .flatMap(stage => stage.chars.map(item => item.h)));
+}
+
+function createLearnedHiraganaWordStage(id, title, stageIds) {
+    const allowedChars = getLearnedHiraganaChars(stageIds);
+    const chars = (LEARNED_HIRAGANA_WORD_CANDIDATES[id] || [])
+        .filter(word => Array.from(word).every(char => allowedChars.has(char)))
+        .map(h => ({ h, r: [] }));
+    return { id, title, mode: 'guided', learnedWordStage: true, chars };
+}
+
+const LEARNED_HIRAGANA_WORD_STAGES = [
+    createLearnedHiraganaWordStage(4301, 'あ〜さのことば', [3001, 3002, 3003]),
+    createLearnedHiraganaWordStage(4302, 'た〜はまでのことば', [3001, 3002, 3003, 3004, 3005, 3006]),
+    createLearnedHiraganaWordStage(4303, 'ま〜んまでのことば', [3001, 3002, 3003, 3004, 3005, 3006, 3007, 3008, 3009, 3010]),
+    createLearnedHiraganaWordStage(4304, 'だくてんまでのことば', HIRAGANA_DATA.map(stage => stage.id))
+];
+
 export const WORD_DATA =[
+    ...LEARNED_HIRAGANA_WORD_STAGES,
     { id: 4001, title: 'ひらがなのことば', mode:'guided', chars:BASIC_HIRAGANA_WORDS},
     { id: 4002, title: 'ひらがなのことばテスト', mode:'blind', chars:BASIC_HIRAGANA_WORDS},
     { id: 4003, title: '小さい「ゃ・ゅ・ょ」', mode:'guided', chars:['ゃ','ゅ','ょ','きゃ','きゅ','きょ','しゃ','しゅ','しょ','ちゃ','ちゅ','ちょ','にゃ','にゅ','にょ','ひゃ','ひゅ','ひょ','みゃ','みゅ','みょ','りゃ','りゅ','りょ'].map(h => ({h,r:[]}))},
@@ -196,8 +237,8 @@ export const EXAMS =[
 export const STAGE_ORDER =[
     1001,1002,1003,1004,1005, 1051, 1101, 1006,1007,1008,1009,1010, 1052, 1102, 1011,1012,1013,1014,1015, 1053, 1103, 1016,1017,1018,1019,1020, 1054, 1104, 1999,
     2001,2101,2002,2102,2003,2103,2004,2104, 2999,
-    3001,3101,3201,3002,3102,3202,3003,3103,3203,3301, 3004,3104,3204,3005,3105,3205,3006,3106,3206,3302,
-    3007,3107,3207,3008,3108,3208,3009,3109,3209,3010,3110,3210,3303, 3011,3111,3211,3012,3112,3212,3013,3113,3213,3014,3114,3214,3015,3115,3215,3304, 3999,
+    3001,3101,3201,3002,3102,3202,3003,3103,3203,3301,4301, 3004,3104,3204,3005,3105,3205,3006,3106,3206,3302,4302,
+    3007,3107,3207,3008,3108,3208,3009,3109,3209,3010,3110,3210,3303,4303, 3011,3111,3211,3012,3112,3212,3013,3113,3213,3014,3114,3214,3015,3115,3215,3304,4304, 3999,
     4001,4002,4003,4004,4101, 4005,4006,4007,4008,4102, 4009,4010,4103, 4999, 4011,4012,4013,4104, 4014,4015,4016,4105, 4017,4018,4019,4020,4106, 4021,4022,4023,4107, 4024,4025,4026,4108, 4027,4028,4029,4109, 4030,4031,4032,4110
 ];
 
@@ -208,10 +249,10 @@ export const KB_CHAPTERS =[
     {id:'bottom',title:'したのキー',stages:[1011,1012,1013,1014,1015],bridge:1053,exam:1103},
     {id:'number',title:'すうじキー',stages:[1016,1017,1018,1019,1020],bridge:1054,exam:1104},
     {id:'blind',title:'ブラインドタッチ',stages:[2001,2101,2002,2102,2003,2103,2004,2104],bridge:null,exam:null},
-    {id:'h_1',title:'ひらがな(あ〜さ)',stages:[3001,3101,3201,3002,3102,3202,3003,3103,3203],bridge:null,exam:3301},
-    {id:'h_2',title:'ひらがな(た〜は)',stages:[3004,3104,3204,3005,3105,3205,3006,3106,3206],bridge:null,exam:3302},
-    {id:'h_3',title:'ひらがな(ま〜ん)',stages:[3007,3107,3207,3008,3108,3208,3009,3109,3209,3010,3110,3210],bridge:null,exam:3303},
-    {id:'h_4',title:'ひらがな(だくてん)',stages:[3011,3111,3211,3012,3112,3212,3013,3113,3213,3014,3114,3214,3015,3115,3215],bridge:null,exam:3304},
+    {id:'h_1',title:'ひらがな(あ〜さ)',stages:[3001,3101,3201,3002,3102,3202,3003,3103,3203],bridge:null,exam:3301,afterExamStages:[4301]},
+    {id:'h_2',title:'ひらがな(た〜は)',stages:[3004,3104,3204,3005,3105,3205,3006,3106,3206],bridge:null,exam:3302,afterExamStages:[4302]},
+    {id:'h_3',title:'ひらがな(ま〜ん)',stages:[3007,3107,3207,3008,3108,3208,3009,3109,3209,3010,3110,3210],bridge:null,exam:3303,afterExamStages:[4303]},
+    {id:'h_4',title:'ひらがな(だくてん)',stages:[3011,3111,3211,3012,3112,3212,3013,3113,3213,3014,3114,3214,3015,3115,3215],bridge:null,exam:3304,afterExamStages:[4304]},
     {id:'h_summary',title:'ひらがなまとめ',stages:[3999],bridge:null,exam:null},
     {id:'word1',title:'ひらがなのことば',stages:[4001,4002],bridge:null,exam:null},
     {id:'word2',title:'小さい「ゃ・ゅ・ょ」',stages:[4003,4004],bridge:null,exam:4101},

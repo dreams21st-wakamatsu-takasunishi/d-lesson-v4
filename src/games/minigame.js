@@ -17,6 +17,7 @@ import {
     getExtraTypingPrompts
 } from '../data/typing-prompts.js';
 import { getTypingRankingNicknameBlockWords } from '../data/typing-ranking-settings.js';
+import { createRomajiInputMatcher } from '../utils/romaji-input.js';
 import { SoundManager } from '../utils/sound.js';
 import { showScreen, showImeWarning } from '../ui/screen.js';
 import { createConfetti } from '../ui/reward.js';
@@ -638,10 +639,24 @@ function getTypingPromptKey(wordData) {
     return String(wordData?.h || wordData?.r?.[0] || '');
 }
 
+function normalizeTypingWordData(wordData, fallbackText = 'れんしゅう') {
+    const text = String(wordData?.h || '').trim() || fallbackText;
+    const manualPatterns = (Array.isArray(wordData?.r) ? wordData.r : [wordData?.r])
+        .map(value => String(value || '').trim().toUpperCase())
+        .filter(Boolean);
+    const suggestion = createRomajiInputMatcher(text, manualPatterns).getSuggestion('');
+    const romajiList = [...new Set([...manualPatterns, suggestion].filter(Boolean))];
+    return {
+        ...wordData,
+        h: text,
+        r: romajiList.length ? romajiList : ['RENNSHUU']
+    };
+}
+
 function pickNonRepeatingTypingPrompt(bucket, picker, maxAttempts = 10) {
     let candidate = null;
     for (let i = 0; i < maxAttempts; i++) {
-        candidate = picker();
+        candidate = normalizeTypingWordData(picker());
         const key = getTypingPromptKey(candidate);
         if (!key || key !== lastTypingPromptByBucket[bucket]) break;
     }
@@ -654,6 +669,7 @@ function pickNonRepeatingTypingPrompt(bucket, picker, maxAttempts = 10) {
 function pickDChallengeWord(level) {
     if (Math.random() < 0.45) return getDynamicDChallengeWord(level);
     const list = dChallengeWords[level] || dChallengeWords[1];
+    if (!list.length) return getDynamicDChallengeWord(level);
     return list[Math.floor(Math.random() * list.length)];
 }
 
@@ -665,7 +681,8 @@ function pickRandomMinigameWord() {
     if (Math.random() < 0.55) return getDynamicTypingPrompt();
     if (Math.random() < 0.35) return EXTRA_TYPING_PROMPTS[Math.floor(Math.random() * EXTRA_TYPING_PROMPTS.length)];
     const group = WORD_DATA[Math.floor(Math.random() * WORD_DATA.length)];
-    return group.chars[Math.floor(Math.random() * group.chars.length)];
+    const chars = Array.isArray(group?.chars) ? group.chars : [];
+    return chars.length ? chars[Math.floor(Math.random() * chars.length)] : getDynamicTypingPrompt();
 }
 
 function getRandomMinigameWord() {

@@ -192,7 +192,8 @@ function getKeyboardChapterStageIds(chap) {
     return [
         ...chap.stages,
         ...(chap.bridge ? [chap.bridge] : []),
-        ...(chap.exam ? [chap.exam] : [])
+        ...(chap.exam ? [chap.exam] : []),
+        ...(Array.isArray(chap.afterExamStages) ? chap.afterExamStages : [])
     ];
 }
 
@@ -366,13 +367,12 @@ function renderKeyboardChapters() {
 
     const appendChapterButton = (chap, target = cont) => {
         let chapUnlocked = isUnlocked(chap.stages[0]);
+        const stageIds = getKeyboardChapterStageIds(chap);
         let chapCleared = true;
-        chap.stages.forEach(sid => {
+        stageIds.forEach(sid => {
             if (!isCleared(sid)) chapCleared = false;
         });
-        if (chap.exam && !isCleared(chap.exam)) chapCleared = false;
 
-        const stageIds = getKeyboardChapterStageIds(chap);
         const doneCount = stageIds.filter(isCleared).length;
         const totalCount = stageIds.length;
         const progressPercent = totalCount ? Math.round((doneCount / totalCount) * 100) : 0;
@@ -782,6 +782,24 @@ export function renderKeyboardStages(chap) {
         }
         examsCont.appendChild(b);
     }
+
+    (Array.isArray(chap.afterExamStages) ? chap.afterExamStages : []).forEach((sid, index) => {
+        const { title, keys, sub, exCls } = getKeyboardStageDisplay(sid, chap.stages.length + index);
+        const b = document.createElement('div');
+        b.className = `exam-btn after-exam-word-stage ${exCls}`;
+        b.tabIndex = -1;
+        b.style.width = '300px';
+        if (isUnlocked(sid)) {
+            b.classList.add('unlocked');
+            createBtn(b, () => startGame(sid, 'keyboard'));
+            if (sid === targetId) b.classList.add('next-target');
+        } else {
+            b.style.opacity = '0.5';
+        }
+        if (isCleared(sid)) b.classList.add('cleared');
+        b.innerHTML = `<span class="stage-title">${title}</span><span class="kb-keys" style="font-size:18px">${keys}</span><span class="stage-name" style="font-size:12px">${sub}</span><span class="reward-badge">${getRewardText('keyboard', sid)}</span>`;
+        examsCont.appendChild(b);
+    });
 
     requestAnimationFrame(() => {
         const screen = document.getElementById('screen-keyboard-menu');
