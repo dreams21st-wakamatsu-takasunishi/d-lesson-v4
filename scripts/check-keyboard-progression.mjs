@@ -8,6 +8,8 @@ import {
     getCompletedActiveKeyboardStageIds,
     getKeyboardExamReviewRequirement,
     getKeyboardTargetStage,
+    getRecommendedKeyboardStage,
+    getKeyboardChapterStageIds,
     isKeyboardStageCleared,
     isKeyboardStageUnlocked,
     normalizeKeyboardSequence,
@@ -64,6 +66,13 @@ assert.equal(isKeyboardStageCleared(afterFirstHiragana, 3001), true);
 assert.equal(isKeyboardStageUnlocked(afterFirstHiragana, 3101), true);
 
 const activeStages = getActiveKeyboardStageIds();
+assert.equal(new Set(STAGE_ORDER).size, STAGE_ORDER.length);
+for (const [examId, wordId] of [[3301, 4301], [3302, 4302], [3303, 4303], [3304, 4304]]) {
+    assert.equal(STAGE_ORDER[STAGE_ORDER.indexOf(examId) + 1], wordId);
+    const chapter = KB_CHAPTERS.find(item => item.exam === examId);
+    assert.equal(getKeyboardChapterStageIds(chapter).at(-1), wordId);
+    assert.ok(WORD_DATA.find(stage => stage.id === wordId)?.chars.length > 0);
+}
 assert.equal(activeStages.includes(2001), false);
 assert.equal(activeStages.includes(3101), true);
 assert.equal(activeStages.includes(3001), true);
@@ -91,11 +100,14 @@ const fifthFailure = recordKeyboardExamFailure(user, 3301);
 assert.equal(fifthFailure.streak, 5);
 assert.equal(fifthFailure.requiredStage, 3203);
 assert.equal(getKeyboardExamReviewRequirement(user, 3301), 3203);
+user.keyboardSequence = STAGE_ORDER.indexOf(3301);
+assert.equal(getRecommendedKeyboardStage(user), 3203);
 
 assert.deepEqual(completeKeyboardReviewRequirement(user, 3202), []);
 assert.equal(getKeyboardExamReviewRequirement(user, 3301), 3203);
 assert.deepEqual(completeKeyboardReviewRequirement(user, 3203), [3301]);
 assert.equal(getKeyboardExamReviewRequirement(user, 3301), null);
+assert.equal(getRecommendedKeyboardStage(user), 3301);
 
 recordKeyboardExamFailure(user, 3302);
 clearKeyboardExamFailure(user, 3302);

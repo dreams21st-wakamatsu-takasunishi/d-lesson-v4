@@ -1,6 +1,12 @@
 import { showCustomConfirm } from './modal.js';
 import { currentUser, users, setCurrentUser, setCurrentSelectedGrade, signOutSupabaseAuth } from '../api/user.js';
 
+const screenRefreshHandlers = {};
+
+export function setScreenRefreshHandlers(handlers = {}) {
+    Object.assign(screenRefreshHandlers, handlers);
+}
+
 export function showScreen(id) {
     const practiceScreenIds = new Set(['screen-game', 'screen-text-game', 'screen-minigame']);
     const gameContainer = document.getElementById('game-container');
@@ -12,6 +18,7 @@ export function showScreen(id) {
     const target = document.getElementById(id);
     if (target) {
         target.classList.add('active');
+        screenRefreshHandlers[id]?.();
     }
 
     const header = document.getElementById('global-header');

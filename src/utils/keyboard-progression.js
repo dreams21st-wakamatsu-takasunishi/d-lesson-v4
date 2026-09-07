@@ -36,6 +36,21 @@ export function getKeyboardTargetStage(value) {
     return STAGE_ORDER[normalizeKeyboardSequence(value)] || null;
 }
 
+export function getRecommendedKeyboardStage(user = {}) {
+    const target = getKeyboardTargetStage(user.keyboardSequence);
+    const review = getKeyboardExamReviewRequirement(user, target);
+    return review && review === getKeyboardExamReviewStage(target) ? review : target;
+}
+
+export function getKeyboardChapterStageIds(chapter) {
+    return [
+        ...chapter.stages,
+        ...(chapter.bridge ? [chapter.bridge] : []),
+        ...(chapter.exam ? [chapter.exam] : []),
+        ...(Array.isArray(chapter.afterExamStages) ? chapter.afterExamStages : [])
+    ];
+}
+
 export function isKeyboardStageUnlocked(value, stageId) {
     if (isRetiredKeyboardStage(stageId)) return false;
     const index = STAGE_ORDER.indexOf(Number(stageId));

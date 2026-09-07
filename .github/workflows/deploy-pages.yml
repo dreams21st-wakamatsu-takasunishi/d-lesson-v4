@@ -53,17 +53,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Check public environment
-        run: npm run check:public-env
-
-      - name: Check inline handlers
-        run: npm run check:inline-handlers
-
-      - name: Check undefined names
-        run: npm run check:undefined
-
-      - name: Build
-        run: npm run build
+      - name: Run release checks and build
+        run: npm run check:release
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

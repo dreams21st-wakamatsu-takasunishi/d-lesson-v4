@@ -15,7 +15,8 @@ import { getRewardText } from '../utils/rewards.js';
 import { hasTrainableMistakes } from '../utils/weak-mistakes.js';
 import {
     getKeyboardExamReviewRequirement,
-    getKeyboardTargetStage,
+    getRecommendedKeyboardStage,
+    getKeyboardChapterStageIds,
     isKeyboardStageCleared,
     isKeyboardStageUnlocked,
     normalizeKeyboardSequence
@@ -181,20 +182,11 @@ const KEYBOARD_CHAPTER_SHORT_TEXT = {
     word10: 'ぶんのじゅんび'
 };
 
-function getKeyboardTargetId(user, sequence) {
+function getKeyboardTargetId(user) {
     if (currentKeyboardCategory === 'alphabet') {
-        return ALPHABET_READING_STAGES[Math.min(Number(user.alphabetSequence || 0), ALPHABET_READING_STAGES.length - 1)]?.id;
+        return ALPHABET_READING_STAGES[Number(user.alphabetSequence || 0)]?.id || null;
     }
-    return getKeyboardTargetStage(sequence);
-}
-
-function getKeyboardChapterStageIds(chap) {
-    return [
-        ...chap.stages,
-        ...(chap.bridge ? [chap.bridge] : []),
-        ...(chap.exam ? [chap.exam] : []),
-        ...(Array.isArray(chap.afterExamStages) ? chap.afterExamStages : [])
-    ];
+    return getRecommendedKeyboardStage(user);
 }
 
 function getKeyboardChapterShortText(chap) {
@@ -261,6 +253,14 @@ export function updateKeyboardButtons() {
     renderKeyboardChapters();
 }
 
+export function startRecommendedKeyboardStage(stageId) {
+    const chapter = KB_CHAPTERS.find(item => getKeyboardChapterStageIds(item).includes(stageId));
+    const category = chapter?.id === 'alphabet' ? 'alphabet' : (stageId < 3000 ? 'basic' : 'hiragana');
+    goToKeyboardMenu(category);
+    if (chapter) renderKeyboardStages(chapter);
+    startGame(stageId, 'keyboard');
+}
+
 function renderKeyboardChapters() {
     const u = getActiveUserOrTitle();
     if (!u) return;
@@ -298,7 +298,7 @@ function renderKeyboardChapters() {
         return isKeyboardStageCleared(seq, id);
     };
 
-    const targetId = getKeyboardTargetId(u, seq);
+    const targetId = getKeyboardTargetId(u);
     const allStageIds = [
         ...displayChapters.flatMap(getKeyboardChapterStageIds),
         ...(showMasterExam ? [showMasterExam] : [])
@@ -526,6 +526,10 @@ function renderKeyboardChapters() {
 }
 
 export function showRomajiMenu() {
+    const user = getActiveUserOrTitle();
+    if (!user) return;
+    goToKeyboardMenu('hiragana');
+    document.getElementById('kb-stage-guide').style.display = 'none';
     document.getElementById('kb-chapter-container').style.display = 'none';
     document.getElementById('kb-stage-container').style.display = 'flex';
     document.getElementById('kb-bottom-back-btn').style.display = 'none';
@@ -544,7 +548,8 @@ export function showRomajiMenu() {
 
     stages.forEach(st => {
         const b = document.createElement('div');
-        b.className = 'stage-btn unlocked cleared';
+        b.className = 'stage-btn unlocked';
+        b.classList.toggle('cleared', Boolean(user.examRecords?.[st.id]));
         b.style.borderColor = st.color;
         b.style.backgroundColor = st.color === '#00bcd4' ? '#e0f7fa' : '#fce4ec';
         b.style.cursor = 'pointer';
@@ -640,14 +645,16 @@ function getKeyboardSpecialStageDisplay(stageId) {
     return getKeyboardStageDisplay(stageId, 0);
 }
 
-function renderKeyboardStageGuide(chap, isCleared, isUnlocked) {
+function renderKeyboardStageGuide(chap, isCleared, isUnlocked, targetId) {
     const guideEl = document.getElementById('kb-stage-guide');
     if (!guideEl) return;
 
     const stageIds = getKeyboardChapterStageIds(chap);
     const total = stageIds.length;
     const done = stageIds.filter(id => isCleared(id)).length;
-    const nextId = stageIds.find(id => isUnlocked(id) && !isCleared(id));
+    const nextId = stageIds.includes(targetId) && isUnlocked(targetId)
+        ? targetId
+        : stageIds.find(id => isUnlocked(id) && !isCleared(id));
     const nextIndex = chap.stages.indexOf(nextId);
     const nextDisplay = nextId
         ? (nextIndex >= 0
@@ -665,21 +672,23 @@ function renderKeyboardStageGuide(chap, isCleared, isUnlocked) {
             <div class="kb-stage-guide-focus">${guide.focus}</div>
             <div class="kb-stage-guide-goal">${guide.goal}</div>
         </div>
-        <div class="kb-stage-guide-next">
-            <div class="kb-stage-guide-label">つぎ</div>
-            <div class="kb-stage-guide-next-title">${nextDisplay?.title || 'できた'}</div>
-            <div class="kb-stage-guide-next-keys">${nextDisplay?.keys || 'クリアずみ'}</div>
-            <div class="kb-stage-guide-next-sub">${nextDisplay?.sub || 'このれんしゅうはできています。'}</div>
-        </div>
+        <button type="button" class="kb-stage-guide-next" ${nextId ? '' : 'disabled'}>
+            <span class="kb-stage-guide-label">${nextId && isCleared(nextId) ? 'もういちど れんしゅう' : 'つぎ'}</span>
+            <span class="kb-stage-guide-next-title">${nextDisplay?.title || (done === total ? 'できた' : 'まえのれんしゅうのあと')}</span>
+            <span class="kb-stage-guide-next-keys">${nextDisplay?.keys || (nextId ? '' : (done === total ? 'クリアずみ' : 'じゅんばんに すすもう'))}</span>
+            <span class="kb-stage-guide-next-sub">${nextDisplay?.sub || (done === total ? 'このれんしゅうはできています。' : '')}</span>
+        </button>
         <div class="kb-stage-guide-progress">
             <span>${done}/${total}</span>
             <div class="kb-stage-guide-bar"><div style="width:${total ? Math.round((done / total) * 100) : 0}%;"></div></div>
         </div>
     `;
+    if (nextId) guideEl.querySelector('.kb-stage-guide-next').onclick = () => startGame(nextId, 'keyboard');
 }
 
 export function renderKeyboardStages(chap) {
     setCurrentKeyboardChapter(chap);
+    document.getElementById('kb-stage-guide').style.display = '';
 
     document.getElementById('kb-chapter-container').style.display = 'none';
     document.getElementById('kb-stage-container').style.display = 'flex';
@@ -703,15 +712,13 @@ export function renderKeyboardStages(chap) {
         }
         return isKeyboardStageCleared(seq, id);
     };
-    const targetId = currentKeyboardCategory === 'alphabet'
-        ? ALPHABET_READING_STAGES[Math.min(Number(u.alphabetSequence || 0), ALPHABET_READING_STAGES.length - 1)]?.id
-        : (getKeyboardExamReviewRequirement(u, chap.exam) || getKeyboardTargetStage(seq));
+    const targetId = getKeyboardTargetId(u);
 
     const grid = document.getElementById('kb-stage-grid');
     grid.innerHTML = '';
     const examsCont = document.getElementById('kb-stage-exams');
     examsCont.innerHTML = '';
-    renderKeyboardStageGuide(chap, isCleared, isUnlocked);
+    renderKeyboardStageGuide(chap, isCleared, isUnlocked, targetId);
 
     chap.stages.forEach((sid, index) => {
         const { title, keys, sub, exCls } = getKeyboardStageDisplay(sid, index);

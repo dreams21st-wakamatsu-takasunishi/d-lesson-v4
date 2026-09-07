@@ -7,7 +7,8 @@ import { initAudio } from '../utils/sound.js';
 import { goToRecords } from '../ui/app-navigation.js';
 import { initFocusNavigation } from '../ui/focus-navigation.js';
 import { registerAppGlobalHandlers } from './global-functions.js';
-import { setHomeUiHandlers, updateGlobalHeader } from '../ui/home-dashboard.js';
+import { setHomeUiHandlers, updateGlobalHeader, updateHomeDashboard } from '../ui/home-dashboard.js';
+import { setScreenRefreshHandlers } from '../ui/screen.js';
 import { renderKeyboardStages, updateKeyboardButtons } from '../ui/keyboard-menu.js';
 import { goToMouseMenu, updateMouseButtons } from '../ui/mouse-menu.js';
 import { renderRecords } from '../ui/records.js';
@@ -28,6 +29,11 @@ export function initApp({ buildCommit = 'local' } = {}) {
     setHomeUiHandlers({
         openMouseMenu: goToMouseMenu,
         openRecords: goToRecords
+    });
+
+    setScreenRefreshHandlers({
+        'screen-category': updateHomeDashboard,
+        'screen-practice-menu': updateHomeDashboard
     });
 
     setMenuRefreshHandlers({

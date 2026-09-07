@@ -1,9 +1,8 @@
-import { DEFAULT_CAMPUS_ID } from '../api/user.js';
-import { ALPHABET_READING_STAGES, VISION_STAGES, WORD_STAGES } from '../data/constants.js';
+import { DEFAULT_CAMPUS_ID, ALPHABET_READING_STAGES, VISION_STAGES, WORD_STAGES } from '../data/constants.js';
 import {
     getActiveKeyboardStageIds,
     getCompletedActiveKeyboardStageIds,
-    getKeyboardTargetStage
+    getRecommendedKeyboardStage
 } from './keyboard-progression.js';
 
 export const STANDARD_ROUTE_SETTING_KEY = 'standardRouteSettings';
@@ -36,7 +35,8 @@ function normalizeText(value) {
 function clampDone(done, total) {
     const safeTotal = Math.max(0, Number(total || 0));
     if (safeTotal <= 0) return 0;
-    return Math.min(safeTotal, Math.max(0, Number(done || 0)));
+    const value = Number(done);
+    return Number.isFinite(value) ? Math.min(safeTotal, Math.max(0, Math.floor(value))) : 0;
 }
 
 export function normalizeStandardRouteOrder(order) {
@@ -113,13 +113,14 @@ function getVisibleTextTasks(user, globalSettings = {}) {
         });
 }
 
-function getTextProgress(user, globalSettings) {
+export function getTextProgress(user, globalSettings) {
     const tasks = getVisibleTextTasks(user, globalSettings);
     const done = tasks.filter(task => user?.textRecords?.[task.id]).length;
-    return { done: clampDone(done, tasks.length), total: tasks.length };
+    const nextTask = tasks.find(task => !user?.textRecords?.[task.id]);
+    return { done, total: tasks.length, nextTitle: String(nextTask?.title || '') };
 }
 
-function getVisionProgress(user) {
+export function getVisionProgress(user) {
     const validIds = new Set(VISION_STAGES.flatMap(stage => [
         `${stage.id}_easy`,
         stage.id,
@@ -128,16 +129,21 @@ function getVisionProgress(user) {
     const cleared = new Set((Array.isArray(user?.visionCleared) ? user.visionCleared : [])
         .map(String)
         .filter(id => validIds.has(id)));
-    return { done: cleared.size, total: VISION_STAGES.length * 3 };
+    const nextStage = VISION_STAGES.find(stage => [
+        `${stage.id}_easy`, stage.id, `${stage.id}_hard`
+    ].some(id => !cleared.has(id)));
+    return { done: cleared.size, total: VISION_STAGES.length * 3, nextTitle: nextStage?.title || '' };
 }
 
-function getWordProgress(user) {
+export function getWordProgress(user) {
     const progress = user?.wordProgress || {};
-    const done = WORD_STAGES.filter(stage => {
+    const isCleared = stage => {
         const record = progress[stage.id];
         return record === 'cleared' || record?.status === 'cleared';
-    }).length;
-    return { done, total: WORD_STAGES.length };
+    };
+    const done = WORD_STAGES.filter(isCleared).length;
+    const nextStage = WORD_STAGES.find(stage => !isCleared(stage));
+    return { done, total: WORD_STAGES.length, nextTitle: nextStage?.title || '' };
 }
 
 function formatRemaining(done, total) {
@@ -156,7 +162,7 @@ function getStepStatus(step, done, total, meta = {}) {
     };
 }
 
-function buildRouteSteps(user, globalSettings) {
+export function buildRouteSteps(user = {}, globalSettings = {}) {
     const mouseTotal = 7;
     const alphabetTotal = ALPHABET_READING_STAGES.length;
     const keyboardTotal = getActiveKeyboardStageIds().length;
@@ -164,10 +170,11 @@ function buildRouteSteps(user, globalSettings) {
     const vision = getVisionProgress(user);
     const word = getWordProgress(user);
 
-    const mouseLevel = Number(user?.mouseLevel || 0);
-    const alphabetSequence = Number(user?.alphabetSequence || 0);
+    const mouseLevel = clampDone(user?.mouseLevel, mouseTotal);
+    const alphabetSequence = clampDone(user?.alphabetSequence, alphabetTotal);
     const keyboardCompleted = getCompletedActiveKeyboardStageIds(user?.keyboardSequence).length;
-    const keyboardTarget = getKeyboardTargetStage(user?.keyboardSequence);
+    const keyboardTarget = getRecommendedKeyboardStage(user);
+    const alphabetLocked = !user?.isMaster && mouseLevel < mouseTotal;
     const wordLocked = !user?.isMaster && !user?.examRecords?.romaji_daku_exam;
 
     return {
@@ -175,18 +182,21 @@ function buildRouteSteps(user, globalSettings) {
             phase: '基礎操作',
             next: `マウス M-${Math.min(mouseLevel + 1, mouseTotal)}`,
             detail: `マウス ${clampDone(mouseLevel, mouseTotal)}/${mouseTotal}`,
+            stageId: Math.min(mouseLevel + 1, mouseTotal),
             tone: 'active'
         }),
         alphabet: getStepStatus('alphabet', alphabetSequence, alphabetTotal, {
             phase: 'ABC導入',
-            next: `ABC ${Math.min(alphabetSequence + 1, alphabetTotal)}/${alphabetTotal}`,
+            next: alphabetLocked ? 'マウス M-7 のあと' : `ABC ${Math.min(alphabetSequence + 1, alphabetTotal)}/${alphabetTotal}`,
             detail: `ABC ${clampDone(alphabetSequence, alphabetTotal)}/${alphabetTotal}`,
-            tone: 'active'
+            stageId: ALPHABET_READING_STAGES[alphabetSequence]?.id || null,
+            tone: alphabetLocked ? 'blocked' : 'active'
         }),
         keyboard: getStepStatus('keyboard', keyboardCompleted, keyboardTotal, {
             phase: '文字入力',
             next: keyboardTarget ? `キーボード ${Math.min(keyboardCompleted + 1, keyboardTotal)}/${keyboardTotal}` : 'キーボード できた',
             detail: `キー ${clampDone(keyboardCompleted, keyboardTotal)}/${keyboardTotal}`,
+            stageId: keyboardTarget,
             tone: 'active'
         }),
         text: getStepStatus('text', text.done, text.total, {
@@ -201,7 +211,7 @@ function buildRouteSteps(user, globalSettings) {
             detail: formatRemaining(vision.done, vision.total),
             tone: 'active'
         }),
-        word: getStepStatus('word', wordLocked ? 0 : word.done, word.total, {
+        word: getStepStatus('word', word.done, word.total, {
             phase: wordLocked ? 'Word準備' : 'Word',
             next: wordLocked ? 'ローマ字テスト後' : 'Wordれんしゅう',
             detail: wordLocked ? 'Word未解放' : formatRemaining(word.done, word.total),
@@ -209,6 +219,13 @@ function buildRouteSteps(user, globalSettings) {
             complete: !wordLocked && word.done >= word.total
         })
     };
+}
+
+export function getAvailableRouteSteps(user = {}, globalSettings = {}) {
+    const steps = buildRouteSteps(user, globalSettings);
+    return getStandardRouteOrderForUser(user, globalSettings)
+        .map(id => steps[id])
+        .filter(step => !step.complete && step.tone !== 'blocked');
 }
 
 export function getStandardRouteStatus(user = {}, globalSettings = {}) {
@@ -222,9 +239,8 @@ export function getStandardRouteStatus(user = {}, globalSettings = {}) {
     const total = parts.reduce((sum, part) => sum + Math.max(0, Number(part.total || 0)), 0);
     const percent = total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0;
 
-    const currentStep = routeOrder
-        .map(stepId => stepMap[stepId])
-        .find(step => step && !step.complete);
+    const pendingSteps = routeOrder.map(stepId => stepMap[stepId]).filter(step => !step.complete);
+    const currentStep = pendingSteps.find(step => step.tone !== 'blocked') || pendingSteps[0];
 
     if (currentStep) {
         return {

@@ -28,6 +28,8 @@ npm.cmd run check:release-test
 | `check:admin-dashboard-utils` | 管理者ダッシュボードの集計補助処理が壊れていないこと |
 | `check:admin-progress-editor-utils` | 進捗編集・リセット処理が壊れていないこと |
 | `check:clear-guards` | クリア処理の二重実行防止が残っていること |
+| `check:keyboard-progression` | まとめテスト後のことば練習、復習条件、ステージ順が整合すること |
+| `check:learning-route` | 校舎・グループ別おすすめ順、未解放コース除外、進捗集計が整合すること |
 | `check:student-login-ui` | 児童ログインのあいことば表示切替が残っていること |
 | `check:teacher-status-ui` | 先生メニューの検索、絞り込み、並び替え、要確認ラベル、印刷/CSVが残っていること |
 | `check:practice-interrupts` | 練習を途中でやめた時の取り組み記録が残る導線が壊れていないこと |

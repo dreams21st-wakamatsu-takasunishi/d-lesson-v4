@@ -1,5 +1,7 @@
 export const GRADE_ORDER =["未就学", "小学1年", "小学2年", "小学3年", "小学4年", "小学5年", "小学6年", "中学1年", "中学2年", "中学3年", "高校1年", "高校2年", "高校3年", "おとな", "学年未設定"];
 
+export const DEFAULT_CAMPUS_ID = 'main';
+
 export const VISION_STAGES =[
     { id: 'v1', title: 'じゅんばんタッチ', sub: 'めをすばやくうごかそう', icon: '🔢', color: '#2196F3' },
     { id: 'v2', title: 'まちがいさがし', sub: 'ちがうもじをみつけよう', icon: '🔍', color: '#FF9800' },

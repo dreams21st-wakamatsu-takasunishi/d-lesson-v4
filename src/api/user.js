@@ -2,7 +2,8 @@ import { createClient } from '@supabase/supabase-js';
 import { SoundManager } from '../utils/sound.js';
 import { calculateGrade, sortGrades } from '../utils/helpers.js';
 import { sanitizeGlobalMistakes } from '../utils/weak-mistakes.js';
-import { THEMES, EFFECTS } from '../data/constants.js';
+import { THEMES, EFFECTS, DEFAULT_CAMPUS_ID } from '../data/constants.js';
+export { DEFAULT_CAMPUS_ID } from '../data/constants.js';
 import { showScreen } from '../ui/screen.js';
 import { applyTheme } from '../ui/home.js';
 import { createConfetti } from '../ui/effects.js';
@@ -96,7 +97,6 @@ export const USER_ACCOUNT_TYPES = Object.freeze({
 export const GLOBAL_SETTINGS_ID = '__GLOBAL_SETTINGS__';
 export const MASTER_DEBUG_ID = 'Master_Debug';
 export const SETTINGS_TABLE_KEY = `${TARGET_TABLE}:global`;
-export const DEFAULT_CAMPUS_ID = 'main';
 const PRACTICE_LOG_LIMIT = parseEnvInteger(import.meta.env.VITE_PRACTICE_LOG_LIMIT, 300, 20, 2000);
 const PRACTICE_LOG_RETENTION_DAYS = parseEnvInteger(import.meta.env.VITE_PRACTICE_LOG_RETENTION_DAYS, 180, 0, 3650);
 
@@ -1531,7 +1531,7 @@ async function handlePublicRegisterFormSubmit(event) {
 async function ensureSupabaseSession() {
     if (!REQUIRE_SUPABASE_AUTH) return true;
     if (guestMode) return true;
-    let gateMessage = '先生または管理者のアカウントでログインしてください。';
+    let gateMessage = '教室の児童番号でログインできます。個人のアカウントは「通常ログイン」から入れます。';
     let gateMessageIsError = false;
 
     if (!supabase) {

@@ -1568,27 +1568,3 @@ function m_drag() {
     }; 
 }
 
-export function startRecommendedStage() {
-    const user = currentUser ? users[currentUser] : null;
-    if (!user) {
-        showCustomAlert('ユーザーを選択してください');
-        showScreen('screen-title');
-        return;
-    }
-
-    const mouseLevel = user.mouseLevel || 0;
-    if (mouseLevel < 7) {
-        startGame(mouseLevel + 1, 'mouse');
-        return;
-    }
-
-    const keyboardSequence = normalizeKeyboardSequence(user.keyboardSequence);
-    const nextKeyboardStage = getKeyboardTargetStage(keyboardSequence);
-    if (nextKeyboardStage) {
-        startGame(nextKeyboardStage, 'keyboard');
-        return;
-    }
-
-    showCustomAlert('すべてクリア済みです。にがてとっくんやガチャであそべます。');
-}
-

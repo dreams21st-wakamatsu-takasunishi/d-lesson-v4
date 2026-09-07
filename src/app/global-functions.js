@@ -1,5 +1,5 @@
 import { closeStampOverlay, goToGradeSelect } from '../api/user.js';
-import { backToMenu, handleSecretMenuClick, retryExam, startRecommendedStage } from '../games/core.js';
+import { backToMenu, handleSecretMenuClick, retryExam } from '../games/core.js';
 import { changeEffect, changeTheme, drawGacha, useTicket } from '../games/gacha.js';
 import {
     openExternalTypingSite,
@@ -73,7 +73,7 @@ export function registerAppGlobalHandlers() {
         retryExam, backToMenu, handleSecretMenuClick,
         showRomajiMenu, renderKeyboardStages, backToKbChapter,
         showRecordSection, backToRecordMenu, toggleThemeFavorite, toggleEffectFavorite, toggleRandomTheme, toggleRandomEffect,
-        printCertificate, printEarnedCertificates, exportDashboardCSV, startRecommendedStage, loadCustomGlobalSettings,
+        printCertificate, printEarnedCertificates, exportDashboardCSV, loadCustomGlobalSettings,
         updateGlobalHeader, updateHomeDashboard,
 
         drawGacha, useTicket, changeTheme, changeEffect,

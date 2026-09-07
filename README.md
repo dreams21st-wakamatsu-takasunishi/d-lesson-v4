@@ -11,7 +11,7 @@ https://dreams21st-wakamatsu-takasunishi.github.io/d-lesson-v4/
 ## ローカル起動
 
 ```powershell
-cd "C:\Users\conta\Desktop\pcれんしゅう開発\Dレッスン5.0\d-lesson-v4"
+cd "C:\Users\conta\Desktop\【開発】\Dレッスン5.0\d-lesson-v4"
 npm.cmd install
 npm.cmd run dev:local
 ```
@@ -50,6 +50,7 @@ Actions 側では次を確認します。
 
 - 公開用環境変数が安全な値か
 - インライン `onclick` などの参照先が存在するか
+- 進捗、おすすめルート、ローマ字入力、管理者機能などのリリースチェックが通るか
 - ビルドが通るか
 - デプロイ後の公開URLが `user_data` を見ているか
 - 公開URLのビルド元コミットが push したコミットと一致するか
