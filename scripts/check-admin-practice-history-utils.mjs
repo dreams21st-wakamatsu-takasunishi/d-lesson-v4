@@ -6,7 +6,10 @@ import {
   getLocalDateKey
 } from '../src/ui/admin-practice-history-utils.js';
 
-assert.equal(getLocalDateKey('2026-05-09T01:23:00+09:00'), '2026-05-09');
+const localEarlyMorning = new Date(2026, 4, 9, 1, 23);
+assert.equal(getLocalDateKey(localEarlyMorning.toISOString()), '2026-05-09');
+const localLateEvening = new Date(2026, 4, 9, 23, 30);
+assert.equal(getLocalDateKey(localLateEvening.toISOString()), '2026-05-09');
 assert.equal(getLocalDateKey('not-a-date'), '');
 
 const csv = buildPracticeHistoryCsv([
