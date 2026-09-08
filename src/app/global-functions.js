@@ -24,7 +24,7 @@ import {
     toggleRubyInPrep
 } from '../games/text.js';
 import { showVisionCompare } from '../games/vision.js';
-import { confirmWordClear, goToWordMenu, openWordText, processWordClear, suspendWordTask } from '../games/word.js';
+import { confirmWordClear, goToWordMenu, openWordText, suspendWordTask } from '../games/word.js';
 import { toggleBGM, toggleSFX } from '../utils/sound.js';
 import * as Admin from '../ui/admin.js';
 import { goToFreeTimeMenu, goToMinigameMenu, goToRecords, goToVisionMenu, goToWeakTraining, loginAsMaster } from '../ui/app-navigation.js';
@@ -79,7 +79,7 @@ export function registerAppGlobalHandlers() {
         drawGacha, useTicket, changeTheme, changeEffect,
         showVisionCompare,
 
-        openWordText, suspendWordTask, confirmWordClear, processWordClear,
+        openWordText, suspendWordTask, confirmWordClear,
 
         speakInstruction, speakTextTask, toggleRuby, toggleNavi
     ];

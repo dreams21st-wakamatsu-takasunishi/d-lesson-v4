@@ -3,7 +3,8 @@ import {
     users,
     currentUser,
     saveUsers,
-    hasLessonRole,
+    isGuestMode,
+    getUserDisplayName,
     canWriteCurrentUserRow,
     recordPracticeActivity,
     getPracticeLogs
@@ -14,8 +15,11 @@ import { showCustomAlert } from '../ui/modal.js';
 import { showScreen } from '../ui/screen.js';
 import { createConfetti } from '../ui/reward.js';
 import { buildProgressLabel, findLatestPracticeLog, formatPracticeLogShort } from '../utils/practice-guidance.js';
+import { showWordApprovalDialog } from '../ui/word-approval-dialog.js';
+import { updateGlobalHeader } from '../ui/home-dashboard.js';
 
 let currentWordStageId = null;
+let savingWord = false;
 const WORD_TEXT_WINDOW_FEATURES = 'popup=yes,width=1180,height=820,menubar=no,toolbar=no,location=yes,status=no,scrollbars=yes,resizable=yes';
 
 function getActiveUserOrTitle() {
@@ -114,7 +118,8 @@ function renderWordMenu() {
     renderWordNextPanel(cont, menuState);
 
     menuState.rows.forEach(({ stage: st, isCleared, isWorking, workingPage, isUnlocked }) => {
-        const b = document.createElement('div');
+        const b = document.createElement('button');
+        b.type = 'button';
         b.className = 'stage-btn';
         b.style.height = '100px';
 
@@ -126,6 +131,7 @@ function renderWordMenu() {
 
             createBtn(b, () => startWordStage(st.id));
         } else {
+            b.disabled = true;
             b.style.opacity = '0.5';
         }
 
@@ -150,6 +156,7 @@ function startWordStage(sid) {
         pageVal = prog.page || '';
     }
     document.getElementById('word-page-input').value = pageVal;
+    document.getElementById('word-stage-status').textContent = getWordStageProgress(users[currentUser], sid).isCleared ? 'クリアずみ' : pageVal ? `${pageVal}ページからのつづき` : 'これからチャレンジ';
 
     showScreen('screen-word-game');
 }
@@ -160,30 +167,37 @@ export function openWordText() {
         const popup = window.open(st.pdf, '_blank', WORD_TEXT_WINDOW_FEATURES);
         if (popup) popup.opener = null;
     }
-    else showCustomAlert('テキストのURLが設定されていません。\n（先生へ：script.js 内の WORD_STAGES にPDFのURLを入れてください）');
+    else showCustomAlert('テキストのURLが設定されていません。先生に確認してください。');
 }
 
 function getCurrentWordStageLabel() {
     const st = WORD_STAGES.find(s => s.id === currentWordStageId);
     if (!st) return 'Word練習';
-    return `Word ${st.title}${st.sub ? ` / ${st.sub}` : ''}`;
+    return `${st.title}${st.sub ? ` / ${st.sub}` : ''}`;
 }
 
-export function suspendWordTask() {
+export async function suspendWordTask() {
+    if (savingWord || !currentWordStageId || !users[currentUser]) return;
     if (!canWriteCurrentUserRow()) {
         showCustomAlert('先生のかくにん中は、Wordのとちゅうほぞんはできません。生徒本人または管理者で操作してください。');
         return;
     }
 
     const u = users[currentUser];
+    const userId = currentUser;
+    const stageId = currentWordStageId;
+    const input = document.getElementById('word-page-input');
+    if (!input.reportValidity()) return;
     if (!u.wordProgress) u.wordProgress = {};
 
     let pageVal = document.getElementById('word-page-input').value;
     let prog = u.wordProgress[currentWordStageId];
+    const previousLogs = u.practiceLogs;
 
     let isCleared = (prog === 'cleared' || (prog && prog.status === 'cleared'));
 
     u.wordProgress[currentWordStageId] = {
+        ...(prog && typeof prog === 'object' ? prog : {}),
         status: isCleared ? 'cleared' : 'working',
         page: pageVal
     };
@@ -194,58 +208,53 @@ export function suspendWordTask() {
         amount: pageVal ? `${pageVal}ページまで` : 'ページなし',
         coins: 0
     });
-    saveUsers(false);
+    savingWord = true;
+    let saved;
+    try { saved = await saveUsers(false); } catch { saved = false; } finally { savingWord = false; }
+    if (!saved) {
+        if (prog === undefined) delete u.wordProgress[stageId];
+        else u.wordProgress[stageId] = prog;
+        u.practiceLogs = previousLogs;
+        showCustomAlert('保存できませんでした。通信を確認して、もう一度保存してください。');
+        return;
+    }
+    if (currentUser !== userId || currentWordStageId !== stageId || !document.getElementById('screen-word-game').classList.contains('active')) return;
     SoundManager.playClick();
     showCustomAlert('「やっているところ ⏸️」としてきろくしました！\nデータをほぞんしてWordをとじたら、つぎはつづきからできます。');
     goToWordMenu();
 }
 
 export function confirmWordClear() {
-    if (hasLessonRole('teacher', 'admin')) {
-        processWordClear();
-        return;
-    }
-
-    showCustomAlert('先生または管理者アカウントでログインして、かくにんしてください。');
+    if (savingWord || !currentWordStageId || !users[currentUser]) return;
+    if (isGuestMode()) { showCustomAlert('ゲストでは先生の承認は保存できません。登録したアカウントで取り組んでね。'); return; }
+    const input = document.getElementById('word-page-input');
+    if (!input.reportValidity()) return;
+    const userId = currentUser;
+    const stageId = currentWordStageId;
+    showWordApprovalDialog({
+        studentName: getUserDisplayName(userId), stageTitle: getCurrentWordStageLabel(),
+        userDataId: userId, stageId, page: input.value,
+        isCurrent: () => currentUser === userId && currentWordStageId === stageId && document.getElementById('screen-word-game').classList.contains('active'),
+        onApproved: result => {
+            users[userId] = result.data;
+            showWordApprovalFeedback(result.coinGain, userId);
+        }
+    });
 }
 
-export function processWordClear() {
-    if (!canWriteCurrentUserRow()) {
-        showCustomAlert('先生のかくにん中は、Wordのクリアけっかはほぞんされません。管理者アカウントで操作してください。');
-        return;
-    }
-
-    const u = users[currentUser];
-    if (!u.wordProgress) u.wordProgress = {};
-
-    let prog = u.wordProgress[currentWordStageId];
-    let isFirstClear = !(prog === 'cleared' || (typeof prog === 'object' && prog.status === 'cleared'));
-    let pageVal = document.getElementById('word-page-input').value;
-
-    u.wordProgress[currentWordStageId] = { status: 'cleared', page: pageVal };
-
-    let coinGain = isFirstClear ? 500 : 50;
-    u.coins = (u.coins || 0) + coinGain;
-    recordPracticeActivity({
-        category: 'word',
-        title: getCurrentWordStageLabel(),
-        detail: isFirstClear ? 'クリア' : 'クリアをもういちどかくにん',
-        amount: pageVal ? `${pageVal}ページまで` : 'ページなし',
-        coins: coinGain
-    });
-
-    saveUsers(false);
+function showWordApprovalFeedback(coinGain, userId) {
+    updateGlobalHeader();
     SoundManager.playClear();
     createConfetti();
 
     document.getElementById('feedback-text').innerText = 'Word マスター！';
-    document.getElementById('feedback-time').innerHTML = `<span style="font-size:30px; color:#FFD700;">💰 +${coinGain} コインゲット！</span>`;
+    document.getElementById('feedback-time').textContent = coinGain > 0 ? `+${coinGain} コインゲット！` : '先生のかくにんができました';
     document.getElementById('feedback-time').style.display = 'block';
     document.getElementById('feedback-stats').style.display = 'none';
     document.getElementById('feedback-overlay').style.display = 'flex';
 
     setTimeout(() => {
         document.getElementById('feedback-overlay').style.display = 'none';
-        goToWordMenu();
+        if (currentUser === userId && document.getElementById('screen-word-game').classList.contains('active')) goToWordMenu();
     }, 4000);
 }

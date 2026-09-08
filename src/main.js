@@ -1,4 +1,5 @@
 import './style.css';
+import './styles/interface.css';
 
 import { initApp } from './app/bootstrap.js';
 

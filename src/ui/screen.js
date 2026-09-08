@@ -1,4 +1,5 @@
 import { showCustomConfirm } from './modal.js';
+import { refreshInterface } from './interface.js';
 import { currentUser, users, setCurrentUser, setCurrentSelectedGrade, signOutSupabaseAuth } from '../api/user.js';
 
 const screenRefreshHandlers = {};
@@ -19,6 +20,7 @@ export function showScreen(id) {
     if (target) {
         target.classList.add('active');
         screenRefreshHandlers[id]?.();
+        refreshInterface(id);
     }
 
     const header = document.getElementById('global-header');

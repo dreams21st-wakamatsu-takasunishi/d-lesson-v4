@@ -1,3 +1,4 @@
+import { updateSoundButton } from '../ui/interface.js';
 export const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
 export let isSfxMuted = localStorage.getItem('pc_practice_sfx_muted') === 'true';
@@ -7,14 +8,14 @@ let bgmInterval = null;
 export function toggleSFX() {
     isSfxMuted = !isSfxMuted;
     localStorage.setItem('pc_practice_sfx_muted', isSfxMuted);
-    document.getElementById('btn-sfx').innerText = isSfxMuted ? '🔇' : '🔊';
+    updateSoundButton('btn-sfx', isSfxMuted);
     if (document.activeElement) document.activeElement.blur(); 
 }
 
 export function toggleBGM() {
     isBgmMuted = !isBgmMuted;
     localStorage.setItem('pc_practice_bgm_muted', isBgmMuted);
-    document.getElementById('btn-bgm').innerText = isBgmMuted ? '🔇' : '🎵';
+    updateSoundButton('btn-bgm', isBgmMuted);
     if (isBgmMuted) stopBGM(); else startBGM();
     if (document.activeElement) document.activeElement.blur(); 
 }
@@ -94,7 +95,7 @@ export const SoundManager = {
 };
 
 export function initAudio() {
-    document.getElementById('btn-sfx').innerText = isSfxMuted ? '🔇' : '🔊';
-    document.getElementById('btn-bgm').innerText = isBgmMuted ? '🔇' : '🎵';
+    updateSoundButton('btn-sfx', isSfxMuted);
+    updateSoundButton('btn-bgm', isBgmMuted);
     if (!isBgmMuted) startBGM();
 }

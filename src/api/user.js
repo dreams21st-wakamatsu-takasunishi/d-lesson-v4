@@ -456,7 +456,20 @@ export async function refreshCurrentLessonAccess() {
 
 function setSyncStatus(text) {
     const syncStatus = document.getElementById('sync-status');
-    if (syncStatus) syncStatus.innerText = text;
+    if (syncStatus) {
+        const labels = {
+            guest: 'ゲスト', 'rls synced': '保存ずみ', synced: '保存ずみ', syncing: '保存中',
+            offline: 'オフライン', 'sync error': '保存エラー', authenticated: 'ログイン中',
+            'auth missing': 'ログインが必要', 'rls auth missing': 'ログインが必要',
+            'auth expired': '再ログインが必要', 'signed out': 'ログアウトずみ',
+            'student access missing': '利用権限を確認', 'auth only': 'クラウド保存無効',
+            'cloud locked': 'クラウド保存無効', 'local only': '端末内のみ'
+        };
+        syncStatus.textContent = labels[text] || '保存状態を確認';
+        syncStatus.title = text === 'guest' ? 'ゲストの記録はこのタブのみ。クラウドには保存されません。' : '保存状態（クラウド同期）';
+        syncStatus.dataset.state = text;
+        syncStatus.setAttribute('role', 'status');
+    }
 }
 
 function loadLocalUsers() {

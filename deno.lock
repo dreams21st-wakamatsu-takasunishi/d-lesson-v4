@@ -9,6 +9,7 @@
     "packageJson": {
       "dependencies": [
         "npm:@supabase/supabase-js@^2.105.0",
+        "npm:lucide@0.577",
         "npm:supabase@^2.107.0",
         "npm:typescript@^6.0.3",
         "npm:vite@^8.0.10"

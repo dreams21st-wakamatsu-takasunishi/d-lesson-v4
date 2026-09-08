@@ -196,6 +196,8 @@ Edge Function未デプロイの場合は、従来どおりAuth User IDを手入�
 
 ## 7. 不正ユーザー・退会ユーザー削除
 
+Word学習の児童画面での承認については [Word学習の先生確認](word-teacher-approval.md) を参照してください。
+
 管理者画面の児童削除では、`admin-delete-auth-user` が利用可能な場合、次をまとめて削除します。
 
 - 対象児童の Supabase Auth ユーザー

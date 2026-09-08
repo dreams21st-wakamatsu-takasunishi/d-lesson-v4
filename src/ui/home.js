@@ -1,6 +1,9 @@
 import { THEMES } from '../data/constants.js';
 
 export function applyTheme(themeId = 'default') {
+    const selectedTheme = THEMES.find(theme => theme.id === themeId);
+    document.documentElement.dataset.lessonTheme = selectedTheme ? themeId : 'default';
+    document.documentElement.style.setProperty('--lesson-on-background', selectedTheme?.text || '#243533');
     document.body.className = '';
     let styleTag = document.getElementById('custom-theme-style');
     if (!styleTag) {

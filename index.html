@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="ja" data-lesson-theme="default">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -17,6 +17,7 @@
     
     <!-- グローバルヘッダー -->
     <div id="global-header" style="display: none;">
+        <div class="lesson-brand"><img src="/favicon.svg" alt="" width="34" height="34"><strong>Dレッスン</strong><span id="lesson-location">ホーム</span></div>
         <div id="header-left-tools">
             <button class="sys-btn" id="btn-back-global" onclick="handleGlobalBack()" title="もどる" tabindex="-1">⬅️</button>
             <button class="sys-btn" id="btn-home-global" onclick="handleGlobalHome()" title="ホームへ" tabindex="-1">🏠</button>
@@ -987,22 +988,11 @@
     <!-- ★新設: Wordれんしゅう 挑戦中待機画面 -->
     <div id="screen-word-game" class="screen">
         <div class="screen-content" style="gap: 20px;">
-            <h2 id="word-stage-title" style="color: #1976D2; font-size: 36px; margin-bottom: 10px;"></h2>
-            <p style="font-size: 20px; color: #555;">テキストをひらいて、Wordで さぎょう をしよう！</p>
-            <div style="display:flex; flex-direction:column; gap:20px; align-items:center; background:#e3f2fd; padding:30px; border-radius:20px; border:4px solid #64b5f6; width:80%; max-width:600px; box-shadow: 0 10px 20px rgba(0,0,0,0.1);">
-                <button class="btn-primary" style="font-size: 28px; padding: 20px 40px; width:100%; box-shadow: 0 6px 0 #2e7d32;" onclick="openWordText()">📘 テキストをひらく</button>
-                
-                <!-- ★追加：どこまでやったかを記録する入力欄 -->
-                <div style="display:flex; align-items:center; gap:10px; font-size:22px; font-weight:bold; color:#0277bd; background:#fff; padding:10px 20px; border-radius:15px; border:2px solid #90caf9; width:100%; justify-content:center; box-sizing:border-box;">
-                    <span>テキストの</span>
-                    <input type="number" id="word-page-input" style="width:100px; font-size:24px; padding:5px; margin:0; border:2px solid #ccc; border-radius:8px; text-align:center;" min="1" placeholder="数字">
-                    <span>ページまで おわった！</span>
-                </div>
-
-                <div style="display:flex; gap:15px; width:100%;">
-                    <button class="btn-secondary" style="flex:1; font-size:20px; padding:15px; background:#FF9800; box-shadow: 0 5px 0 #e65100;" onclick="suspendWordTask()">⏸️ 今日はここまで</button>
-                    <button class="btn-primary" style="flex:1; font-size:20px; padding:15px; background:#E91E63; box-shadow: 0 5px 0 #c2185b;" onclick="confirmWordClear()">🏆 先生にみてもらう</button>
-                </div>
+            <div class="word-workspace">
+                <header class="word-workspace-heading"><span class="lesson-eyebrow">Word れんしゅう</span><h2 id="word-stage-title"></h2><p id="word-stage-status" role="status"></p></header>
+                <section class="word-workspace-text"><span class="word-book-icon" data-lesson-icon="book-open"></span><div><h3>れんしゅうのテキスト</h3><p>PDF教材</p></div><button class="btn-primary" onclick="openWordText()"><span data-lesson-icon="external-link"></span>テキストをひらく</button></section>
+                <section class="word-workspace-progress"><label for="word-page-input">おわったところ</label><div class="word-page-row"><input type="number" id="word-page-input" min="1" max="9999" step="1" placeholder="数字" inputmode="numeric"><span>ページまで</span></div></section>
+                <footer class="word-workspace-actions"><button class="btn-secondary" onclick="suspendWordTask()"><span data-lesson-icon="save"></span>今日はここまで</button><button class="btn-primary" onclick="confirmWordClear()"><span data-lesson-icon="badge-check"></span>先生にみてもらう</button></footer>
             </div>
         </div>
         <button class="btn-secondary bottom-back-btn" onclick="goToWordMenu()" tabindex="0">やめる</button>
