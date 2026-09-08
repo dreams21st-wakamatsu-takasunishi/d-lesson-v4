@@ -1,3 +1,5 @@
+import '@fontsource/m-plus-rounded-1c/500.css';
+import '@fontsource/m-plus-rounded-1c/700.css';
 import './style.css';
 import './styles/interface.css';
 

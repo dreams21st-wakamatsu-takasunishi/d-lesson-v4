@@ -1092,7 +1092,7 @@ function buildAuthGateHtml(isError = false) {
 
     return `
         <div id="supabase-auth-card" style="box-sizing:border-box; width:min(${cardWidth}, 100%); max-height:calc(100vh - 32px); overflow:auto; background:#fff; border:1px solid #dbe3ef; border-radius:8px; box-shadow:0 18px 45px rgba(15,23,42,0.18); padding:22px;">
-            <h2 style="margin:0 0 8px; color:#0f172a; font-size:24px; letter-spacing:0; text-align:center;">Dレッスン ログイン</h2>
+            <h2 style="margin:0 0 8px; color:#0f172a; font-size:24px; letter-spacing:0; text-align:center;">Dレッスン</h2>
             <p id="supabase-auth-message" class="auth-gate-message" style="color:${isError ? '#b91c1c' : '#475569'};"></p>
             <style>
                 .auth-gate-message {
