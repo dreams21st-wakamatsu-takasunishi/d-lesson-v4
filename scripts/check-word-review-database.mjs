@@ -15,7 +15,7 @@ try{
     create function auth.uid() returns uuid language sql as $$ select nullif(current_setting('test.actor',true),'')::uuid $$;
     create table public.user_data(id text primary key,data jsonb);
     create table public.lesson_user_access(auth_user_id uuid,user_data_id text,role text,scope_type text,scope_value text,primary key(auth_user_id,user_data_id));
-    grant usage on schema public,auth to authenticated,service_role;grant select,update on user_data to authenticated;
+    grant usage on schema public,auth to authenticated,service_role;grant select,update on user_data to authenticated;grant select on user_data to service_role;
     insert into lesson_user_access values('${student}','student_test','student','all','');
     insert into auth.users values('${student}','{"user_data_id":"student_test","campus_id":"main","login_number":"1"}');
     insert into user_data values('student_test','{"campusId":"main","loginNumber":"1","displayName":"架空児童","birthdate":"2018-01-01","coins":20,"examRecords":{"romaji_daku_exam":true},"wordProgress":{}}');`);
@@ -24,6 +24,7 @@ try{
   await db.exec(sql('supabase/sql/support_word_reviews.sql'));
   await db.exec(sql('supabase/sql/support_word_retention.sql'));
   await db.exec(sql('supabase/sql/support_student_auth_provision.sql'));
+  await db.exec(sql('supabase/sql/support_learning_tasks.sql'));
   await db.exec('set role service_role');
   await db.query('select provision_support_student_access($1,$2,$3,$4)',['student_test',student,'main','1']);
   await assert.rejects(()=>db.query('select provision_support_student_access($1,$2,$3,$4)',['student_test',student,'main','2']),error=>error.code==='42501');
@@ -32,6 +33,26 @@ try{
     insert into lesson_support_students(support_project_ref,organization_id,data_table,campus_id,student_id,enabled) values('${project}','${org}','user_data','main','student_test',true);
     set role service_role;select bind_support_word_student('${project}','${org}','user_data','student_test','${link}','child-test',true);`);
   const prepare=(id,actor=student,stage='w_b1_1')=>db.query('select (prepare_support_word_request($1,$2,$3,$4,$5,$6,$7,$8)).*',[actor,'student_test','user_data',stage,'3',id,'application/pdf',20]);
+  const taskId='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+  const saveTask=(revision=0,patch={})=>{const t={id:taskId,project,org,link,child:'child-test',category:'mouse',title:'試験課題',instructions:'クリック練習',start:'2026-09-30',end:'2026-10-01',active:true,...patch};return db.query('select * from save_support_learning_task($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)',[t.project,t.org,'user_data','student_test',t.link,t.child,t.id,revision,t.category,t.title,t.instructions,t.start,t.end,t.active,staff,'試験職員']);};
+  const beforeTasks=(await db.query("select data from user_data where id='student_test'")).rows[0].data;
+  assert.equal((await saveTask()).rows[0].revision,1);
+  assert.equal((await saveTask()).rows[0].revision,1);
+  assert.equal((await db.query('select count(*)::int as total from lesson_learning_task_audit')).rows[0].total,1);
+  await assert.rejects(()=>saveTask(0,{title:'別の内容'}),e=>e.code==='PT409');
+  await assert.rejects(()=>saveTask(1,{child:'other-child'}),e=>e.code==='42501');
+  await assert.rejects(()=>saveTask(1,{org:'99999999-9999-4999-8999-999999999999'}),e=>e.code==='42501');
+  await assert.rejects(()=>saveTask(1,{category:'free'}),e=>e.code==='22023');
+  await assert.rejects(()=>saveTask(1,{end:'2026-09-01'}),e=>e.code==='22023');
+  await assert.rejects(()=>saveTask(1,{end:'2027-09-30'}),e=>e.code==='22023');
+  await assert.rejects(()=>saveTask(1,{instructions:'x'.repeat(501)}),e=>e.code==='22023');
+  assert.equal((await saveTask(1,{active:false})).rows[0].revision,2);
+  assert.equal((await saveTask(1,{active:false})).rows[0].revision,2);
+  for(let i=1;i<=20;i++)await saveTask(0,{id:`bbbbbbbb-bbbb-4bbb-8bbb-${String(i).padStart(12,'0')}`});
+  await assert.rejects(()=>saveTask(2),e=>e.code==='22023');
+  await saveTask(1,{id:'bbbbbbbb-bbbb-4bbb-8bbb-000000000001',active:false});
+  assert.equal((await saveTask(2)).rows[0].revision,3);
+  assert.deepEqual((await db.query("select data from user_data where id='student_test'")).rows[0].data,beforeTasks);
   const submit=id=>db.query('select (submit_support_word_request($1,$2,$3)).*',[student,id,hash]);
   const decide=(id,revision,status,reason='')=>db.query('select (decide_support_word_request($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)).*',[project,org,link,'child-test',id,revision,staff,'試験職員',status,reason]);
   await assert.rejects(()=>prepare(request1,staff),error=>error.code==='42501');
@@ -58,6 +79,8 @@ try{
   await db.exec(`select set_config('test.actor','${student}',false);set role authenticated;`);
   await assert.rejects(()=>prepare(request1),error=>error.code==='42501');
   await assert.rejects(()=>db.query('select * from lesson_word_requests'),error=>error.code==='42501');
+  await assert.rejects(()=>db.query('select * from lesson_learning_tasks'),error=>error.code==='42501');
+  await assert.rejects(()=>saveTask(2),error=>error.code==='42501');
   await assert.rejects(()=>db.query("update user_data set data=$1 where id='student_test'",[{...data,supportWordRevision:undefined,coins:20}]),error=>error.code==='PT409');
   await db.query("update user_data set data=$1 where id='student_test'",[{...data,wordProgress:{}}]);
   assert.equal((await db.query("select data from user_data")).rows[0].data.wordProgress.w_b1_1.status,'cleared');
@@ -68,6 +91,7 @@ try{
   const request4='88888888-8888-4888-8888-888888888888';await prepare(request4,student,'w_b1_2');await submit(request4);
   await db.query('select bind_support_word_student($1,$2,$3,$4,$5,$6,false)',[project,org,'user_data','student_test',link,'child-test']);
   await assert.rejects(()=>decide(request4,2,'approved'),error=>error.code==='42501');
+  await assert.rejects(()=>saveTask(2),error=>error.code==='42501');
   await db.exec('reset role');assert.equal((await db.query('select status from lesson_word_requests where id=$1',[request4])).rows[0].status,'expired');
   console.log('PASS: Word submission ownership, stage order, immutable versions, duplicate submission, return/resubmit, approval reward idempotency, stale child saves, protected RPC/RLS, unlink rejection');
 }finally{await db.close();}

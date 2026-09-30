@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {parseTeacherTasks} from '../src/utils/learning-tasks.js';
+const today=new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Tokyo'});
+const task={id:'11111111-1111-4111-8111-111111111111',revision:1,category:'mouse',title:'M-1',instructions:'クリック',startsOn:today,endsOn:today,active:true};
+assert.equal(parseTeacherTasks({schemaVersion:1,tasks:[task]}).length,1);
+for(const patch of [{category:'__proto__'},{active:false},{startsOn:'9999-12-31'},{endsOn:'2000-01-01'},{revision:0},{instructions:'a'.repeat(501)},{title:''}])assert.throws(()=>parseTeacherTasks({schemaVersion:1,tasks:[{...task,...patch}]}));
+assert.throws(()=>parseTeacherTasks({schemaVersion:1,tasks:[task,task]}));
+const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
+for(const category of ['mouse','keyboard','text','word','vision','minigame'])assert(html.includes(`id="cat-${category}"`));
+console.log('PASS: teacher task contracts, current Japanese date, own-menu category routes, malformed and duplicate rejection');

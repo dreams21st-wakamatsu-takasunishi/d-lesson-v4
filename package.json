@@ -13,7 +13,7 @@
     "check:admin-dashboard-utils": "node scripts/check-admin-dashboard-utils.mjs",
     "check:admin-progress-editor-utils": "node scripts/check-admin-progress-editor-utils.mjs",
     "check:clear-guards": "node scripts/check-clear-guards.mjs",
-    "check:word-approval": "node scripts/check-word-approval.mjs",
+    "check:word-approval": "node scripts/check-word-approval.mjs && node scripts/check-learning-tasks.mjs",
     "check:keyboard-progression": "node scripts/check-keyboard-progression.mjs",
     "check:learning-route": "node scripts/check-learning-route.mjs",
     "check:romaji-input": "node scripts/check-romaji-input.mjs",

@@ -9107,3 +9107,15 @@ input:checked + .toggle-slider:before { transform: translateX(26px); }
     opacity: 0; transition: opacity 0.3s; pointer-events: none; 
 }
 .romaji-cell.show-hint .romaji-hint-text { opacity: 1; }
+/* Teacher assignments use the existing practice-menu actions and do not alter progression. */
+.teacher-task-section { grid-column: 1 / -1; border-top: 3px solid #2f9565; border-bottom: 1px solid #a9cdbd; padding: 14px 0; text-align: left; }
+.teacher-task-section[hidden] { display: none; }
+.teacher-task-section .home-panel-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: center; }
+.teacher-task-section ul { list-style: none; margin: 0; padding: 0; }
+.teacher-task-section li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 16px; padding: 12px 0; border-bottom: 1px solid #a9cdbd; }
+.teacher-task-section li:last-child { border-bottom: 0; }
+.teacher-task-section strong { font-size: 18px; overflow-wrap: anywhere; }
+.teacher-task-section li p { grid-column: 1; white-space: pre-wrap; overflow-wrap: anywhere; margin: 5px 0; }
+.teacher-task-section li button { grid-column: 2; grid-row: 1 / 3; min-height: 44px; max-width: 100%; }
+.teacher-task-section .btn-secondary { min-height: 40px; }
+@media (max-width: 520px) { .teacher-task-section li { grid-template-columns: minmax(0,1fr); gap: 6px; } .teacher-task-section li button { grid-column: 1; grid-row: auto; justify-self: start; } }

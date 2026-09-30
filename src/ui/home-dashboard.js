@@ -20,6 +20,7 @@ import { goToTextMenu } from '../games/text.js';
 import { renderVisionMenu } from '../games/vision.js';
 import { goToWordMenu } from '../games/word.js';
 import { renderDailyMissionPanel } from './daily-missions.js';
+import { refreshTeacherTasks } from './teacher-tasks.js';
 
 const homeUiHandlers = {
     openMouseMenu: () => showScreen('screen-mouse-menu'),
@@ -164,6 +165,7 @@ export function updateGlobalHeader() {
 }
 
 export function updateHomeDashboard() {
+    void refreshTeacherTasks();
     if (!currentUser || !users[currentUser]) return;
     const u = users[currentUser];
 

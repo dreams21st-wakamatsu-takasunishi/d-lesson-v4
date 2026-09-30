@@ -174,6 +174,8 @@ serve(async (req) => {
       if(expireError)throw expireError;
     }
     if(userDataId){
+      const {error: tasksError}=await serviceClient.from('lesson_learning_tasks').delete().eq('data_table',userDataTable).eq('student_id',userDataId);
+      if(tasksError)throw tasksError;
       const {data: requests,error} = await serviceClient.from('lesson_word_requests').select('id,file_path').eq('data_table',userDataTable).eq('student_id',userDataId);
       if(error)throw error;
       for(let offset=0;offset<(requests||[]).length;offset+=100){
