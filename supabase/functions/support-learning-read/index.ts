@@ -1,0 +1,49 @@
+import { createClient } from 'npm:@supabase/supabase-js@2';
+import { classroomIdentity, practiceForDate, secretMatches, validDate } from '../_shared/support-learning.ts';
+
+const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
+  status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' },
+});
+
+Deno.serve(async request => {
+  if (request.method !== 'POST') return reply({ error: 'POSTで送信してください。' }, 405);
+  const secret = Deno.env.get('D_SUPPORT_BRIDGE_SECRET') || '';
+  if (!await secretMatches(request.headers.get('x-lesson-bridge-key') || '', secret)) return reply({ error: '連携認証を確認してください。' }, 401);
+  try {
+    const text = await request.text();
+    if (text.length > 2048) return reply({ error: '送信内容を確認してください。' }, 400);
+    const body = JSON.parse(text);
+    const table = Deno.env.get('LESSON_USER_DATA_TABLE') || 'user_data';
+    const url = Deno.env.get('SUPABASE_URL') || '';
+    const sourceProject = new URL(url).hostname.split('.')[0];
+    if (!['inspect', 'history'].includes(body?.action) || !/^[a-z0-9]{20}$/.test(body?.supportProjectRef || '')
+      || !/^[0-9a-f-]{36}$/i.test(body?.organizationId || '') || !/^student_[A-Za-z0-9_-]{1,140}$/.test(body?.studentId || '')
+      || !['user_data', 'test_user_data'].includes(table) || (body.action === 'history' && !validDate(body.date))) {
+      return reply({ error: '連携対象と日付を確認してください。' }, 400);
+    }
+    const client = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } });
+    const { data: scopes, error: scopeError } = await client.from('lesson_support_scopes').select('campus_id')
+      .eq('support_project_ref', body.supportProjectRef).eq('organization_id', body.organizationId).eq('data_table', table).eq('enabled', true);
+    if (scopeError) return reply({ error: '学習側の連携設定を確認できません。' }, 503);
+    if (!scopes?.length) return reply({ error: 'この事業所への学習連携は許可されていません。' }, 403);
+    const { data: permission, error: permissionError } = await client.from('lesson_support_students').select('campus_id')
+      .eq('support_project_ref', body.supportProjectRef).eq('organization_id', body.organizationId)
+      .eq('data_table', table).eq('student_id', body.studentId).eq('enabled', true).maybeSingle();
+    if (permissionError) return reply({ error: '児童の連携許可を確認できません。' }, 503);
+    if (!permission || !scopes.some(scope => scope.campus_id === permission.campus_id)) {
+      return reply({ error: '対象の教室児童を確認できません。IDと連携範囲を確認してください。' }, 403);
+    }
+    const { data: row, error } = await client.from(table).select('id,data').eq('id', body.studentId).maybeSingle();
+    if (error) return reply({ error: '学習データを取得できません。' }, 503);
+    const identity = row?.data ? classroomIdentity(row.id, row.data, sourceProject, table) : null;
+    if (!identity || !identity.displayName || permission.campus_id !== identity.campusId) {
+      return reply({ error: '対象の教室児童を確認できません。IDと連携範囲を確認してください。' }, 403);
+    }
+    return reply({ schemaVersion: 1, identity, ...(body.action === 'history' ? {
+      date: body.date, events: practiceForDate(row!.data, body.date), historyComplete: false,
+      historyNotice: '保存されている履歴のみです。実績がない場合も未実施とは判断できません。',
+    } : {}) });
+  } catch {
+    return reply({ error: '連携処理を完了できませんでした。' }, 503);
+  }
+});

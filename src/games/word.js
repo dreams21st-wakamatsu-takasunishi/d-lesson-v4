@@ -9,6 +9,9 @@ import {
     recordPracticeActivity,
     getPracticeLogs
 } from '../api/user.js';
+import {getCurrentLessonRole} from '../api/user.js';
+import {loadStudentWordReviews,readWordStudentSnapshot} from '../api/word-review.js';
+import {showWordSubmissionDialog} from '../ui/word-submission-dialog.js';
 import { SoundManager } from '../utils/sound.js';
 import { createBtn } from '../utils/dom.js';
 import { showCustomAlert } from '../ui/modal.js';
@@ -20,6 +23,34 @@ import { updateGlobalHeader } from '../ui/home-dashboard.js';
 
 let currentWordStageId = null;
 let savingWord = false;
+let wordReviewState={userId:null,linked:false,requests:[]};
+let loadingReviews=false;
+function wordRequest(stageId){return wordReviewState.userId===currentUser?wordReviewState.requests.find(row=>row.stageId===stageId):null;}
+function renderReviewStatus(){
+    const section=document.getElementById('word-review-status');if(!section)return;
+    const linked=wordReviewState.userId===currentUser&&wordReviewState.linked;
+    section.hidden=!linked;
+    const row=wordRequest(currentWordStageId),button=document.querySelector('[onclick="confirmWordClear()"]');
+    if(button)button.disabled=linked&&['pending','approved'].includes(row?.status);
+    section.querySelector('[role="status"]').textContent=row?.status==='pending'?'先生のかくにんをまっています':row?.status==='approved'?'先生がかくにんしました！':row?.status==='returned'?`もう一度チャレンジしよう！\n先生より: ${row.reason}`:row?.status==='expired'?'申請の期限・連携が変わりました。先生にかくにんしてね。':'作品を先生に送れます';
+}
+async function refreshWordReviews(){
+    if(loadingReviews||!currentUser||isGuestMode()||getCurrentLessonRole()!=='student')return;
+    const userId=currentUser;loadingReviews=true;
+    try{
+        const result=await loadStudentWordReviews(userId);if(currentUser!==userId)return;
+        wordReviewState={userId,linked:result.linked,requests:result.requests};
+        if(result.requests.some(row=>row.status==='approved')){
+            const data=await readWordStudentSnapshot(userId);if(currentUser!==userId)return;
+            if(data.supportWordRevision!==users[userId]?.supportWordRevision){users[userId]=data;updateGlobalHeader();}
+        }
+        if(document.getElementById('screen-word-menu').classList.contains('active'))renderWordMenu();
+        renderReviewStatus();
+    }catch(error){
+        if(currentUser===userId){const section=document.getElementById('word-review-status');section.hidden=false;section.querySelector('[role="status"]').textContent=error.message||'先生の確認結果を取得できませんでした。';}
+    }finally{loadingReviews=false;}
+}
+setInterval(()=>{if(document.visibilityState==='visible'&&(document.getElementById('screen-word-menu')?.classList.contains('active')||document.getElementById('screen-word-game')?.classList.contains('active')))void refreshWordReviews();},30000);
 const WORD_TEXT_WINDOW_FEATURES = 'popup=yes,width=1180,height=820,menubar=no,toolbar=no,location=yes,status=no,scrollbars=yes,resizable=yes';
 
 function getActiveUserOrTitle() {
@@ -106,6 +137,7 @@ export function goToWordMenu() {
     }
     renderWordMenu();
     showScreen('screen-word-menu');
+    void refreshWordReviews();
 }
 
 function renderWordMenu() {
@@ -138,6 +170,8 @@ function renderWordMenu() {
         b.innerHTML = `<span style="font-size:24px;">📘</span><span style="font-size:16px; font-weight:bold; color:#333; margin-top:5px;">${escapeHtml(st.title)}</span><span style="font-size:12px; color:#666;">${escapeHtml(st.sub)}</span>`;
 
         if (isCleared) b.innerHTML += `<span class="reward-badge" style="background:#e8f5e9; border-color:#4CAF50; color:#2e7d32;">クリア</span>`;
+        else if(wordRequest(st.id)?.status==='pending')b.innerHTML+=`<span class="reward-badge">先生のかくにんまち</span>`;
+        else if(wordRequest(st.id)?.status==='returned')b.innerHTML+=`<span class="reward-badge">もう一度チャレンジ</span>`;
         else if (isWorking) b.innerHTML += `<span class="reward-badge" style="background:#fffde7; border-color:#FFEB3B; color:#fbc02d;">やっているところ ⏸️ ${workingPage ? 'P.' + escapeHtml(workingPage) : ''}</span>`;
         else if (isUnlocked) b.innerHTML += `<span class="reward-badge">💰500</span>`;
 
@@ -159,6 +193,9 @@ function startWordStage(sid) {
     document.getElementById('word-stage-status').textContent = getWordStageProgress(users[currentUser], sid).isCleared ? 'クリアずみ' : pageVal ? `${pageVal}ページからのつづき` : 'これからチャレンジ';
 
     showScreen('screen-word-game');
+    renderReviewStatus();
+    document.querySelector('[data-word-review-refresh]').onclick=()=>void refreshWordReviews();
+    void refreshWordReviews();
 }
 
 export function openWordText() {
@@ -224,13 +261,26 @@ export async function suspendWordTask() {
     goToWordMenu();
 }
 
-export function confirmWordClear() {
+export async function confirmWordClear() {
     if (savingWord || !currentWordStageId || !users[currentUser]) return;
     if (isGuestMode()) { showCustomAlert('ゲストでは先生の承認は保存できません。登録したアカウントで取り組んでね。'); return; }
     const input = document.getElementById('word-page-input');
     if (!input.reportValidity()) return;
     const userId = currentUser;
     const stageId = currentWordStageId;
+    if(getCurrentLessonRole()==='student'){
+        let state;try{state=await loadStudentWordReviews(userId);}catch(error){showCustomAlert(error.message);return;}
+        if(currentUser!==userId||currentWordStageId!==stageId||!document.getElementById('screen-word-game').classList.contains('active'))return;
+        wordReviewState={userId,linked:state.linked,requests:state.requests};
+        if(state.linked){
+            const row=wordRequest(stageId);if(row?.status==='pending'){showCustomAlert('先生のかくにんをまっています。');renderReviewStatus();return;}
+            if(row?.status==='approved'){await refreshWordReviews();return;}
+            showWordSubmissionDialog({studentId:userId,stageId,page:input.value,stageTitle:getCurrentWordStageLabel(),
+                isCurrent:()=>currentUser===userId&&currentWordStageId===stageId&&document.getElementById('screen-word-game').classList.contains('active'),
+                onSubmitted:()=>{showCustomAlert('先生に送りました！\n先生のかくにんをまってね。');void refreshWordReviews().then(()=>{if(currentUser===userId)renderWordMenu();});}});
+            return;
+        }
+    }
     showWordApprovalDialog({
         studentName: getUserDisplayName(userId), stageTitle: getCurrentWordStageLabel(),
         userDataId: userId, stageId, page: input.value,

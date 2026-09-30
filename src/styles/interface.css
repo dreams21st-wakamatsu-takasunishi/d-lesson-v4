@@ -222,6 +222,10 @@ html[data-lesson-theme="default"] .keyboard-category-card { background: #f4f9ff 
 .word-page-row { display: flex; align-items: center; gap: 14px; margin-top: 14px; font-size: 17px; }
 #word-page-input { width: 120px; max-width: 100%; box-sizing: border-box; min-height: 52px; margin: 0; padding: 10px; border: 1px solid #9caea5; border-radius: 8px; background: #fff; color: #243533; font-size: 22px; text-align: center; }
 .word-workspace-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px; border-top: 1px solid var(--lesson-line); padding: 24px 0 0; }
+.word-review-status { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; border-left: 4px solid #19856a; background: #eaf8f0; color: #183d30; padding: 16px; margin-bottom: 20px; }
+.word-review-status[hidden] { display: none; }
+.word-review-status p { margin: 0; min-width: 0; flex: 1 1 180px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 17px; text-align: left; }
+.word-workspace-actions button:disabled { opacity: .55; cursor: default; }
 .lesson-dialog { width: min(520px, calc(100% - 28px)); max-height: calc(100dvh - 32px); padding: 26px; box-sizing: border-box; border: 1px solid #d7e2dc; border-radius: 8px; box-shadow: 0 16px 60px #16352c30; background: #fff !important; color: #243533 !important; text-align: left; overflow-y: auto; }
 .lesson-dialog::backdrop { background: #162c276b; }
 .lesson-dialog-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }

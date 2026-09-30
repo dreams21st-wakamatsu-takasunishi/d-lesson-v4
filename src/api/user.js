@@ -7,6 +7,7 @@ export { DEFAULT_CAMPUS_ID } from '../data/constants.js';
 import { showScreen } from '../ui/screen.js';
 import { applyTheme } from '../ui/home.js';
 import { createConfetti } from '../ui/effects.js';
+import {showCustomAlert} from '../ui/modal.js';
 // ==========================================
 // Database (Supabase) connection
 // ==========================================
@@ -1946,6 +1947,7 @@ export async function saveUsers(forceOverwrite = false) {
         return true;
     } catch (e) { 
         console.error("保存エラー:", e); 
+        if(e?.code==='PT409'&&String(e.message).includes('WORD_REVIEW_CHANGED'))showCustomAlert('先生のWordかくにんが届きました。\n古いデータで上書きしないため、保存を止めました。\n画面を読み直して、確認結果を受け取ってね。');
         setSyncStatus('sync error'); 
         return false;
     }

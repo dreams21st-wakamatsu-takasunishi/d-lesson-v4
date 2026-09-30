@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
+import {wordBucket} from '../_shared/word-review.ts';
 
 type DeleteAuthUserPayload = {
   userDataId?: string;
@@ -158,6 +159,30 @@ serve(async (req) => {
       return jsonResponse({ error: '削除対象のAuthユーザーが見つかりません。' }, 400);
     }
     await assertOnlyStudentTargets(serviceClient, targetAuthIds, authData.user.id);
+
+    const associatedStudents = new Set<string>(userDataId ? [userDataId] : []);
+    if (targetAuthIds.length) {
+      const {data: rows, error} = await serviceClient.from('lesson_user_access').select('user_data_id').in('auth_user_id',targetAuthIds).eq('role','student');
+      if(error)throw error;
+      for(const row of rows || [])if(row.user_data_id)associatedStudents.add(row.user_data_id);
+    }
+    for(const studentId of associatedStudents){
+      // Revoke sharing before removing Auth, so pending reviews cannot approve a deleted learner.
+      const {error: permissionError} = await serviceClient.from('lesson_support_students').update({enabled:false,support_link_id:null,support_child_id:null}).eq('data_table',userDataTable).eq('student_id',studentId);
+      if(permissionError)throw permissionError;
+      const {error: expireError} = await serviceClient.from('lesson_word_requests').update({status:'expired'}).eq('data_table',userDataTable).eq('student_id',studentId).in('status',['prepared','pending']);
+      if(expireError)throw expireError;
+    }
+    if(userDataId){
+      const {data: requests,error} = await serviceClient.from('lesson_word_requests').select('id,file_path').eq('data_table',userDataTable).eq('student_id',userDataId);
+      if(error)throw error;
+      for(let offset=0;offset<(requests||[]).length;offset+=100){
+        const {error: removeError}=await serviceClient.storage.from(wordBucket).remove(requests!.slice(offset,offset+100).map(row=>row.file_path));
+        if(removeError)throw removeError;
+      }
+      const {error: requestsError}=await serviceClient.from('lesson_word_requests').delete().eq('data_table',userDataTable).eq('student_id',userDataId);
+      if(requestsError)throw requestsError;
+    }
 
     const deletedAuthUserIds: string[] = [];
     for (const authUserId of targetAuthIds) {
