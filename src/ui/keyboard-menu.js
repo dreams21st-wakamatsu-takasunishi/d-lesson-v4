@@ -586,8 +586,8 @@ function getKeyboardStageDisplay(sid, index = 0) {
             keys = st.chars.slice(0, 1).map(c => c.h).join('');
             sub = st.title;
             if (st.mode === 'blind') {
-                title = 'みないでテスト';
-                exCls = 'word-practice blind-exam';
+                title = st.learnedWordStage ? 'みないでことばれんしゅう' : 'みないでテスト';
+                exCls = st.learnedWordStage ? 'word-practice blind-practice' : 'word-practice blind-exam';
             } else {
                 title = 'みながられんしゅう';
                 exCls = 'word-practice';

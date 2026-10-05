@@ -180,7 +180,7 @@ function createLearnedHiraganaWordStage(id, title, stageIds) {
     const chars = (LEARNED_HIRAGANA_WORD_CANDIDATES[id] || [])
         .filter(word => Array.from(word).every(char => allowedChars.has(char)))
         .map(h => ({ h, r: [] }));
-    return { id, title, mode: 'guided', learnedWordStage: true, chars };
+    return { id, title, mode: 'blind', learnedWordStage: true, chars };
 }
 
 const LEARNED_HIRAGANA_WORD_STAGES = [

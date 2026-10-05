@@ -71,8 +71,12 @@ for (const [examId, wordId] of [[3301, 4301], [3302, 4302], [3303, 4303], [3304,
     assert.equal(STAGE_ORDER[STAGE_ORDER.indexOf(examId) + 1], wordId);
     const chapter = KB_CHAPTERS.find(item => item.exam === examId);
     assert.equal(getKeyboardChapterStageIds(chapter).at(-1), wordId);
-    assert.ok(WORD_DATA.find(stage => stage.id === wordId)?.chars.length > 0);
+    const wordStage = WORD_DATA.find(stage => stage.id === wordId);
+    assert.ok(wordStage?.chars.length > 0);
+    assert.equal(wordStage.learnedWordStage, true);
+    assert.equal(wordStage.mode, 'blind', `${wordId}: learned-word practice must hide keyboard hints`);
 }
+assert.equal(WORD_DATA.find(stage => stage.id === 4001).mode, 'guided');
 assert.equal(activeStages.includes(2001), false);
 assert.equal(activeStages.includes(3101), true);
 assert.equal(activeStages.includes(3001), true);
