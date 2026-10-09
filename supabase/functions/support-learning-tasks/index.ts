@@ -9,8 +9,17 @@ Deno.serve(async request=>{
  if(request.method!=='POST')return reply({error:'POSTで送信してください。'},405);
  if(!await secretMatches(request.headers.get('x-lesson-bridge-key')||'',Deno.env.get('D_SUPPORT_BRIDGE_SECRET')||''))return reply({error:'連携認証を確認してください。'},401);
  try{
-  const raw=await request.text();if(raw.length>4096)return reply({error:'課題の内容を確認してください。'},400);
+  const raw=await request.text();if(raw.length>65536)return reply({error:'課題の内容を確認してください。'},400);
   const body=JSON.parse(raw),table=Deno.env.get('LESSON_USER_DATA_TABLE')||'user_data',url=Deno.env.get('SUPABASE_URL')!;
+  if(body.action==='targets'){
+   if(!uuid(body.organizationId)||!uuid(body.actorId)||!(/^[a-z0-9]{20}$/).test(body.supportProjectRef||'')||!['user_data','test_user_data'].includes(table)
+    ||!Array.isArray(body.targets)||body.targets.length>100||body.targets.some((row:{childId:string;linkId:string;studentId:string;campusId:string})=>!row||!uuid(row.linkId)||typeof row.childId!=='string'||!row.childId||row.childId.length>160||!(/^student_[A-Za-z0-9_-]{1,140}$/).test(row.studentId||'')||typeof row.campusId!=='string'||!row.campusId||row.campusId==='public'||row.campusId.length>80)
+    ||new Set(body.targets.map((row:{childId:string})=>row.childId)).size!==body.targets.length)return reply({error:'課題の対象を確認してください。'},400);
+   const client=createClient(url,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false}});
+   const {data,error}=await client.rpc('read_support_task_targets',{p_project:body.supportProjectRef,p_org:body.organizationId,p_table:table,p_targets:body.targets});
+   return error?reply({error:'一括指定の対象を取得できません。'},503):reply({schemaVersion:1,dataTable:table,targets:data,catalog:taskStageCatalog});
+  }
+  if(raw.length>4096)return reply({error:'課題の内容を確認してください。'},400);
   if(!['list','save'].includes(body.action)||!uuid(body.organizationId)||!uuid(body.linkId)||!uuid(body.actorId)
    ||!(/^[a-z0-9]{20}$/).test(body.supportProjectRef||'')||!(/^student_[A-Za-z0-9_-]{1,140}$/).test(body.studentId||'')
    ||typeof body.childId!=='string'||!body.childId||body.childId.length>160||!['user_data','test_user_data'].includes(table))return reply({error:'課題の対象を確認してください。'},400);
@@ -34,7 +43,9 @@ Deno.serve(async request=>{
   const t=body.task;
   if(!t||!uuid(t.id)||!Number.isSafeInteger(t.revision)||typeof t.active!=='boolean')return reply({error:'課題を再取得してください。'},400);
   if(t.stageId!=null&&!findTaskStage(t.category,t.stageId))return reply({error:'この分野のステージを選び直してください。'},400);
-  const {data:saved,error:saveError}=await client.rpc('save_support_learning_task',{p_project:body.supportProjectRef,p_org:body.organizationId,p_table:table,p_student:body.studentId,p_link:body.linkId,p_child:body.childId,p_id:t.id,p_revision:t.revision,p_category:t.category,p_title:t.title,p_instructions:t.instructions,p_start:t.startsOn,p_end:t.endsOn,p_active:t.active,p_actor:body.actorId,p_name:body.actorName,p_stage:t.stageId??null});
-  return saveError?reply({error:['42501','22023','PT409'].includes(saveError.code)?saveError.message:'課題を保存できませんでした。'},saveError.code==='42501'?403:409):reply({schemaVersion:1,task:publicTask(saved)});
+  if(body.expectedGroup!=null&&(typeof body.expectedGroup!=='string'||body.expectedGroup.length>80))return reply({error:'グループを確認してください。'},400);
+  if(body.expectedCampus!=null&&(typeof body.expectedCampus!=='string'||body.expectedCampus.length>80))return reply({error:'校舎を確認してください。'},400);
+  const {data:saved,error:saveError}=await client.rpc('save_support_learning_task',{p_project:body.supportProjectRef,p_org:body.organizationId,p_table:table,p_student:body.studentId,p_link:body.linkId,p_child:body.childId,p_id:t.id,p_revision:t.revision,p_category:t.category,p_title:t.title,p_instructions:t.instructions,p_start:t.startsOn,p_end:t.endsOn,p_active:t.active,p_actor:body.actorId,p_name:body.actorName,p_stage:t.stageId??null,p_expected_group:body.expectedGroup??null,p_expected_campus:body.expectedCampus??null});
+  return saveError?reply({error:['42501','22023','PT409','PT412'].includes(saveError.code)?saveError.message:'課題を保存できませんでした。',code:['42501','22023','PT409','PT412'].includes(saveError.code)?saveError.code:'unknown'},saveError.code==='42501'?403:409):reply({schemaVersion:1,task:publicTask(saved)});
  }catch{return reply({error:'課題を取得・保存できませんでした。通信を確認してください。'},503);}
 });
