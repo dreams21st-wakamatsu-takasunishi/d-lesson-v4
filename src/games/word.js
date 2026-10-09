@@ -1,4 +1,5 @@
 import { WORD_STAGES } from '../data/constants.js';
+import {canOpenTaskStage} from '../utils/task-stages.js';
 import {
     users,
     currentUser,
@@ -179,6 +180,13 @@ function renderWordMenu() {
     });
 }
 
+export function openAssignedWordStage(sid) {
+    const user=users[currentUser];
+    if(!canOpenTaskStage(user,'word',sid))return;
+    if(!user.wordProgress)user.wordProgress={};
+    startWordStage(sid);
+}
+
 function startWordStage(sid) {
     currentWordStageId = sid;
     const st = WORD_STAGES.find(s => s.id === sid);
@@ -240,6 +248,7 @@ export async function suspendWordTask() {
     };
     recordPracticeActivity({
         category: 'word',
+        stageId: String(stageId),
         title: getCurrentWordStageLabel(),
         detail: isCleared ? 'クリアずみページをこうしん' : 'とちゅうほぞん',
         amount: pageVal ? `${pageVal}ページまで` : 'ページなし',

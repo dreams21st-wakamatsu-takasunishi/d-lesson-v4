@@ -349,6 +349,7 @@ function recordPracticeInterrupt(shouldRecord) {
     if (!hasActivity) return;
     recordPracticeActivity({
         category: gameMode || 'practice',
+        stageId: String(currentStage),
         title: getPracticeTitle(),
         detail: 'とちゅうでやめた',
         amount: getPracticeInterruptAmount(elapsed),
@@ -1276,6 +1277,7 @@ export function markClear() {
             users[currentUser].coins = (users[currentUser].coins || 0) + coinGain;
             recordPracticeActivity({
                 category: gameMode || 'practice',
+                stageId: String(currentStage),
                 title: getPracticeTitle(),
                 detail: isNewRecord ? 'クリア / しんきろく' : 'クリア',
                 amount: getPracticeAmount(elapsed),

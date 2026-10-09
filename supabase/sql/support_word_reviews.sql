@@ -172,7 +172,7 @@ begin
     v_data:=jsonb_set(v_data,'{coins}',to_jsonb((case when jsonb_typeof(v_data->'coins')='number' then (v_data->>'coins')::numeric else 0 end)+v_reward));
     v_data:=jsonb_set(v_data,'{supportWordRevision}',to_jsonb(coalesce((v_data->>'supportWordRevision')::integer,0)+1));
     v_data:=jsonb_set(v_data,'{practiceLogs}',jsonb_build_array(jsonb_build_object('id','support-word-'||p_id::text,'at',now(),'category','word',
-      'title','Word '||upper(replace(substring(v_request.stage_id from 3),'_','-')),'detail','先生の確認でクリア','amount',v_request.page||'ページまで','coins',v_reward))
+      'stageId',v_request.stage_id,'title','Word '||upper(replace(substring(v_request.stage_id from 3),'_','-')),'detail','先生の確認でクリア','amount',v_request.page||'ページまで','coins',v_reward))
       ||case when jsonb_typeof(v_data->'practiceLogs')='array' then v_data->'practiceLogs' else '[]'::jsonb end);
     execute format('update public.%I set data=$1 where id=$2',v_request.data_table) using v_data,v_request.student_id;
   end if;

@@ -94,7 +94,7 @@ begin
       values (p_table, p_user_id, p_stage_id, p_actor, p_page, v_reward) returning * into v_approval;
     v_data := jsonb_set(v_data, '{practiceLogs}', jsonb_build_array(jsonb_build_object(
       'id', 'word-approval-' || p_stage_id || '-' || extract(epoch from v_approval.approved_at)::text,
-      'at', v_approval.approved_at, 'category', 'word', 'title', 'Word ' || replace(substring(p_stage_id from 4), '_', '-'),
+      'at', v_approval.approved_at, 'category', 'word', 'stageId', p_stage_id, 'title', 'Word ' || replace(substring(p_stage_id from 4), '_', '-'),
       'detail', '先生の確認でクリア', 'amount', case when p_page = '' then 'ページなし' else p_page || 'ページまで' end,
       'coins', v_reward
     )) || case when jsonb_typeof(v_data->'practiceLogs') = 'array' then v_data->'practiceLogs' else '[]'::jsonb end);
