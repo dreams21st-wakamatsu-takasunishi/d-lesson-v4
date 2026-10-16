@@ -1,6 +1,7 @@
 import {
     users,
     GLOBAL_SETTINGS_ID,
+    getLearningSettings,
     getUserDisplayName,
     getPracticeLogs,
     formatPracticeActivity,
@@ -77,7 +78,7 @@ function buildStudentReportHtml(userId) {
     const records = user.examRecords || {};
     const textRecords = user.textRecords || {};
     const wordProgress = user.wordProgress || {};
-    const textTasks = users[GLOBAL_SETTINGS_ID]?.textTasks || [];
+    const textTasks = getLearningSettings(user).textTasks || [];
     const mouseLevel = user.mouseLevel || 0;
     const keyboardCompleted = getCompletedActiveKeyboardStageIds(user.keyboardSequence).length;
     const keyboardTotal = getActiveKeyboardStageIds().length;

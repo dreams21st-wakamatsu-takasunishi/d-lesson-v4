@@ -9,6 +9,7 @@ import {
     deleteCloudUserRows,
     DEFAULT_CAMPUS_ID,
     GLOBAL_SETTINGS_ID,
+    getLearningSettings,
     currentLessonAccess,
     formatPracticeActivity,
     getCampusCode,
@@ -210,9 +211,7 @@ function isStudentUser(userId, user) {
 }
 
 function getVisibleTextTasksForStudent(user) {
-    const tasks = Array.isArray(users[GLOBAL_SETTINGS_ID]?.textTasks)
-        ? users[GLOBAL_SETTINGS_ID].textTasks
-        : [];
+    const tasks = getLearningSettings(user).textTasks || [];
     const group = String(user?.group || '').trim();
 
     return tasks.filter(task => {
@@ -1406,15 +1405,18 @@ function deleteTeacherStudent(userId) {
     });
 }
 
-function getTeacherTextTasks() {
-    return Array.isArray(users[GLOBAL_SETTINGS_ID]?.textTasks)
-        ? users[GLOBAL_SETTINGS_ID].textTasks
-        : [];
+function getTeacherTextTasks(rows) {
+    const tasks = new Map();
+    for (const row of rows) for (const task of getLearningSettings(row.userId).textTasks || []) {
+        const campusId = getUserCampusId(users[row.userId]);
+        tasks.set(`${campusId}:${task.id}`, { ...task, campusId, key: `${campusId}:${task.id}` });
+    }
+    return [...tasks.values()];
 }
 
 function getTeacherTextTaskStats(task, rows) {
     const targetGroup = String(task?.targetGroup || '').trim();
-    const targets = rows.filter(row => !targetGroup || row.group === targetGroup);
+    const targets = rows.filter(row => getUserCampusId(users[row.userId]) === task.campusId && (!targetGroup || row.group === targetGroup));
     const completed = targets.filter(row => Boolean(users[row.userId]?.textRecords?.[task.id])).length;
     return {
         targetGroup,
@@ -1427,7 +1429,7 @@ function getTeacherTextTaskStats(task, rows) {
 
 function getTeacherScopedTextTasks(rows) {
     const groups = new Set(rows.map(row => row.group).filter(group => group && group !== '-'));
-    return getTeacherTextTasks()
+    return getTeacherTextTasks(rows)
         .filter(task => {
             const targetGroup = String(task?.targetGroup || '').trim();
             return !targetGroup || groups.has(targetGroup);
@@ -1438,13 +1440,14 @@ function getTeacherScopedTextTasks(rows) {
         }));
 }
 
-function exportTeacherTextTaskCsv(taskId, incompleteOnly = false) {
+function exportTeacherTextTaskCsv(taskKey, incompleteOnly = false) {
     const rows = getFilteredTeacherStatusRows();
-    const entry = getTeacherScopedTextTasks(rows).find(item => item.task.id === taskId);
+    const entry = getTeacherScopedTextTasks(rows).find(item => item.task.key === taskKey);
     if (!entry) {
         showCustomAlert('出力できる課題が見つかりません。');
         return;
     }
+    const taskId = entry.task.id;
 
     const csvRows = [[
         'task_title',
@@ -2122,8 +2125,8 @@ function renderTeacherTextTaskRows(rows) {
                             <td>${escapeHtml(stats.incomplete)}人</td>
                             <td>${task.hidden === true ? '<span class="teacher-status-alert notice">非公開</span>' : '<span class="teacher-status-ok">公開中</span>'}</td>
                             <td>
-                                <button type="button" class="teacher-status-detail-btn" data-teacher-text-export-task="${escapeHtml(task.id)}">進捗CSV</button>
-                                <button type="button" class="teacher-status-detail-btn secondary" data-teacher-text-incomplete-task="${escapeHtml(task.id)}">未完了CSV</button>
+                                <button type="button" class="teacher-status-detail-btn" data-teacher-text-export-task="${escapeHtml(task.key)}">進捗CSV</button>
+                                <button type="button" class="teacher-status-detail-btn secondary" data-teacher-text-incomplete-task="${escapeHtml(task.key)}">未完了CSV</button>
                             </td>
                         </tr>
                     `).join('')}

@@ -1,7 +1,8 @@
-import { users, currentUser, saveUsers, canWriteCurrentUserRow, recordPracticeActivity, getPracticeLogs } from '../api/user.js';
+import { users, currentUser, saveUsers, canWriteCurrentUserRow, recordPracticeActivity, getPracticeLogs, getLearningSettings } from '../api/user.js';
 import { SoundManager } from '../utils/sound.js';
 import { showScreen } from '../ui/screen.js';
 import { createConfetti } from '../ui/reward.js';
+import { showCustomAlert } from '../ui/modal.js';
 import { buildProgressLabel, findLatestPracticeLog, formatPracticeLogShort } from '../utils/practice-guidance.js';
 
 /* =========================================================
@@ -288,8 +289,7 @@ function renderTextTaskRecommendation(container, tasks) {
 function renderTextTasks() {
     const cont = document.getElementById('text-menu-content');
     cont.innerHTML = '';
-    const glob = users['__GLOBAL_SETTINGS__'];
-    const allTasks = Array.isArray(glob?.textTasks) ? glob.textTasks : [];
+    const allTasks = getLearningSettings().textTasks || [];
     const visibleTasks = allTasks.filter(task => task.hidden !== true);
     const tasks = visibleTasks.filter(textTaskMatchesCurrentUser);
     updateTextTaskFilterButtons(tasks);
@@ -386,8 +386,8 @@ function renderTextTasks() {
 
 function startTextPractice(taskId) {
     SoundManager.init(); if (document.activeElement) document.activeElement.blur();
-    const glob = users['__GLOBAL_SETTINGS__']; currentTextTask = glob.textTasks.find(t => t.id === taskId);
-    if (!currentTextTask) return;
+    currentTextTask = (getLearningSettings().textTasks || []).find(t => t.id === taskId && t.hidden !== true && (!t.targetGroup || t.targetGroup === String(users[currentUser]?.group || '').trim()));
+    if (!currentTextTask) return showCustomAlert('この文章課題は現在えらべません。画面を開きなおしてください。');
     
     let modal = document.getElementById('text-prep-modal');
     if (!modal) {
@@ -403,9 +403,9 @@ function startTextPractice(taskId) {
     modal.innerHTML = `
         <div style="background:#fff; padding:30px; border-radius:15px; width:80%; max-width:800px; max-height:90vh; display:flex; flex-direction:column; text-align:center; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
             <h2 style="margin-top:0; color:#333;">課題の確認と設定</h2>
-            <h3 style="color:#00695c; margin:10px 0;">${currentTextTask.title} (${currentTextTask.time}分)</h3>
+            <h3 style="color:#00695c; margin:10px 0;">${escapeHtml(currentTextTask.title)} (${escapeHtml(currentTextTask.time)}分)</h3>
             
-            <div style="flex:1; overflow-y:auto; background:#f9f9f9; border:2px solid #ccc; border-radius:10px; padding:15px; margin-bottom:20px; font-size:18px; text-align:left; white-space:pre-wrap; color:#555;">${previewText}</div>
+            <div style="flex:1; overflow-y:auto; background:#f9f9f9; border:2px solid #ccc; border-radius:10px; padding:15px; margin-bottom:20px; font-size:18px; text-align:left; white-space:pre-wrap; color:#555;">${escapeHtml(previewText)}</div>
             
             <p style="font-size:16px; margin-bottom:10px; color:#666;">お好みで設定を変更してからスタートしてね</p>
             <div style="display:flex; justify-content:center; gap:20px; margin-bottom:25px;">

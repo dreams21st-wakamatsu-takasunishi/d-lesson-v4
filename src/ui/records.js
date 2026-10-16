@@ -299,7 +299,7 @@ function renderStyleCard(item, options) {
     return `
         <div class="style-card ${unlocked ? '' : 'locked'} ${active ? 'active' : ''}">
             <button class="style-equip-btn" onclick="${clickAction}">
-                <span class="style-icon">${item.icon}</span>
+                <span class="style-icon">${escapeAttr(item.icon)}</span>
                 <span class="style-name">${escapeAttr(item.name)}</span>
                 <span class="style-state">${active ? '使用中' : (unlocked ? 'つかう' : 'ロック')}</span>
             </button>

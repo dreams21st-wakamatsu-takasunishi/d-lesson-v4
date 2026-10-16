@@ -1,4 +1,5 @@
 import { DEFAULT_CAMPUS_ID, ALPHABET_READING_STAGES, VISION_STAGES, WORD_STAGES } from '../data/constants.js';
+import { campusLearningSettings } from './managed-content.js';
 import {
     getActiveKeyboardStageIds,
     getCompletedActiveKeyboardStageIds,
@@ -103,6 +104,7 @@ export function getStandardRouteOrderForUser(user = {}, globalSettings = {}) {
 }
 
 function getVisibleTextTasks(user, globalSettings = {}) {
+    globalSettings = campusLearningSettings(user, globalSettings);
     const tasks = Array.isArray(globalSettings?.textTasks) ? globalSettings.textTasks : [];
     const group = String(user?.group || '').trim();
     return tasks

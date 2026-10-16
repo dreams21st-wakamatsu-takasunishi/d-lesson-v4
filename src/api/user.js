@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { SoundManager } from '../utils/sound.js';
 import { calculateGrade, sortGrades } from '../utils/helpers.js';
 import { sanitizeGlobalMistakes } from '../utils/weak-mistakes.js';
+import { campusLearningSettings, replaceCampusCatalogs } from '../utils/managed-content.js';
 import { THEMES, EFFECTS, DEFAULT_CAMPUS_ID } from '../data/constants.js';
 export { DEFAULT_CAMPUS_ID } from '../data/constants.js';
 import { showScreen } from '../ui/screen.js';
@@ -543,6 +544,24 @@ function clearGuestUsers() {
 function applyCustomGlobalSettingsIfReady() {
     if (typeof window !== 'undefined' && typeof window.loadCustomGlobalSettings === 'function') {
         window.loadCustomGlobalSettings();
+    }
+}
+
+export function getLearningSettings(userOrId = currentUser) {
+    const user = typeof userOrId === 'string' ? users[userOrId] : userOrId;
+    return campusLearningSettings(user || {}, users[GLOBAL_SETTINGS_ID] || {});
+}
+
+async function loadCampusContent() {
+    replaceCampusCatalogs();
+    const { data, error } = await supabase.from('lesson_campus_content').select('campus_id,content').eq('data_table', TARGET_TABLE);
+    if (error) throw error;
+    replaceCampusCatalogs(data || []);
+    const grants = await supabase.from('lesson_reward_grants').select('student_id,reward_id').eq('data_table', TARGET_TABLE);
+    if (grants.error) throw grants.error;
+    for (const grant of grants.data || []) {
+        const learner = users[grant.student_id];
+        if (learner) learner.items = [...new Set([...(Array.isArray(learner.items) ? learner.items : []), grant.reward_id])];
     }
 }
 
@@ -1753,6 +1772,7 @@ export async function signOutSupabaseAuth(message = 'ログアウトしました
 // Data load/save functions
 // ==========================================
 export async function loadUsers() {
+    replaceCampusCatalogs();
     const titleScreen = document.getElementById('screen-title');
     if (!titleScreen.querySelector('.loading-msg')) {
         titleScreen.querySelector('.screen-content').insertAdjacentHTML('beforeend', '<div class="loading-msg" style="color:#555; font-size:20px; margin-top:20px;">データを読み込み中...</div>');
@@ -1845,7 +1865,9 @@ export async function loadUsers() {
                 if (localDataStr) { try { users = JSON.parse(localDataStr); } catch(err) { users = {}; } }
             }
         }
+        await loadCampusContent();
     } catch(e) {
+        replaceCampusCatalogs();
         console.error("通信エラー", e);
         if (useRlsCloudSync) users = {};
         else loadLocalUsers();
@@ -2099,6 +2121,7 @@ export function login(userId) {
     if(!Array.isArray(users[userId].effectFavorites)) users[userId].effectFavorites = [];
     if(users[userId].randomThemeEnabled === undefined) users[userId].randomThemeEnabled = false;
     if(users[userId].randomEffectEnabled === undefined) users[userId].randomEffectEnabled = false;
+    applyCustomGlobalSettingsIfReady();
     const randomStyleChanged = applyRandomStyleFavorites(userId);
     
     applyTheme(users[userId].theme);

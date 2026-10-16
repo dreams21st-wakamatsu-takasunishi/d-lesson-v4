@@ -1,9 +1,12 @@
 import { THEMES, EFFECTS } from '../data/constants.js';
 import { GACHA_ITEMS } from '../data/gacha-items.js';
-import { users, GLOBAL_SETTINGS_ID } from '../api/user.js';
+import { getLearningSettings } from '../api/user.js';
 
 export function loadCustomGlobalSettings() {
-    const glob = users[GLOBAL_SETTINGS_ID];
+    // Rebuild on learner switches so another campus's rewards cannot remain in the draw.
+    for (const list of [THEMES, EFFECTS]) for (let i = list.length - 1; i >= 0; i--) if (list[i].isCustom) list.splice(i, 1);
+    for (let i = GACHA_ITEMS.length - 1; i >= 0; i--) if (/^(ct_|ce_)/.test(GACHA_ITEMS[i].id)) GACHA_ITEMS.splice(i, 1);
+    const glob = getLearningSettings();
     if (!glob || !glob.globalMistakes) return;
 
     if (Array.isArray(glob.globalMistakes.customThemes)) {
@@ -20,7 +23,7 @@ export function loadCustomGlobalSettings() {
                     btnBg: ct.btnBg,
                     btnText: ct.btnText
                 });
-                GACHA_ITEMS.push({
+                if (!ct.hidden && ct.distribution !== 'present') GACHA_ITEMS.push({
                     id: ct.id,
                     type: 'theme',
                     name: `🎨 カスタムテーマ：${ct.name}`,
@@ -41,7 +44,7 @@ export function loadCustomGlobalSettings() {
                     data: ce,
                     emojis: ce.emojis
                 });
-                GACHA_ITEMS.push({
+                if (!ce.hidden && ce.distribution !== 'present') GACHA_ITEMS.push({
                     id: ce.id,
                     type: 'effect',
                     name: `🎉 カスタム演出：${ce.name}`,

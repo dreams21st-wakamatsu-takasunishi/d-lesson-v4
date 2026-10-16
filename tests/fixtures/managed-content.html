@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="ja"><meta charset="utf-8"><title>Managed content fictional fixture</title>
+<body>
+<main><section class="screen" id="screen-text-menu"><div id="text-menu-content"></div></section><div id="rec-theme"></div></main>
+<div hidden><div id="records-main-menu"></div><div id="records-panel-content"></div><div id="records-bottom-back-btn"></div><div id="global-coin-display"></div></div>
+<script type="module">
+import '../../src/style.css';
+import '../../src/styles/interface.css';
+import {users,setCurrentUser} from '../../src/api/user.js';
+import {replaceCampusCatalogs} from '../../src/utils/managed-content.js';
+import {loadCustomGlobalSettings} from '../../src/ui/custom-settings.js';
+import {THEMES,EFFECTS} from '../../src/data/constants.js';
+import {GACHA_ITEMS} from '../../src/data/gacha-items.js';
+import {goToTextMenu} from '../../src/games/text.js';
+import {renderRecords} from '../../src/ui/records.js';
+const text=(id,title,extra={})=>({id,title,content:'{漢字|かんじ}\n<img src=x onerror=alert(1)>',time:3,star:1,targetGroup:'',hidden:false,...extra});
+const theme={id:'ct_present',name:'架空のプレゼント',distribution:'present',hidden:false,bg:'#ffffff',text:'#123456',btnBg:'#006655',btnText:'#ffffff'};
+users.__GLOBAL_SETTINGS__={textTasks:[text('tt_global','共通の課題')],globalMistakes:{customThemes:[],customEffects:[]}};
+users.student_a={campusId:'campus-a',group:'A',items:['ct_present'],textRecords:{tt_old:{score:20,miss:0}}};
+users.student_b={campusId:'campus-b',group:'A',items:[],textRecords:{}};
+replaceCampusCatalogs([{campus_id:'campus-a',content:{textTasks:[text('tt_old','架空校舎Aの課題'),text('tt_hidden','非表示の課題',{hidden:true}),text('tt_othergroup','別グループ',{targetGroup:'B'})],customThemes:[theme],customEffects:[{id:'ce_gacha',name:'架空のガチャ演出',hidden:false,distribution:'gacha',emojis:['<img src=x onerror=alert(1)>']},{id:'ce_hidden',name:'停止した演出',hidden:true,distribution:'gacha',emojis:['⭐']}] }},
+{campus_id:'campus-b',content:{textTasks:[text('tt_b','架空校舎Bの課題')],customThemes:[],customEffects:[]}}]);
+function select(id){setCurrentUser(id);loadCustomGlobalSettings();goToTextMenu();renderRecords();}
+window.contentFixture={select,state:()=>({theme:THEMES.filter(row=>row.isCustom).map(row=>row.id),effects:EFFECTS.filter(row=>row.isCustom).map(row=>row.id),draw:GACHA_ITEMS.filter(row=>/^(ct_|ce_)/.test(row.id)).map(row=>row.id)})};
+select('student_a');
+</script>
+</body></html>

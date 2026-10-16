@@ -2,6 +2,7 @@ import {
     users,
     saveUsers,
     GLOBAL_SETTINGS_ID,
+    getLearningSettings,
     getUserDisplayName,
     getPracticeLogs,
     formatPracticeActivity,
@@ -335,9 +336,9 @@ export function renderVisionDashboardTable() {
 }
 
 function getVisibleTextTasksForUser(user) {
-    const tasks = Array.isArray(users[GLOBAL_SETTINGS_ID]?.textTasks) ? users[GLOBAL_SETTINGS_ID].textTasks : [];
+    const tasks = getLearningSettings(user).textTasks || [];
     return tasks.filter(task => {
-        if (!task || task.visible === false) return false;
+        if (!task || task.visible === false || task.hidden === true) return false;
         if (!task.targetGroup || task.targetGroup === 'all') return true;
         return (user?.group || '') === task.targetGroup;
     });

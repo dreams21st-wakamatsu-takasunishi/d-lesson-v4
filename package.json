@@ -15,7 +15,7 @@
     "check:clear-guards": "node scripts/check-clear-guards.mjs",
     "check:word-approval": "node scripts/check-word-approval.mjs && node scripts/check-learning-tasks.mjs",
     "check:keyboard-progression": "node scripts/check-keyboard-progression.mjs",
-    "check:learning-route": "node scripts/check-learning-route.mjs",
+    "check:learning-route": "node scripts/check-learning-route.mjs && node scripts/check-managed-content.mjs",
     "check:romaji-input": "node scripts/check-romaji-input.mjs",
     "check:student-login-ui": "node scripts/check-student-login-ui.mjs",
     "check:teacher-status-ui": "node scripts/check-teacher-status-ui.mjs",
