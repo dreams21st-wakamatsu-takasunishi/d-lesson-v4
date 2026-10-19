@@ -24,7 +24,9 @@ export function showAdminSection(sectionId, callbacks = {}) {
         const authSection = document.getElementById('admin-sec-auth-link');
         if (authSection && !target.contains(authSection)) {
             authSection.classList.add('admin-auth-embedded');
-            target.appendChild(authSection);
+            const advanced = document.createElement('details');
+            advanced.innerHTML = '<summary>先生・管理者の権限／既存ログインの詳細設定</summary>';
+            advanced.appendChild(authSection); target.appendChild(advanced);
         }
         if (authSection) {
             authSection.style.display = 'flex';

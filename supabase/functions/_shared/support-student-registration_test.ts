@@ -1,10 +1,13 @@
 import { registrationCampuses, validRegistrationChild } from './support-student-registration.ts';
 const equal = (actual: unknown, expected: unknown) => { if (JSON.stringify(actual) !== JSON.stringify(expected)) throw Error('Unexpected registration configuration'); };
 Deno.test('registration lists only approved non-public scopes with safe login codes', () => {
-  equal(registrationCampuses([{ campus_id: 'main' }, { campus_id: 'main' }, { campus_id: 'public' }, { campus_id: '../bad' }, { campus_id: 'school' }], { campuses: [{ id: 'school', code: 'public' }, { id: 'unapproved', name: 'Not visible' }] }), [{ id: 'main', code: 'main', name: '本校' }]);
+  equal(registrationCampuses([{ campus_id: 'main' }, { campus_id: 'main' }, { campus_id: 'public' }, { campus_id: '../bad' }, { campus_id: 'school' }], [{id:'main',code:'main',name:'本校',registration_enabled:false}, { id: 'school', code: 'public' }, { id: 'unapproved', name: 'Not visible' }]), [{ id: 'main', code: 'main', name: '本校',registrationEnabled:false }]);
 });
 Deno.test('registration preserves authorized classroom labels and codes', () => {
-  equal(registrationCampuses([{ campus_id: 'school' }], { campuses: [{ id: 'school', code: 'sch', name: '試験校' }] }), [{ id: 'school', code: 'sch', name: '試験校' }]);
+  equal(registrationCampuses([{ campus_id: 'school' }], [{ id: 'school', code: 'sch', name: '試験校' }]), [{ id: 'school', code: 'sch', name: '試験校',registrationEnabled:true }]);
+});
+Deno.test('registration never invents missing registry entries or includes inactive campuses',()=>{
+ equal(registrationCampuses([{campus_id:'main'},{campus_id:'closed'}],[{id:'closed',name:'閉校',code:'closed',active:false}]),[]);
 });
 Deno.test('registration rejects missing invalid and future birthday or unsafe names', () => {
   for (const birth of ['', '2026-02-30', '2027-01-01']) equal(validRegistrationChild('架空児童', birth, '2026-10-09'), false);

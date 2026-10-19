@@ -8,9 +8,10 @@ export function showCustomAlert(msg) {
     }
     // ★ max-width を 500px に拡張し、文字が綺麗に収まるように変更
     overlay.innerHTML = `<div style="background:#fff; padding:30px; border-radius:15px; text-align:center; max-width: 500px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
-            <p style="font-size:20px; color:#333; margin-bottom:20px; white-space:pre-wrap; line-height:1.5;">${msg}</p>
+            <p style="font-size:20px; color:#333; margin-bottom:20px; white-space:pre-wrap; line-height:1.5;"></p>
             <button class="btn-primary" id="btn-custom-ok" style="padding: 10px 30px;">OK</button>
         </div>`;
+    overlay.querySelector('p').textContent = msg;
     overlay.style.display = 'flex';
     document.getElementById('btn-custom-ok').onclick = () => { overlay.style.display = 'none'; };
 }
@@ -26,12 +27,13 @@ export function showCustomConfirm(msg, onYes) {
     }
     // ★ max-width を 500px に拡張
     overlay.innerHTML = `<div style="background:#fff; padding:30px; border-radius:15px; text-align:center; max-width: 500px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
-            <p style="font-size:20px; color:#333; margin-bottom:20px; white-space:pre-wrap; line-height:1.5;">${msg}</p>
+            <p style="font-size:20px; color:#333; margin-bottom:20px; white-space:pre-wrap; line-height:1.5;"></p>
             <div style="display:flex; justify-content:center; gap:20px;">
                 <button class="btn-primary" id="btn-custom-yes" style="padding: 10px 30px;">はい</button>
                 <button class="btn-secondary" id="btn-custom-no" style="padding: 10px 30px;">いいえ</button>
             </div>
         </div>`;
+    overlay.querySelector('p').textContent = msg;
     overlay.style.display = 'flex';
     document.getElementById('btn-custom-yes').onclick = () => { overlay.style.display = 'none'; onYes(); };
     document.getElementById('btn-custom-no').onclick = () => { overlay.style.display = 'none'; };

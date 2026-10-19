@@ -3,7 +3,10 @@ import {
     users,
     currentUser,
     GLOBAL_SETTINGS_ID,
-    hasLessonRole
+    hasLessonRole,
+    getCampusName,
+    getUserCampusId,
+    getRegistrationCampuses
 } from '../api/user.js';
 import { getStageName } from '../utils/stages.js';
 import {
@@ -157,6 +160,19 @@ function renderHomeNextActions(actions) {
 
 export function updateGlobalHeader() {
     updateTitleRoleActions();
+    let campusBadge = document.getElementById('current-campus-badge');
+    const header = document.getElementById('global-header');
+    if (!campusBadge && header) {
+        campusBadge = document.createElement('span'); campusBadge.id = 'current-campus-badge';
+        campusBadge.className = 'current-campus-badge'; header.appendChild(campusBadge);
+    }
+    if (campusBadge) {
+        const available = getRegistrationCampuses();
+        campusBadge.textContent = currentUser && users[currentUser] && !users[currentUser].isMaster
+            ? `所属校舎：${getCampusName(getUserCampusId(currentUser))}`
+            : hasLessonRole('admin', 'teacher') ? available.length === 1 ? `管理校舎：${available[0].name}` : '管理対象：担当範囲の校舎' : '';
+        campusBadge.hidden = !campusBadge.textContent;
+    }
 
     if (currentUser && users[currentUser]) {
         const coinDisplay = document.getElementById('global-coin-display');

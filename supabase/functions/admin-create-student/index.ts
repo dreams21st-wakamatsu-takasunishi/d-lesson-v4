@@ -227,6 +227,9 @@ serve(async (req) => {
     }
 
     const targetCampusId = String(payload.campusId || 'main').trim() || 'main';
+    const {data: campusRow,error: campusError}=await serviceClient.from('lesson_campuses').select('id,code,active').eq('id',targetCampusId).maybeSingle();
+    if(campusError||!campusRow||campusRow.active===false||String(payload.campusCode||targetCampusId)!==campusRow.code)
+      return jsonResponse({error:'校舎台帳と登録先を確認してください。'},400);
     try {
       await ensureStudentNumberAvailable(serviceClient, userDataTable, userDataId, targetCampusId, studentNumber);
     } catch (duplicateError) {
@@ -305,21 +308,16 @@ serve(async (req) => {
 
     if (currentRow?.data && typeof currentRow.data === 'object') {
       const nextUserData: Record<string, unknown> = {
-        ...currentRow.data,
         userDataId,
         campusId: targetCampusId,
-        group: payload.group ?? currentRow.data.group ?? '',
         loginNumber: studentNumber,
         authUserId,
       };
       if (mode !== 'move') nextUserData.authPasscodeIssuedAt = new Date().toISOString();
 
-      const { error: updateUserDataError } = await serviceClient
-        .from(userDataTable)
-        .update({
-          data: nextUserData,
-        })
-        .eq('id', userDataId);
+      const { error: updateUserDataError } = await serviceClient.rpc('patch_lesson_login_fields', {
+        p_table: userDataTable, p_student: userDataId, p_patch: nextUserData,
+      });
       if (updateUserDataError) {
         const rollbackError = await restoreMovedAuth(serviceClient, authUserId, movedAuthSnapshot);
         return jsonResponse({

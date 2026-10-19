@@ -10,6 +10,12 @@ import {
     getCampusList,
     getCampusCode,
     getCampusName,
+    getRegistrationCampuses,
+    addCampusRegistryEntry,
+    deleteCampusRegistryEntry,
+    saveManagedUserRows,
+    reloadManagedStudent,
+    patchStudentFields,
     getUserCampusId,
     getUserAccountType,
     normalizeCampusId,
@@ -26,6 +32,7 @@ import { escapeCsvCell, getBackupDateStamp } from '../utils/export-format.js';
 import { showCustomAlert, showCustomConfirm } from './modal.js';
 import { recordAdminAudit } from './admin-audit.js';
 import { openStudentLoginCardsPrintWindow } from './student-login-cards.js';
+import { nextStudentNumber } from '../utils/student-management.js';
 
 function runAfterChange(afterChange) {
     if (typeof afterChange === 'function') afterChange();
@@ -106,6 +113,7 @@ async function createAdminStudentAuthAccount(userDataId, studentNumber, passcode
     user.authUserId = data.authUserId;
     user.authPasscodeIssuedAt = new Date().toISOString();
     await refreshCurrentLessonAccess();
+    await reloadManagedStudent(userDataId);
     return data;
 }
 
@@ -115,6 +123,7 @@ function getCampusInputValue(id) {
 
 export function renderCampusAdmin() {
     const campusList = getCampusList();
+    const available = getRegistrationCampuses();
     let addCampusSelect = document.getElementById('admin-add-campus');
     if (!addCampusSelect) {
         const groupInput = document.getElementById('admin-add-group');
@@ -136,13 +145,14 @@ export function renderCampusAdmin() {
             campusCard.id = 'admin-campus-card';
             campusCard.style.cssText = 'display:flex; flex-direction:column; gap:10px; background:#eefaf7; padding:15px; border-radius:8px; border:1px solid #80cbc4;';
             campusCard.innerHTML = `
-                <span style="font-weight:bold; color:#00695c;">校舎の管理</span>
+                <details><summary>校舎台帳・管理者向け詳細設定</summary>
+                <p>既存の所属・教材・ログインは自動移動しません。本校は既存データの確認用として区別しています。</p>
                 <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
                     <input type="text" id="admin-campus-name" placeholder="校舎名 例: 若松校" style="margin:0; flex:1; min-width:140px; padding:8px; font-size:14px;">
                     <input type="text" id="admin-campus-code" placeholder="コード 例: wakamatsu" style="margin:0; width:150px; padding:8px; font-size:14px;">
                     <button type="button" class="btn-primary" onclick="adminAddCampus()" style="font-size:14px; padding:8px 12px;">校舎追加</button>
                 </div>
-                <div id="admin-campus-list" style="display:flex; flex-direction:column; gap:6px;"></div>
+                <div id="admin-campus-list" style="display:flex; flex-direction:column; gap:6px;"></div></details>
             `;
             parent.insertBefore(campusCard, addCard.nextSibling);
         }
@@ -173,15 +183,29 @@ export function renderCampusAdmin() {
     const listEl = document.getElementById('admin-campus-list');
 
     if (addCampusSelect) {
-        const current = addCampusSelect.value || DEFAULT_CAMPUS_ID;
+        const current = addCampusSelect.value;
         addCampusSelect.innerHTML = '';
-        campusList.forEach(campus => {
+        if (available.length !== 1) {
+            const empty = document.createElement('option'); empty.value = ''; empty.textContent = '登録先校舎を選択';
+            addCampusSelect.appendChild(empty);
+        }
+        available.forEach(campus => {
             const opt = document.createElement('option');
             opt.value = campus.id;
             opt.innerText = campus.name;
             addCampusSelect.appendChild(opt);
         });
-        addCampusSelect.value = campusList.some(campus => campus.id === current) ? current : DEFAULT_CAMPUS_ID;
+        addCampusSelect.value = available.some(campus => campus.id === current) ? current : available.length === 1 ? available[0].id : '';
+        addCampusSelect.hidden = available.length === 1;
+        let label = document.getElementById('admin-registration-campus');
+        if (!label) { label = document.createElement('p'); label.id = 'admin-registration-campus'; addCampusSelect.before(label); }
+        label.textContent = available.length === 1 ? `登録先：${available[0].name}` : '登録先を確認してください。本校への新規登録は停止しています。';
+        const number = document.getElementById('admin-add-login-number');
+        const suggest = () => { if (number && (!number.value || number.dataset.suggested === number.value)) {
+            number.value = nextStudentNumber(users, addCampusSelect.value); number.dataset.suggested = number.value;
+        } };
+        addCampusSelect.onchange = suggest;
+        suggest();
     }
 
     if (!listEl) return;
@@ -190,7 +214,7 @@ export function renderCampusAdmin() {
         const row = document.createElement('div');
         row.style.cssText = 'display:flex; align-items:center; justify-content:space-between; gap:8px; padding:6px 8px; border:1px solid #d8e5e3; border-radius:6px; background:#fff;';
         const label = document.createElement('span');
-        label.innerText = `${campus.name} / ${campus.id}`;
+        label.innerText = `${getCampusName(campus.id)}${campus.registrationEnabled === false ? '・新規登録停止' : ''}`;
         label.style.cssText = 'font-size:13px; color:#234; font-weight:700;';
         row.appendChild(label);
 
@@ -207,30 +231,31 @@ export function renderCampusAdmin() {
     });
 }
 
-export function adminAddCampus(afterChange) {
+export async function adminAddCampus(afterChange) {
     const nameInput = document.getElementById('admin-campus-name');
     const codeInput = document.getElementById('admin-campus-code');
     const name = String(nameInput?.value || '').trim();
     const code = String(codeInput?.value || '').trim();
     if (!name) return showCustomAlert('校舎名を入力してください。');
 
-    const id = normalizeCampusId(code || name);
+    if (!/^[a-z][a-z0-9-]{1,79}$/.test(code)) return showCustomAlert('校舎コードは英小文字・数字・ハイフンで2～80文字にしてください。');
+    const id = code;
     const campuses = getCampusList();
     if (campuses.some(campus => campus.id === id || campus.name === name)) {
         showCustomAlert('同じ校舎がすでに登録されています。');
         return;
     }
 
-    users[GLOBAL_SETTINGS_ID].campuses = [...campuses, { id, name, code: code || id }];
+    try { await addCampusRegistryEntry(name, code); }
+    catch (error) { return showCustomAlert(error.message); }
     recordAdminAudit('campus_added', { id, name, code: code || id });
-    saveUsers(true);
     if (nameInput) nameInput.value = '';
     if (codeInput) codeInput.value = '';
     renderCampusAdmin();
     runAfterChange(afterChange);
 }
 
-export function adminDeleteCampus(campusId, afterChange) {
+export async function adminDeleteCampus(campusId, afterChange) {
     const id = normalizeCampusId(campusId);
     if (id === DEFAULT_CAMPUS_ID) return;
     const used = Object.keys(users).some(userId => (
@@ -243,9 +268,9 @@ export function adminDeleteCampus(campusId, afterChange) {
         showCustomAlert('この校舎に所属している児童がいるため削除できません。先に児童の校舎を変更してください。');
         return;
     }
-    users[GLOBAL_SETTINGS_ID].campuses = getCampusList().filter(campus => campus.id !== id);
+    try { await deleteCampusRegistryEntry(id); }
+    catch (error) { return showCustomAlert(error.message); }
     recordAdminAudit('campus_deleted', { id });
-    saveUsers(true);
     renderCampusAdmin();
     runAfterChange(afterChange);
 }
@@ -253,21 +278,24 @@ export function adminDeleteCampus(campusId, afterChange) {
 export async function adminAddUser(afterChange) {
     const name = document.getElementById('admin-add-name').value.trim();
     const birthdate = document.getElementById('admin-add-birth').value;
-    const campusId = getCampusInputValue('admin-add-campus');
+    const campusId = document.getElementById('admin-add-campus')?.value || '';
     const group = document.getElementById('admin-add-group').value.trim();
-    const loginNumber = getNumericInputValue('admin-add-login-number');
-    const passcode = getNumericInputValue('admin-add-passcode');
-    const shouldCreateAuth = Boolean(loginNumber || passcode);
+    const loginNumber = getNumericInputValue('admin-add-login-number') || nextStudentNumber(users, campusId);
+    const passcode = getNumericInputValue('admin-add-passcode') || generatePasscode();
+    const shouldCreateAuth = true;
 
     if (!name) return showCustomAlert('名前を入力してください');
     if (userDisplayNameExists(name)) return showCustomAlert('その名前はすでに登録されています');
     if (!birthdate) return showCustomAlert('生年月日を入力してください');
+    if (!getRegistrationCampuses().some(campus => campus.id === campusId)) return showCustomAlert('登録先校舎を確認してください。');
+    if (!/^\d+$/.test(loginNumber) || Number(loginNumber) < 1 || Number(loginNumber) > 50) return showCustomAlert('児童番号の空きがありません。管理者に確認してください。');
     if (shouldCreateAuth && !loginNumber) return showCustomAlert('Auth作成する場合は児童番号を入力してください');
     if (shouldCreateAuth && passcode.length < 6) return showCustomAlert('Auth作成する場合は、あいことばを6けた以上の数字で入力してください');
     if (shouldCreateAuth && studentLoginNumberExists(loginNumber, campusId)) {
         return showCustomAlert('同じ校舎で同じ児童番号がすでに使われています。');
     }
 
+    showCustomConfirm(`登録内容を確認してください。\n氏名：${name}\n生年月日：${birthdate}\n校舎：${getCampusName(campusId)}\nグループ：${group || '未指定'}\n児童番号：${loginNumber}\n\nログイン設定まで作成し、ログインカードを表示します。既存アカウントがないことを確認しましたか？`, async () => {
     const userDataId = createStudentRecord(name, birthdate, group, campusId);
     recordAdminAudit('児童追加', {
         user: name,
@@ -276,7 +304,7 @@ export async function adminAddUser(afterChange) {
         campusId,
         group
     });
-    const saved = await saveUsers(true);
+    const saved = await saveManagedUserRows(userDataId);
     if (!saved) {
         delete users[userDataId];
         runAfterChange(afterChange);
@@ -286,7 +314,6 @@ export async function adminAddUser(afterChange) {
     if (shouldCreateAuth) {
         try {
             const authData = await createAdminStudentAuthAccount(userDataId, loginNumber, passcode);
-            await saveUsers(true);
             recordAdminAudit('auth_student_created', {
                 user: name,
                 userDataId,
@@ -321,6 +348,7 @@ export async function adminAddUser(afterChange) {
     showCustomAlert(shouldCreateAuth
         ? `${name} さんを追加し、Authアカウントを作成しました！\n児童番号: ${loginNumber}`
         : `${name} さんを追加しました！`);
+    });
 }
 
 export async function adminCreateExistingStudentAuth(userDataId, afterChange) {
@@ -367,8 +395,6 @@ export async function adminCreateExistingStudentAuth(userDataId, afterChange) {
 
     try {
         const authData = await createAdminStudentAuthAccount(userDataId, studentNumber, passcode, 'create');
-        const saved = await saveUsers(true);
-        if (!saved) throw new Error('児童データの保存に失敗しました。');
 
         recordAdminAudit('auth_existing_student_created', {
             user: displayName,
@@ -429,8 +455,6 @@ export async function adminResetStudentPasscode(userDataId, afterChange) {
     showCustomConfirm(`${displayName} さんのあいことばを再発行しますか？\n古いあいことばではログインできなくなります。`, async () => {
         try {
             const authData = await createAdminStudentAuthAccount(userDataId, studentNumber, passcode, 'reset');
-            const saved = await saveUsers(true);
-            if (!saved) throw new Error('児童データの保存に失敗しました。');
             recordAdminAudit('auth_student_passcode_reset', {
                 user: displayName,
                 userDataId,
@@ -454,31 +478,33 @@ export async function adminResetStudentPasscode(userDataId, afterChange) {
     });
 }
 
-export function adminBulkAddUsers(afterChange) {
+export async function adminBulkAddUsers(afterChange) {
     const textarea = document.getElementById('admin-bulk-names');
     const text = textarea?.value || '';
     if (!text.trim()) return showCustomAlert('入力してください');
 
-    let added = 0;
+    const campusId = document.getElementById('admin-add-campus')?.value || '';
+    if (!getRegistrationCampuses().some(campus => campus.id === campusId)) return showCustomAlert('登録先の校舎を確認してください。');
+    const created = [];
     text.split('\n').forEach(line => {
         if (!line.trim()) return;
         const parts = line.split(/[,、\s]+/);
         const name = parts[0].trim();
-        const birthdate = parts.length > 1 ? parts[1].trim() : '2015-04-01';
-        const selectedCampusId = getCampusInputValue('admin-add-campus');
-        const campusId = parts.length > 3 ? normalizeCampusId(parts[2]) : selectedCampusId;
+        const birthdate = parts.length > 1 ? parts[1].trim() : '';
         const group = parts.length > 3 ? parts[3].trim() : (parts.length > 2 ? parts[2].trim() : '');
-        if (name && !userDisplayNameExists(name)) {
-            createStudentRecord(name, birthdate, group, campusId);
-            added++;
+        if (name && /^\d{4}-\d{2}-\d{2}$/.test(birthdate) && !userDisplayNameExists(name)) {
+            created.push(createStudentRecord(name, birthdate, group, campusId));
         }
     });
 
-    recordAdminAudit('児童一括追加', { count: added });
-    saveUsers(true);
+    if (created.length && !await saveManagedUserRows(created)) {
+        created.forEach(id => { delete users[id]; });
+        return showCustomAlert('保存できませんでした。入力は残しています。再試行前に一覧を確認してください。');
+    }
+    recordAdminAudit('児童一括追加', { count: created.length });
     runAfterChange(afterChange);
     if (textarea) textarea.value = '';
-    showCustomAlert(`${added} 人を追加しました！`);
+    showCustomAlert(`${created.length} 人の名簿を追加しました。ログインは未設定です。生年月日なし・不正形式・重複は追加していません。`);
 }
 
 function parseCsvLine(line) {
@@ -546,7 +572,7 @@ export function exportStudentCsv() {
     recordAdminAudit('児童CSV出力', { students: rows.length - 1 });
 }
 
-export function applyStudentCsvUpdates(afterChange) {
+export async function applyStudentCsvUpdates(afterChange) {
     const textarea = document.getElementById('admin-bulk-update-csv');
     const raw = textarea?.value || '';
     const lines = raw.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
@@ -573,7 +599,7 @@ export function applyStudentCsvUpdates(afterChange) {
             continue;
         }
 
-        const user = users[userDataId];
+        const user = structuredClone(users[userDataId]);
         let changed = false;
         const before = {
             displayName: getUserDisplayName(userDataId),
@@ -607,8 +633,8 @@ export function applyStudentCsvUpdates(afterChange) {
         if (Object.prototype.hasOwnProperty.call(row, 'campusId')) {
             const campusId = normalizeCampusId(row.campusId);
             if (campusId !== before.campusId) {
-                user.campusId = campusId;
-                changed = true;
+                skipped++;
+                continue; // Campus/Auth moves require the explicit managed move flow.
             }
         }
 
@@ -620,12 +646,16 @@ export function applyStudentCsvUpdates(afterChange) {
             }
         }
 
-        if (changed) updated++;
+        if (changed) {
+            const patch = {};
+            for (const key of ['displayName','birthdate','grade','group']) if (user[key] !== users[userDataId][key] && user[key] !== undefined) patch[key] = user[key];
+            try { await patchStudentFields(userDataId, patch); updated++; }
+            catch (error) { runAfterChange(afterChange); return showCustomAlert(`途中で保存を停止しました（保存済み${updated}件）。入力内容は残しています。\n${error.message}`); }
+        }
     }
 
     if (updated > 0) {
         recordAdminAudit('児童CSV一括更新', { updated, skipped });
-        saveUsers(true);
         runAfterChange(afterChange);
     }
 
@@ -644,8 +674,6 @@ export function adminDeleteUser(userDataId, afterChange) {
             const deletedByAdminFunction = await deleteCloudStudentAccount(userDataId);
             if (!deletedByAdminFunction) await deleteCloudUserRows(userDataId);
             delete users[userDataId];
-            const saved = await saveUsers(true);
-            if (!saved) throw new Error('Failed to persist deletion');
             recordAdminAudit('児童削除', { user: displayName, userDataId });
             runAfterChange(afterChange);
             showCustomAlert(`${displayName} さんを削除しました。`);

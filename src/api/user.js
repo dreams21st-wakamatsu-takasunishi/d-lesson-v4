@@ -3,6 +3,7 @@ import { SoundManager } from '../utils/sound.js';
 import { calculateGrade, sortGrades } from '../utils/helpers.js';
 import { sanitizeGlobalMistakes } from '../utils/weak-mistakes.js';
 import { campusLearningSettings, replaceCampusCatalogs } from '../utils/managed-content.js';
+import { parseCampusRegistry, registrationCampuses, expectedFields, studentState } from '../utils/student-management.js';
 import { THEMES, EFFECTS, DEFAULT_CAMPUS_ID } from '../data/constants.js';
 export { DEFAULT_CAMPUS_ID } from '../data/constants.js';
 import { showScreen } from '../ui/screen.js';
@@ -106,6 +107,8 @@ export let users = {};
 export let currentUser = null;
 export let currentSelectedGrade = null;
 export let currentLessonAccess = [];
+let campusRegistry = null;
+let studentManagementStatus = new Map();
 let authGatePromise = null;
 let authGateResolve = null;
 let authGateAfterLogin = null;
@@ -712,7 +715,77 @@ export function ensureCampusSettings() {
 }
 
 export function getCampusList() {
-    return ensureCampusSettings();
+    return campusRegistry || (canUseRlsCloudSync() ? [] : ensureCampusSettings());
+}
+
+export function replaceCampusRegistry(rows) {
+    campusRegistry = parseCampusRegistry(rows);
+}
+
+export async function refreshCampusRegistry() {
+    if (!canUseRlsCloudSync()) return getCampusList();
+    const { data, error } = await supabase.from('lesson_campuses').select('id,name,code,active,registration_enabled');
+    if (error) throw Error('校舎台帳を読み込めません。通信状態と管理機能の更新状況を確認してください。');
+    replaceCampusRegistry(data || []);
+    return campusRegistry;
+}
+
+export function getRegistrationCampuses() {
+    return registrationCampuses(getCampusList(), currentLessonAccess);
+}
+
+export function getStudentManagementStatus(userId) {
+    return studentManagementStatus.get(userId) || null;
+}
+
+export async function refreshStudentManagementStatus() {
+    studentManagementStatus.clear();
+    if (!canUseRlsCloudSync() || !hasLessonRole('admin', 'teacher')) return;
+    const { data, error } = await supabase.rpc('get_lesson_student_management_status', { p_table: TARGET_TABLE });
+    if (error) throw Error('ログイン・連携状態を確認できませんでした。再読み込みしてください。');
+    studentManagementStatus = new Map((data || []).map(row => [row.id, row]));
+}
+
+export async function patchStudentFields(userId, patch) {
+    if (!users[userId] || !canManageScopedUserRow(userId)) throw Error('この児童を変更する権限がありません。');
+    const expected = expectedFields(users[userId], patch);
+    if (!canUseRlsCloudSync()) {
+        Object.assign(users[userId], patch);
+        if (!await saveUsers(false)) throw Error('保存できませんでした。');
+        return;
+    }
+    if (!navigator.onLine) throw Error('オフラインです。入力内容を控え、接続後に再試行してください。');
+    setSyncStatus('syncing');
+    const { data, error } = await supabase.rpc('patch_lesson_student', {
+        p_table: TARGET_TABLE, p_student: userId, p_patch: patch, p_expected: expected
+    });
+    if (error) { setSyncStatus('sync error'); throw Error(error.message || '保存できませんでした。'); }
+    users[userId] = data;
+    setSyncStatus('rls synced');
+    updateVisibleUserUi();
+}
+
+export async function reloadManagedStudent(userId) {
+    if (!canUseRlsCloudSync()) return;
+    const { data, error } = await supabase.from(TARGET_TABLE).select('data').eq('id', userId).single();
+    if (error || !data?.data) throw Error('登録結果を再取得できませんでした。新規登録を繰り返さず一覧を再読み込みしてください。');
+    users[userId] = data.data;
+    await refreshStudentManagementStatus();
+}
+
+export async function addCampusRegistryEntry(name, code) {
+    if (!hasLessonRole('admin')) throw Error('管理者権限が必要です。');
+    if (!canUseRlsCloudSync()) throw Error('校舎管理はオンラインの管理者ログインで行ってください。');
+    const { error } = await supabase.from('lesson_campuses').insert({ id: code, name, code });
+    if (error) throw Error('校舎を登録できませんでした。名称・コードの重複を確認してください。');
+    await refreshCampusRegistry();
+}
+
+export async function deleteCampusRegistryEntry(id) {
+    if (!hasLessonRole('admin') || id === DEFAULT_CAMPUS_ID) throw Error('この校舎は削除できません。');
+    const { error } = await supabase.from('lesson_campuses').delete().eq('id', id).select('id');
+    if (error) throw Error('使用中または連携中の校舎は削除できません。');
+    await refreshCampusRegistry();
 }
 
 export function normalizeCampusId(value) {
@@ -727,7 +800,8 @@ export function normalizeCampusId(value) {
 export function getCampusName(campusId) {
     const id = normalizeCampusId(campusId);
     const campus = getCampusList().find(item => item.id === id);
-    return campus?.name || id || '本校';
+    if (campus?.id === 'main' && campus.registrationEnabled === false) return `${campus.name}（既存・確認用）`;
+    return campus?.name || '校舎未確認';
 }
 
 export function getCampusCode(campusId) {
@@ -1384,6 +1458,8 @@ function completeAuthGateLogin() {
 function handleGuestLogin() {
     guestMode = true;
     currentLessonAccess = [];
+    campusRegistry = null;
+    studentManagementStatus.clear();
     pendingStudentLoginNumber = '';
     completeAuthGateLogin();
 }
@@ -1865,7 +1941,9 @@ export async function loadUsers() {
                 if (localDataStr) { try { users = JSON.parse(localDataStr); } catch(err) { users = {}; } }
             }
         }
+        await refreshCampusRegistry();
         await loadCampusContent();
+        await refreshStudentManagementStatus();
     } catch(e) {
         replaceCampusCatalogs();
         console.error("通信エラー", e);
@@ -2099,6 +2177,10 @@ function applyRandomStyleFavorites(userId) {
 }
 
 export function login(userId) {
+    if (hasLessonRole('student') && studentState(users[userId]) !== 'active') {
+        showCustomAlert('このアカウントは休止・在籍終了になっています。先生に確認してください。');
+        return;
+    }
     currentUser = userId;
     if(!users[userId]) users[userId] = {};
     normalizeUserRecord(userId, users[userId]);

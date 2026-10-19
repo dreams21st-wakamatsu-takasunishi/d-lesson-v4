@@ -1,4 +1,5 @@
 begin;
+alter table public.lesson_campuses add column if not exists registration_enabled boolean not null default true;
 create table if not exists public.lesson_campus_content (
  data_table text not null check(data_table in('user_data','test_user_data')),
  campus_id text not null check(length(campus_id) between 1 and 80 and campus_id<>'public'),
@@ -66,7 +67,7 @@ begin
  if v_table not in('user_data','test_user_data') or v_actor is null or v_org is null or v_project !~ '^[a-z0-9]{20}$'
   or p->>'action' not in('list','get','save') then raise exception '操作を確認してください。' using errcode='22023'; end if;
  if p->>'action'='list' then
-  return jsonb_build_object('campuses',coalesce((select jsonb_agg(jsonb_build_object('id',s.campus_id,'name',coalesce((select c.name from public.lesson_campuses c where c.id=s.campus_id),s.campus_id)) order by s.campus_id)
+  return jsonb_build_object('campuses',coalesce((select jsonb_agg(jsonb_build_object('id',s.campus_id,'name',coalesce((select c.name || case when c.registration_enabled then '' else '（既存・確認用）' end from public.lesson_campuses c where c.id=s.campus_id),s.campus_id)) order by (s.campus_id='main'),s.campus_id)
    from public.lesson_support_scopes s where s.support_project_ref=v_project and s.organization_id=v_org and s.data_table=v_table and s.enabled
    and not exists(select 1 from public.lesson_support_scopes other where other.data_table=s.data_table and other.campus_id=s.campus_id and other.enabled
     and (other.support_project_ref<>v_project or other.organization_id<>v_org))

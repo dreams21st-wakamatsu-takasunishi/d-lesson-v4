@@ -9152,3 +9152,25 @@ input:checked + .toggle-slider:before { transform: translateX(26px); }
 .teacher-task-section li button { grid-column: 2; grid-row: 1 / 3; min-height: 44px; max-width: 100%; }
 .teacher-task-section .btn-secondary { min-height: 40px; }
 @media (max-width: 520px) { .teacher-task-section li { grid-template-columns: minmax(0,1fr); gap: 6px; } .teacher-task-section li button { grid-column: 1; grid-row: auto; justify-self: start; } }
+/* Student management: readable at laptop and tablet widths. */
+.current-campus-badge { padding: 5px 10px; border-radius: 8px; background: #e0f2fe; color: #075985; font-size: 13px; font-weight: 700; }
+.student-management-layout { display: grid; grid-template-columns: minmax(245px, 320px) minmax(0, 1fr); gap: 18px; width: 100%; align-items: start; }
+.student-management-layout input, .student-management-layout select { min-height: 38px; max-width: 100%; box-sizing: border-box; }
+.student-management-layout details { padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; background: #f8fafc; }
+.student-management-layout summary { cursor: pointer; font-weight: 700; }
+#screen-admin > .screen-content { justify-content: flex-start; align-items: stretch; }
+#admin-sec-users > p { font-size: 14px; line-height: 1.6; }
+#admin-user-table { table-layout: fixed; }
+#admin-user-table th, #admin-user-table td { height: auto; min-width: 0 !important; padding: 7px !important; font-size: 12px; overflow-wrap: anywhere; vertical-align: top; }
+#admin-user-table th { white-space: nowrap; }
+#admin-user-table :is(th,td):is(:nth-child(3),:nth-child(4),:nth-child(5),:nth-child(7),:nth-child(8),:nth-child(9),:nth-child(11)) { display: none; }
+#admin-user-table :is(th,td):first-child { width: 28px; }
+#admin-user-table :is(th,td):nth-child(2) { width: 20%; }
+#admin-user-table :is(th,td):nth-child(6) { width: 20%; }
+#admin-user-table :is(th,td):nth-child(10) { width: 18%; }
+#admin-user-table input:not([type=radio]), #admin-user-table select { width: 100% !important; min-height: 34px; }
+#admin-user-table details { padding: 4px; font-size: 11px; }
+.student-management-state { font-size: 12px; font-weight: 700; padding: 4px; border-radius: 6px; }
+.student-management-state[data-state="active"] { color: #065f46; background: #ecfdf5; }
+.student-management-state[data-state="paused"], .student-management-state[data-state="left"] { color: #92400e; background: #fffbeb; }
+@media(max-width: 960px) { .student-management-layout { grid-template-columns: 1fr; } .student-management-layout > :first-child { order: 2; } .current-campus-badge { font-size: 11px; } }

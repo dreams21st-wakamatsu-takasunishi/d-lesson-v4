@@ -6,6 +6,9 @@ import {
     getCampusList,
     getCampusCode,
     getCampusName,
+    getLearningSettings,
+    getStudentManagementStatus,
+    patchStudentFields,
     getUserCampusId,
     getUserAccountType,
     getUserAccountTypeLabel,
@@ -24,6 +27,7 @@ import {
 import { getStandardRouteStatus, renderStandardRouteCell } from '../utils/standard-route.js';
 import { showCustomAlert } from './modal.js';
 import { recordAdminAudit } from './admin-audit.js';
+import { describeStudentAccount, studentState, studentStateLabels } from '../utils/student-management.js';
 
 function runUserChanged(options) {
     if (typeof options?.onUserChanged === 'function') options.onUserChanged();
@@ -120,7 +124,7 @@ export function updateAdminUserTable(options = {}) {
         const th = document.createElement('th');
         th.dataset.authHeader = 'true';
         th.style.cssText = 'padding:8px; border:1px solid #ddd;';
-        th.innerText = 'Auth';
+        th.innerText = 'ログイン設定';
         const routeHeader = headerRow.querySelector('[data-standard-route-header="true"]');
         headerRow.insertBefore(th, routeHeader || null);
     }
@@ -130,6 +134,12 @@ export function updateAdminUserTable(options = {}) {
         th.style.cssText = 'padding:8px; border:1px solid #ddd;';
         th.innerText = '標準ルート';
         headerRow.appendChild(th);
+    }
+    if (headerRow && !headerRow.querySelector('[data-management-header]')) {
+        for (const label of ['利用状態', 'Dサポート連携', '使用教材']) {
+            const th = document.createElement('th'); th.dataset.managementHeader = 'true';
+            th.textContent = label; headerRow.appendChild(th);
+        }
     }
 
     const searchInput = document.getElementById('admin-user-search');
@@ -238,6 +248,10 @@ export function updateAdminUserTable(options = {}) {
         birthInput.onchange = () => updateUserBirthdate(item.id, birthInput.value, options);
         birthTd.appendChild(birthInput);
         tr.appendChild(birthTd);
+        const gradeLabel = document.createElement('small'); gradeLabel.textContent = item.grade;
+        gradeLabel.style.cssText = 'display:block;color:#64748b;margin:4px 0'; nameTd.appendChild(gradeLabel);
+        const birthDetail = document.createElement('details'); birthDetail.innerHTML = '<summary>生年月日</summary>';
+        birthDetail.appendChild(birthInput); nameTd.appendChild(birthDetail);
 
         const gradeTd = document.createElement('td');
         gradeTd.style.cssText = 'padding:5px; border:1px solid #ddd;';
@@ -256,7 +270,7 @@ export function updateAdminUserTable(options = {}) {
         getCampusList().forEach(campus => {
             const opt = document.createElement('option');
             opt.value = campus.id;
-            opt.innerText = campus.name;
+            opt.innerText = getCampusName(campus.id);
             campusSelect.appendChild(opt);
         });
         campusSelect.value = item.campusId || DEFAULT_CAMPUS_ID;
@@ -276,6 +290,9 @@ export function updateAdminUserTable(options = {}) {
         groupInput.onchange = () => updateUserGroup(item.id, groupInput.value, options);
         groupTd.appendChild(groupInput);
         tr.appendChild(groupTd);
+        const groupLabel = document.createElement('label'); groupLabel.textContent = 'グループ';
+        groupLabel.style.cssText = 'display:block;font-size:11px;color:#64748b;margin-top:5px';
+        groupLabel.appendChild(groupInput); campusTd.appendChild(groupLabel);
 
         const mouseTd = document.createElement('td');
         mouseTd.style.cssText = 'padding:5px; border:1px solid #ddd;';
@@ -293,13 +310,13 @@ export function updateAdminUserTable(options = {}) {
             authTd.innerHTML = '<span style="color:#64748b; font-size:11px; font-weight:bold;">対象外</span>';
         } else if (item.user.authUserId) {
             const linkedLabel = document.createElement('span');
-            linkedLabel.innerText = '連携済み';
+            linkedLabel.innerText = describeStudentAccount(item.user, getStudentManagementStatus(item.id));
             linkedLabel.style.cssText = 'display:block; color:#047857; font-size:11px; font-weight:bold;';
             authTd.appendChild(linkedLabel);
 
             const syncButton = document.createElement('button');
             syncButton.type = 'button';
-            syncButton.innerText = 'Auth同期';
+            syncButton.innerText = 'ログイン設定修復';
             syncButton.title = '児童番号ログインの校舎情報を、現在の校舎に合わせます';
             syncButton.style.cssText = 'width:96px; margin-top:4px; padding:4px 5px; border:1px solid #0f766e; background:#f0fdfa; color:#115e59; font-size:11px; font-weight:bold; cursor:pointer;';
             syncButton.onclick = async () => {
@@ -315,7 +332,7 @@ export function updateAdminUserTable(options = {}) {
 
             const createButton = document.createElement('button');
             createButton.type = 'button';
-            createButton.innerText = 'Auth作成';
+            createButton.innerText = 'ログインを設定';
             createButton.title = 'この児童のログイン用Authアカウントを作成します';
             createButton.style.cssText = 'width:96px; margin-top:4px; padding:4px 5px; border:1px solid #2563eb; background:#eff6ff; color:#1d4ed8; font-size:11px; font-weight:bold; cursor:pointer;';
             createButton.onclick = async () => {
@@ -336,6 +353,31 @@ export function updateAdminUserTable(options = {}) {
         routeTd.innerHTML = renderStandardRouteCell(getStandardRouteStatus(item.user, users[GLOBAL_SETTINGS_ID] || {}));
         tr.appendChild(routeTd);
 
+        const stateTd = document.createElement('td');
+        const stateSelect = document.createElement('select');
+        stateSelect.className = 'student-management-state'; stateSelect.dataset.state = studentState(item.user);
+        stateSelect.setAttribute('aria-label', `${item.name}の利用状態`);
+        Object.entries(studentStateLabels).forEach(([value, label]) => {
+            const opt = document.createElement('option'); opt.value = value; opt.textContent = label; stateSelect.appendChild(opt);
+        });
+        stateSelect.value = studentState(item.user);
+        stateSelect.onchange = async () => {
+            stateSelect.disabled = true;
+            try {
+                await patchStudentFields(item.id, { studentState: stateSelect.value });
+                recordAdminAudit('利用状態変更', { userDataId: item.id, state: stateSelect.value });
+                updateAdminUserTable(options);
+            } catch (error) { stateSelect.disabled = false; stateSelect.value = studentState(item.user); showCustomAlert(error.message); }
+        };
+        stateTd.appendChild(stateSelect); tr.appendChild(stateTd);
+        const linkTd = document.createElement('td');
+        const status = getStudentManagementStatus(item.id);
+        linkTd.textContent = status ? status.supportLinked ? '連携済み' : '未連携' : '未確認';
+        tr.appendChild(linkTd);
+        const contentTd = document.createElement('td');
+        contentTd.textContent = status?.campusReady === false ? '校舎設定要確認' : `${getLearningSettings(item.id) === users[GLOBAL_SETTINGS_ID] ? '全体共通' : '校舎教材'}・${(getLearningSettings(item.id).textTasks || []).length}題`;
+        tr.appendChild(contentTd);
+
         tbody.appendChild(tr);
     });
 }
@@ -354,7 +396,7 @@ export function clearAdminUserFilters(options = {}) {
     updateAdminUserTable(options);
 }
 
-export function updateUserDisplayName(userId, newName, options = {}) {
+export async function updateUserDisplayName(userId, newName, options = {}) {
     const displayName = newName.trim();
     if (!users[userId]) return;
     if (!displayName) {
@@ -369,18 +411,19 @@ export function updateUserDisplayName(userId, newName, options = {}) {
     }
 
     const oldName = getUserDisplayName(userId);
-    users[userId].displayName = displayName;
+    if (oldName === displayName) return;
+    try { await patchStudentFields(userId, { displayName }); }
+    catch (error) { showCustomAlert(error.message); return; }
     recordAdminAudit('表示名変更', {
         userDataId: userId,
         before: oldName,
         after: displayName
     });
-    saveUsers(true);
     updateAdminUserTable(options);
     runUserChanged(options);
 }
 
-export function updateUserBirthdate(userId, newBirthdate, options = {}) {
+export async function updateUserBirthdate(userId, newBirthdate, options = {}) {
     if (!users[userId]) return;
     if (!newBirthdate) {
         showCustomAlert('生年月日を入力してください');
@@ -389,15 +432,14 @@ export function updateUserBirthdate(userId, newBirthdate, options = {}) {
     }
 
     const oldBirthdate = users[userId].birthdate || users[userId].birth || '';
-    users[userId].birthdate = newBirthdate;
-    users[userId].grade = calculateGrade(newBirthdate);
+    try { await patchStudentFields(userId, { birthdate: newBirthdate, grade: calculateGrade(newBirthdate) }); }
+    catch (error) { showCustomAlert(error.message); return; }
     recordAdminAudit('生年月日変更', {
         user: getUserDisplayName(userId),
         userDataId: userId,
         before: oldBirthdate,
         after: newBirthdate
     });
-    saveUsers(true);
     updateAdminUserTable(options);
     runUserChanged(options);
 }
@@ -493,18 +535,18 @@ export async function syncUserCampusAuth(userId, options = {}) {
     }
 }
 
-export function updateUserGroup(userId, newGroup, options = {}) {
+export async function updateUserGroup(userId, newGroup, options = {}) {
     if (!users[userId]) return;
 
     const oldGroup = users[userId].group || '';
-    users[userId].group = newGroup.trim();
+    try { await patchStudentFields(userId, { group: newGroup.trim() }); }
+    catch (error) { showCustomAlert(error.message); return; }
     recordAdminAudit('グループ変更', {
         user: getUserDisplayName(userId),
         userDataId: userId,
         before: oldGroup,
         after: users[userId].group
     });
-    saveUsers(true);
     updateAdminUserTable(options);
     runUserChanged(options);
 }

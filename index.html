@@ -269,37 +269,41 @@
 
                 <div id="admin-sec-users" class="admin-section" style="display:none; width: 100%;">
                     <h3 style="margin-top:0;">👥 生徒の管理</h3>
-                    <div style="display:flex; gap:20px; width:100%; align-items: flex-start;">
+                    <p>所属・利用状態・ログイン・Dサポート連携をまとめて確認します。学習記録を残す場合は「休止」「在籍終了」を使ってください。</p>
+                    <div class="student-management-layout">
                         <div style="flex:1; display:flex; flex-direction:column; gap:15px;">
-                            <div style="display:flex; flex-direction:column; gap:10px; background:#e3f2fd; padding:15px; border-radius:8px; border:1px solid #90caf9;">
-                                <span style="font-weight:bold; color:#0277bd;">👤 ユーザーの新規追加</span>
+                            <details id="admin-registration-form" open style="background:#e3f2fd; padding:15px; border-radius:8px; border:1px solid #90caf9;">
+                                <summary>新しい児童を登録</summary>
+                                <span style="font-weight:bold; color:#0277bd;">① 児童を登録 → ② 内容確認 → ③ ログインカード</span>
                                 <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                                    <input type="text" id="admin-add-name" placeholder="名前" style="margin:0; flex:1; min-width:120px; padding:8px; font-size:16px;">
+                                    <input type="text" id="admin-add-name" aria-label="児童名" placeholder="児童名" style="margin:0; flex:1; min-width:120px; padding:8px; font-size:16px;">
                                     <input type="date" id="admin-add-birth" title="生年月日" style="margin:0; width:140px; padding:8px; font-size:16px;">
                                     <input type="text" id="admin-add-group" placeholder="グループ(任意)" style="margin:0; width:130px; padding:8px; font-size:16px;">
                                     <input type="text" id="admin-add-login-number" inputmode="numeric" pattern="[0-9]*" placeholder="児童番号" title="教室ログイン用の児童番号" style="margin:0; width:100px; padding:8px; font-size:16px;">
-                                    <input type="password" id="admin-add-passcode" inputmode="numeric" pattern="[0-9]*" placeholder="あいことば" title="6けた以上の数字。入力するとAuth作成まで行います。" style="margin:0; width:120px; padding:8px; font-size:16px;">
-                                    <button class="btn-primary" onclick="adminAddUser()" style="margin:0; padding:8px 15px; font-size:16px;">追加/Auth作成</button>
+                                    <input type="password" id="admin-add-passcode" inputmode="numeric" pattern="[0-9]*" placeholder="あいことば（空欄で自動作成）" title="6けた以上の数字。空欄なら自動作成します。" style="margin:0; width:100%; padding:8px; font-size:16px;">
+                                    <button class="btn-primary" onclick="adminAddUser()" style="margin:0; padding:8px 15px; font-size:16px;">登録内容を確認</button>
                                 </div>
-                            </div>
-                            <div style="display:flex; flex-direction:column; gap:10px; background:#fff8e1; padding:15px; border-radius:8px; border:1px solid #ffc107;">
-                                <span style="font-weight:bold; color:#ff6f00;">👥 一括登録 (カンマ区切りで入力)</span>
+                            </details>
+                            <details>
+                                <summary>既存データの一括登録・更新（詳細操作）</summary>
+                                <p>旧式の一括追加は名簿のみの登録です。本人ログインは別途設定が必要です。通常は上の「登録内容を確認」を使ってください。</p>
                                 <textarea id="admin-bulk-names" placeholder="名前, YYYY-MM-DD, クラス名(任意)&#10;はなこ, 2014-10-01, 月曜クラス&#10;たろう, 2015-05-15" style="width:100%; height:80px; font-size:16px; padding:10px; border-radius:5px; border:1px solid #ccc; box-sizing:border-box;"></textarea>
                                 <button class="btn-primary" onclick="adminBulkAddUsers()">一括追加</button>
-                            </div>
-                            <div style="display:flex; flex-direction:column; gap:10px; background:#f3e5f5; padding:15px; border-radius:8px; border:1px solid #ce93d8;">
-                                <span style="font-weight:bold; color:#6a1b9a;">📋 CSV一括編集</span>
+                            </details>
+                            <details style="background:#f3e5f5; padding:15px; border-radius:8px; border:1px solid #ce93d8;">
+                                <summary>CSV出力・一括編集</summary>
                                 <textarea id="admin-bulk-update-csv" placeholder="CSV出力で作った内容を編集して貼り付け&#10;user_data_id,name,birthdate,group" style="width:100%; height:90px; font-size:13px; padding:10px; border-radius:5px; border:1px solid #ccc; box-sizing:border-box; font-family:monospace;"></textarea>
                                 <div style="display:flex; gap:10px; flex-wrap:wrap;">
                                     <button class="btn-secondary" onclick="exportStudentCsv()" style="font-size:14px; padding:8px 12px;">CSV出力</button>
                                     <button class="btn-primary" onclick="applyStudentCsvUpdates()" style="font-size:14px; padding:8px 12px;">CSV反映</button>
                                 </div>
-                            </div>
-                            <div style="display:flex; gap:10px; justify-content:center; align-items:center; background:#e8f5e9; padding:15px; border-radius:8px; border:1px solid #4caf50;">
+                            </details>
+                            <details style="background:#e8f5e9; padding:15px; border-radius:8px; border:1px solid #4caf50;">
+                                <summary>選択児童へのコイン付与</summary>
                                 <span style="font-weight:bold; color:#2e7d32;">💰 選択した人にコイン付与:</span>
                                 <input type="number" id="admin-custom-coin-amount" value="10000" style="width:100px; padding:8px; font-size:16px; margin:0;">
                                 <button class="btn-gacha" style="font-size:16px; padding:8px 15px; margin:0;" onclick="adminAddCoins()">付与</button>
-                            </div>
+                            </details>
                         </div>
                         <div style="flex:1; display:flex; flex-direction:column; gap:10px;">
                             <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; background:#f5f5f5; border:1px solid #ddd; border-radius:8px; padding:10px;">
@@ -334,7 +338,7 @@
                                 <button class="btn-secondary" style="font-size:14px; padding:10px 15px;" onclick="adminForceProgress()">全開放</button>
                                 <button class="btn-secondary" style="font-size:14px; padding:10px 15px;" onclick="adminPrintLoginCard()">ログインカード</button>
                                 <button class="btn-secondary" style="font-size:14px; padding:10px 15px;" onclick="adminResetStudentPasscode()">合言葉再発行</button>
-                                <button class="btn-danger" style="font-size:14px; padding:10px 15px;" onclick="adminDeleteUser()">削除</button>
+                                <details><summary>完全削除（管理者）</summary><p>学習記録・ログインも削除されます。先にバックアップしてください。</p><button class="btn-danger" style="font-size:14px; padding:10px 15px;" onclick="adminDeleteUser()">選択児童を完全削除</button></details>
                             </div>
                         </div>
                     </div>

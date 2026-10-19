@@ -13,17 +13,19 @@ Deno.serve(async request => {
     const client = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false, autoRefreshToken: false } });
     const { data: scopes, error } = await client.from('lesson_support_scopes').select('campus_id').eq('support_project_ref', body.supportProjectRef).eq('organization_id', body.organizationId).eq('data_table', table).eq('enabled', true).limit(101);
     if (error || !scopes || scopes.length > 100) throw Error('Scope configuration');
-    const settings = await client.from('lesson_settings').select('data').eq('key', `${table}:global`).maybeSingle();
+    const settings = await client.from('lesson_campuses').select('id,name,code,active,registration_enabled');
     if (settings.error) throw Error('Campus configuration');
-    let global = settings.data?.data;
-    if (!global) { const legacy = await client.from(table).select('data').eq('id', '__GLOBAL_SETTINGS__').maybeSingle(); if (legacy.error) throw Error('Campus configuration'); global = legacy.data?.data; }
-    const campuses = registrationCampuses(scopes, global), domain = (Deno.env.get('STUDENT_LOGIN_EMAIL_DOMAIN') || '').replace(/^@/, ''), prefix = Deno.env.get('STUDENT_LOGIN_EMAIL_PREFIX') || 'dlesson-student-', pad = Number(Deno.env.get('STUDENT_LOGIN_NUMBER_PAD') || '3');
+    const campuses = registrationCampuses(scopes, settings.data), domain = (Deno.env.get('STUDENT_LOGIN_EMAIL_DOMAIN') || '').replace(/^@/, ''), prefix = Deno.env.get('STUDENT_LOGIN_EMAIL_PREFIX') || 'dlesson-student-', pad = Number(Deno.env.get('STUDENT_LOGIN_NUMBER_PAD') || '3');
     if (!/^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(domain) || !/^[a-zA-Z0-9_-]{1,80}$/.test(prefix) || !Number.isInteger(pad) || pad < 1 || pad > 8) throw Error('Login configuration');
-    if (body.action === 'campuses') return reply({ campuses: campuses.map(({ id, name }) => ({ id, name })) });
+    if (body.action === 'campuses') return reply({ campuses: campuses.map(({ id, name, registrationEnabled }) => ({ id, name, registrationEnabled })) });
     if (!operationUuid(body.operationId) || !operationUuid(body.linkId) || !operationUuid(body.actorId) || !safeCampusId(body.campusId)
       || typeof body.childId !== 'string' || !body.childId || body.childId.length > 160 || !validRegistrationChild(body.displayName, body.birthDate, serviceDate(new Date().toISOString()))) return reply({ error: '児童の氏名・生年月日・校舎を確認してください。' }, 400);
     const campus = campuses.find(value => value.id === body.campusId);
     if (!campus) return reply({ error: 'この校舎への登録は許可されていません。' }, 403);
+    if (!campus.registrationEnabled) {
+      const receipt = await client.from('lesson_support_registrations').select('id').eq('id', body.operationId).maybeSingle();
+      if (receipt.error || !receipt.data) return reply({ error: 'この校舎への新規登録は停止しています。運用校舎を選択してください。' }, 403);
+    }
     const { data, error: registrationError } = await client.rpc('prepare_support_student_registration', { p: { id: body.operationId, link: body.linkId, actor: body.actorId,
       project: body.supportProjectRef, org: body.organizationId, table, child: body.childId, campus: campus.id, code: campus.code,
       name: body.displayName, birth: body.birthDate, domain, prefix, pad } });
