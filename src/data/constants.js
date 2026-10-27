@@ -275,16 +275,16 @@ export const KB_LAYOUT = [['1','2','3','4','5','6','7','8','9','0','-'],['Q','W'
 
 export const WORD_STAGES =[
     // --- 初級1 ---
-    { id: 'w_b1_1', title: 'Word 1-1', sub: 'きほんそうさ', pdf: 'https://drive.google.com/file/d/1-FqZ40jUKyyBt3HT2rGAfYVgV8htaqHi/view?usp=drive_link' },
-    { id: 'w_b1_2', title: 'Word 1-2', sub: 'ぶんしょうをうつ', pdf: 'https://drive.google.com/file/d/1PNhSTRREzR0DOk-ka8-zIpSzOWxDtSko/view?usp=drive_link' },
-    { id: 'w_b1_3', title: 'Word 1-3', sub: 'あんないをつくる', pdf: 'https://drive.google.com/file/d/1SQrbBR2dfIg1e5QpJGuyLH4ehAIz184X/view?usp=drive_link' },
-    { id: 'w_b1_4', title: 'Word 1-4', sub: 'ひょうをつくる', pdf: 'https://drive.google.com/file/d/1S72do7S7pP0mtxaADaaLC2iLUiy8MKV0/view?usp=drive_link' },
-    { id: 'w_b1_5', title: 'Word 1-5', sub: 'まとめもんだい', pdf: 'https://drive.google.com/file/d/1dfuPSPAku_ixixSNU5FHCE3IK8vNwpPb/view?usp=drive_link' },
+    { id: 'w_b1_1', title: 'Word 1-1', sub: 'きほんそうさ', pdf: '' },
+    { id: 'w_b1_2', title: 'Word 1-2', sub: 'ぶんしょうをうつ', pdf: '' },
+    { id: 'w_b1_3', title: 'Word 1-3', sub: 'あんないをつくる', pdf: '' },
+    { id: 'w_b1_4', title: 'Word 1-4', sub: 'ひょうをつくる', pdf: '' },
+    { id: 'w_b1_5', title: 'Word 1-5', sub: 'まとめもんだい', pdf: '' },
     // --- 中級4 ---
     // ※他の級や章を追加する場合は、ここにコピーして増やしてください
-    { id: 'w_m4_1', title: 'Word 4-1', sub: 'かたちをつくる', pdf: 'https://drive.google.com/file/d/18mNWptnEPEI1tAffHsKfMpoYivD0nrkZ/view?usp=drive_link' },
-    { id: 'w_m4_2', title: 'Word 4-2', sub: 'イラストをかく', pdf: 'https://drive.google.com/file/d/1FC_zSLHj-oB78huF3sw2QGsHhCkr0wpZ/view?usp=drive_link' },
-    { id: 'w_m4_3', title: 'Word 4-3', sub: 'まとめもんだい', pdf: 'https://drive.google.com/file/d/1_cktFg6o3rNPrSsGB-YyUSubAu4khlht/view?usp=drive_link' }
+    { id: 'w_m4_1', title: 'Word 4-1', sub: 'かたちをつくる', pdf: '' },
+    { id: 'w_m4_2', title: 'Word 4-2', sub: 'イラストをかく', pdf: '' },
+    { id: 'w_m4_3', title: 'Word 4-3', sub: 'まとめもんだい', pdf: '' }
 ];
 
 export const ROMAJI_TABLE_DATA = {

@@ -6,6 +6,7 @@ import {
 } from '../api/user.js';
 import { showCustomAlert, showCustomConfirm } from './modal.js';
 import { recordAdminAudit } from './admin-audit.js';
+import { CONTENT_DISTRIBUTION } from '../data/content-distribution.js';
 
 const RHYTHM_CUSTOM_SONGS_KEY = 'rhythmCustomSongs';
 const RHYTHM_AUDIO_BUCKET = 'lesson-rhythm-audio';
@@ -838,6 +839,7 @@ function makeStoragePath(file) {
 }
 
 async function uploadRhythmAudio(file) {
+    if (CONTENT_DISTRIBUTION.rhythmAudioSuspended) throw new Error('音源の配信・アップロードは停止中です。');
     if (!supabase) throw new Error('Supabase接続がありません。');
     const storagePath = makeStoragePath(file);
     const { error } = await supabase.storage
@@ -858,6 +860,10 @@ async function uploadRhythmAudio(file) {
 }
 
 async function saveAdminRhythmSong() {
+    if (CONTENT_DISTRIBUTION.rhythmAudioSuspended) {
+        showCustomAlert('音源の配信・アップロードは停止中です。既存の曲・ノーツ・学習記録は保持しています。');
+        return;
+    }
     stopAdminRhythmRecording();
     stopAdminRhythmPreview();
     stopAdminRhythmTestPlay();
@@ -1143,6 +1149,14 @@ function renderSongList() {
 export function renderAdminRhythmSongs() {
     const container = document.getElementById('admin-rhythm-container');
     if (!container) return;
+    if (CONTENT_DISTRIBUTION.rhythmAudioSuspended) {
+        stopAdminRhythmRecording();
+        stopAdminRhythmPreview();
+        stopAdminRhythmTestPlay();
+        container.textContent = '音源の利用許諾を確認するため、曲の配信・再生・アップロードを停止しています。既存の曲・ノーツ・児童の学習記録は保持しています。';
+        container.setAttribute('role', 'status');
+        return;
+    }
     if (adminRhythmView !== 'editor') {
         container.innerHTML = `
             <div class="admin-rhythm-menu">

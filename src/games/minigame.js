@@ -11,6 +11,7 @@ import {
     GLOBAL_SETTINGS_ID
 } from '../api/user.js';
 import { WORD_DATA } from '../data/constants.js';
+import { CONTENT_DISTRIBUTION, RHYTHM_AUDIO_SUSPENSION_MESSAGE } from '../data/content-distribution.js';
 import {
     getDynamicDChallengeWord,
     getDynamicTypingPrompt,
@@ -979,6 +980,7 @@ function normalizeRhythmCustomSongForMenu(song) {
 }
 
 function getAllRhythmSongs() {
+    if (CONTENT_DISTRIBUTION.rhythmAudioSuspended) return [];
     const customSongs = getRhythmCustomSongSettings()
         .map(normalizeRhythmCustomSongForMenu)
         .filter(Boolean);
@@ -1123,8 +1125,8 @@ function setupRhythmGameArea() {
         mgArea.innerHTML = `
             <div class="rhythm-song-menu">
                 <div class="rhythm-song-empty">
-                    <strong>リズム曲がまだありません</strong>
-                    <span>管理者メニューの「リズム曲の作成」から曲を追加してください。</span>
+                    <strong>${CONTENT_DISTRIBUTION.rhythmAudioSuspended ? 'ただいま じゅんび中' : 'リズム曲がまだありません'}</strong>
+                    <span role="status">${CONTENT_DISTRIBUTION.rhythmAudioSuspended ? RHYTHM_AUDIO_SUSPENSION_MESSAGE : '管理者メニューの「リズム曲の作成」から曲を追加してください。'}</span>
                 </div>
             </div>
         `;

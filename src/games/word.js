@@ -1,4 +1,5 @@
 import { WORD_STAGES } from '../data/constants.js';
+import { CONTENT_DISTRIBUTION, WORD_PDF_SUSPENSION_MESSAGE } from '../data/content-distribution.js';
 import {canOpenTaskStage} from '../utils/task-stages.js';
 import {
     users,
@@ -207,6 +208,10 @@ function startWordStage(sid) {
 }
 
 export function openWordText() {
+    if (CONTENT_DISTRIBUTION.wordPdfSuspended) {
+        showCustomAlert(WORD_PDF_SUSPENSION_MESSAGE);
+        return;
+    }
     const st = WORD_STAGES.find(s => s.id === currentWordStageId);
     if (st && st.pdf && st.pdf !== '') {
         const popup = window.open(st.pdf, '_blank', WORD_TEXT_WINDOW_FEATURES);
