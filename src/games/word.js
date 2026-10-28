@@ -1,5 +1,5 @@
 import { WORD_STAGES } from '../data/constants.js';
-import { CONTENT_DISTRIBUTION, WORD_PDF_SUSPENSION_MESSAGE } from '../data/content-distribution.js';
+import { WORD_PDF_SUSPENSION_MESSAGE } from '../data/content-distribution.js';
 import {canOpenTaskStage} from '../utils/task-stages.js';
 import {
     users,
@@ -53,7 +53,6 @@ async function refreshWordReviews(){
     }finally{loadingReviews=false;}
 }
 setInterval(()=>{if(document.visibilityState==='visible'&&(document.getElementById('screen-word-menu')?.classList.contains('active')||document.getElementById('screen-word-game')?.classList.contains('active')))void refreshWordReviews();},30000);
-const WORD_TEXT_WINDOW_FEATURES = 'popup=yes,width=1180,height=820,menubar=no,toolbar=no,location=yes,status=no,scrollbars=yes,resizable=yes';
 
 function getActiveUserOrTitle() {
     const u = currentUser ? users[currentUser] : null;
@@ -174,7 +173,7 @@ function renderWordMenu() {
         if (isCleared) b.innerHTML += `<span class="reward-badge" style="background:#e8f5e9; border-color:#4CAF50; color:#2e7d32;">クリア</span>`;
         else if(wordRequest(st.id)?.status==='pending')b.innerHTML+=`<span class="reward-badge">先生のかくにんまち</span>`;
         else if(wordRequest(st.id)?.status==='returned')b.innerHTML+=`<span class="reward-badge">もう一度チャレンジ</span>`;
-        else if (isWorking) b.innerHTML += `<span class="reward-badge" style="background:#fffde7; border-color:#FFEB3B; color:#fbc02d;">やっているところ ⏸️ ${workingPage ? 'P.' + escapeHtml(workingPage) : ''}</span>`;
+        else if (isWorking) b.innerHTML += `<span class="reward-badge" style="background:#fffde7; border-color:#FFEB3B; color:#fbc02d;">${workingPage ? escapeHtml(workingPage) + 'ページまで' : 'とりくみ中'}</span>`;
         else if (isUnlocked) b.innerHTML += `<span class="reward-badge">💰500</span>`;
 
         cont.appendChild(b);
@@ -199,7 +198,8 @@ function startWordStage(sid) {
         pageVal = prog.page || '';
     }
     document.getElementById('word-page-input').value = pageVal;
-    document.getElementById('word-stage-status').textContent = getWordStageProgress(users[currentUser], sid).isCleared ? 'クリアずみ' : pageVal ? `${pageVal}ページからのつづき` : 'これからチャレンジ';
+    document.getElementById('word-stage-status').textContent = getWordStageProgress(users[currentUser], sid).isCleared ? 'クリアずみ' : pageVal ? `${pageVal}ページまで きろくずみ` : 'これからチャレンジ';
+    document.getElementById('word-page-saved').textContent = pageVal ? `前のきろく：${pageVal}ページまで` : 'まだページのきろくはありません';
 
     showScreen('screen-word-game');
     renderReviewStatus();
@@ -208,16 +208,14 @@ function startWordStage(sid) {
 }
 
 export function openWordText() {
-    if (CONTENT_DISTRIBUTION.wordPdfSuspended) {
-        showCustomAlert(WORD_PDF_SUSPENSION_MESSAGE);
-        return;
-    }
-    const st = WORD_STAGES.find(s => s.id === currentWordStageId);
-    if (st && st.pdf && st.pdf !== '') {
-        const popup = window.open(st.pdf, '_blank', WORD_TEXT_WINDOW_FEATURES);
-        if (popup) popup.opener = null;
-    }
-    else showCustomAlert('テキストのURLが設定されていません。先生に確認してください。');
+    // Keep legacy callers safe without reopening discontinued textbook files.
+    showCustomAlert(WORD_PDF_SUSPENSION_MESSAGE);
+}
+
+function readWordPageInput() {
+    const input = document.getElementById('word-page-input');
+    if (!input.reportValidity()) return null;
+    return String(Number(input.value));
 }
 
 function getCurrentWordStageLabel() {
@@ -236,11 +234,10 @@ export async function suspendWordTask() {
     const u = users[currentUser];
     const userId = currentUser;
     const stageId = currentWordStageId;
-    const input = document.getElementById('word-page-input');
-    if (!input.reportValidity()) return;
+    const pageVal = readWordPageInput();
+    if (pageVal === null) return;
     if (!u.wordProgress) u.wordProgress = {};
 
-    let pageVal = document.getElementById('word-page-input').value;
     let prog = u.wordProgress[currentWordStageId];
     const previousLogs = u.practiceLogs;
 
@@ -255,8 +252,8 @@ export async function suspendWordTask() {
         category: 'word',
         stageId: String(stageId),
         title: getCurrentWordStageLabel(),
-        detail: isCleared ? 'クリアずみページをこうしん' : 'とちゅうほぞん',
-        amount: pageVal ? `${pageVal}ページまで` : 'ページなし',
+        detail: isCleared ? 'クリアずみページをこうしん' : '紙のテキストのページをきろく',
+        amount: `${pageVal}ページまで`,
         coins: 0
     });
     savingWord = true;
@@ -271,15 +268,15 @@ export async function suspendWordTask() {
     }
     if (currentUser !== userId || currentWordStageId !== stageId || !document.getElementById('screen-word-game').classList.contains('active')) return;
     SoundManager.playClick();
-    showCustomAlert('「やっているところ ⏸️」としてきろくしました！\nデータをほぞんしてWordをとじたら、つぎはつづきからできます。');
+    showCustomAlert(`${pageVal}ページまで きろくしました！`);
     goToWordMenu();
 }
 
 export async function confirmWordClear() {
     if (savingWord || !currentWordStageId || !users[currentUser]) return;
     if (isGuestMode()) { showCustomAlert('ゲストでは先生の承認は保存できません。登録したアカウントで取り組んでね。'); return; }
-    const input = document.getElementById('word-page-input');
-    if (!input.reportValidity()) return;
+    const page = readWordPageInput();
+    if (page === null) return;
     const userId = currentUser;
     const stageId = currentWordStageId;
     if(getCurrentLessonRole()==='student'){
@@ -289,7 +286,7 @@ export async function confirmWordClear() {
         if(state.linked){
             const row=wordRequest(stageId);if(row?.status==='pending'){showCustomAlert('先生のかくにんをまっています。');renderReviewStatus();return;}
             if(row?.status==='approved'){await refreshWordReviews();return;}
-            showWordSubmissionDialog({studentId:userId,stageId,page:input.value,stageTitle:getCurrentWordStageLabel(),
+            showWordSubmissionDialog({studentId:userId,stageId,page,stageTitle:getCurrentWordStageLabel(),
                 isCurrent:()=>currentUser===userId&&currentWordStageId===stageId&&document.getElementById('screen-word-game').classList.contains('active'),
                 onSubmitted:()=>{showCustomAlert('先生に送りました！\n先生のかくにんをまってね。');void refreshWordReviews().then(()=>{if(currentUser===userId)renderWordMenu();});}});
             return;
@@ -297,7 +294,7 @@ export async function confirmWordClear() {
     }
     showWordApprovalDialog({
         studentName: getUserDisplayName(userId), stageTitle: getCurrentWordStageLabel(),
-        userDataId: userId, stageId, page: input.value,
+        userDataId: userId, stageId, page,
         isCurrent: () => currentUser === userId && currentWordStageId === stageId && document.getElementById('screen-word-game').classList.contains('active'),
         onApproved: result => {
             users[userId] = result.data;

@@ -72,7 +72,9 @@ const uploadAudio = vm.runInNewContext(functionSource(admin, ['uploadRhythmAudio
 assert.equal((await uploadAudio({type:'audio/mpeg'})).audioUrl, 'https://audio.example.invalid/test.mp3');
 assert.equal(uploaded, 1);
 const html = read('index.html');
-assert.match(html, /onclick="openWordText\(\)" disabled aria-describedby="word-text-availability"/);
+assert.doesNotMatch(html, /onclick="openWordText\(\)"/);
+assert.match(html, /<h3>紙のテキスト<\/h3>/);
+assert.doesNotMatch(word, /window\.open|st\.pdf/);
 const emergency = read('supabase/sql/suspend_unverified_media.sql');
 assert.match(emergency, /on storage\.objects as restrictive\s+for all to anon, authenticated/);
 assert.match(emergency, /using \(bucket_id <> 'lesson-rhythm-audio'\)/);

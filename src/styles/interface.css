@@ -204,7 +204,8 @@ html[data-lesson-theme="default"] .keyboard-category-card { background: #f4f9ff 
 }
 
 /* Word workspace and the teacher's transient confirmation dialog. */
-#screen-word-game .screen-content { justify-content: flex-start; padding-top: 24px; }
+#screen-word-game { flex: 1 0 auto; min-height: auto; }
+#screen-word-game .screen-content { flex: 0 0 auto; min-height: auto; justify-content: flex-start; padding-top: 24px; }
 .word-workspace { width: min(820px, 100%); text-align: left; }
 .lesson-eyebrow { font-size: 13px; font-weight: 700; color: var(--lesson-on-background); }
 .word-workspace-heading { padding-bottom: 20px; border-bottom: 1px solid var(--lesson-line); }
@@ -219,6 +220,7 @@ html[data-lesson-theme="default"] .keyboard-category-card { background: #f4f9ff 
 .word-workspace button { display: inline-flex; align-items: center; justify-content: center; gap: 10px; padding: 14px 20px; font-size: 17px; }
 .word-workspace-progress { padding: 28px 0; }
 .word-workspace-progress label { font-weight: 700; font-size: 17px; }
+.word-page-saved { margin: 0 0 16px; color: var(--lesson-muted); font-size: 16px; text-align: left; }
 .word-page-row { display: flex; align-items: center; gap: 14px; margin-top: 14px; font-size: 17px; }
 #word-page-input { width: 120px; max-width: 100%; box-sizing: border-box; min-height: 52px; margin: 0; padding: 10px; border: 1px solid #9caea5; border-radius: 8px; background: #fff; color: #243533; font-size: 22px; text-align: center; }
 .word-workspace-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px; border-top: 1px solid var(--lesson-line); padding: 24px 0 0; }
