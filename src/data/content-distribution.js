@@ -1,7 +1,7 @@
-// Re-enable only after rights review and an authorized delivery path are in place.
+// Word remains suspended. Rhythm was restored on the operator's authorization.
 export const CONTENT_DISTRIBUTION = Object.freeze({
     wordPdfSuspended: true,
-    rhythmAudioSuspended: true
+    rhythmAudioSuspended: false
 });
 
 export const WORD_PDF_SUSPENSION_MESSAGE = 'テキストは じゅんび中です。先生に きいてね。';

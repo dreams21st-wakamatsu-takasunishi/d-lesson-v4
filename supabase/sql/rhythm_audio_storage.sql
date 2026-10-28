@@ -11,7 +11,7 @@ insert into storage.buckets (
 values (
   'lesson-rhythm-audio',
   'lesson-rhythm-audio',
-  false,
+  true,
   20971520,
   array[
     'audio/mpeg',
@@ -73,13 +73,8 @@ using (
   and public.is_lesson_admin()
 );
 
--- Keep distribution suspended even if this setup script is re-run.
+-- Operator authorized restoration of the original public-audio delivery model.
 drop policy if exists "Rhythm distribution suspended" on storage.objects;
-create policy "Rhythm distribution suspended"
-on storage.objects as restrictive
-for all to anon, authenticated
-using (bucket_id <> 'lesson-rhythm-audio')
-with check (bucket_id <> 'lesson-rhythm-audio');
 
 select
   id,
