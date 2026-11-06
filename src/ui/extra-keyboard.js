@@ -1,5 +1,5 @@
 import { users, currentUser } from '../api/user.js';
-import { ONE_HAND_STAGES } from '../data/one-hand.js';
+import { ONE_HAND_STAGES, isOneHandChallengeUnlocked } from '../data/one-hand.js';
 import { startGame } from '../games/core.js';
 import { showScreen, setScreenRefreshHandlers } from './screen.js';
 import { showCustomAlert } from './modal.js';
@@ -28,7 +28,11 @@ export function renderOneHandMenu() {
         title.textContent = `${stage.number}. ${stage.name}`;
         const status = document.createElement('span');
         status.className = 'hand-stage-status';
-        status.textContent = `${stage.exam ? 'ミス5回まで' : 'ミス制限なし'}${user.oneHandProgress?.[stage.id] ? ' / クリア済み' : ''}`;
+        if (stage.timed) {
+            button.disabled = !isOneHandChallengeUnlocked(user, selectedHand);
+            const best = user.oneHandChallenges?.[selectedHand]?.best;
+            status.textContent = button.disabled ? 'かくにんテスト ごうかくで ひらく' : best ? `さいこう ${best.score}点` : '90びょう / ミス制限なし';
+        } else status.textContent = `${stage.exam ? 'ミス5回まで' : 'ミス制限なし'}${user.oneHandProgress?.[stage.id] ? ' / クリア済み' : ''}`;
         button.append(title, status);
         button.onclick = () => startGame(stage.id, 'keyboard');
         root.append(button);

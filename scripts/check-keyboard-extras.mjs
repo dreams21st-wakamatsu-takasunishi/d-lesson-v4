@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { STAGE_ORDER } from '../src/data/constants.js';
-import { ONE_HAND_STAGES, getHandKeys, getHandWords } from '../src/data/one-hand.js';
+import { ONE_HAND_STAGES, getHandKeys, getHandWords, isOneHandChallengeUnlocked, calculateOneHandScore } from '../src/data/one-hand.js';
 import { createRomajiInputMatcher } from '../src/utils/romaji-input.js';
 import { normalizeOfficialAnswer } from '../src/utils/official-exam-frame.js';
 import officialProblems from '../src/data/mock-exam-problems.json' with { type: 'json' };
@@ -15,18 +15,25 @@ assert.deepEqual(parseMockGuide('「{準備|じゅんび}できた」を{押|お
 assert.equal(mockGuidePlainText('{結果|けっか}を{表示|ひょうじ}します。'), '結果を表示します。');
 assert.equal(mockGuidePlainText('<img onerror=alert(1)>'), '<img onerror=alert(1)>');
 
-assert.equal(ONE_HAND_STAGES.length, 8);
+assert.equal(ONE_HAND_STAGES.length, 10);
 for (const hand of ['left', 'right']) {
     const keys = getHandKeys(hand);
     assert.ok(keys.length > 15);
+    assert.equal(getHandWords(hand).length, 100);
+    assert.equal(new Set(getHandWords(hand).map(word => word.h)).size, 100);
     for (const word of getHandWords(hand)) {
         const matcher = createRomajiInputMatcher(word.h, word.r, { allowedKeys: keys });
         assert.ok(matcher.isComplete(word.r[0]), word.h);
         assert.ok([...matcher.getSuggestion()].every(key => keys.includes(key)), word.h);
         for (const key of getHandKeys(hand === 'left' ? 'right' : 'left')) assert.equal(matcher.acceptsPrefix(key), false);
     }
-    assert.deepEqual(ONE_HAND_STAGES.filter(stage => stage.hand === hand).map(stage => [stage.keyboard, stage.romaji, Boolean(stage.exam)]), [[true, true, false], [false, true, false], [false, false, false], [false, false, true]]);
+    assert.deepEqual(ONE_HAND_STAGES.filter(stage => stage.hand === hand).map(stage => [stage.keyboard, stage.romaji, Boolean(stage.exam)]), [[true, true, false], [false, true, false], [false, false, false], [false, false, true], [false, false, false]]);
+    assert.equal(isOneHandChallengeUnlocked({}, hand), false);
+    assert.equal(isOneHandChallengeUnlocked({oneHandProgress:{[`hand_${hand}_4`]:{clears:1}}}, hand), true);
 }
+assert.deepEqual(calculateOneHandScore(120,7), {score:113,correctChars:120,misses:7,accuracy:94,durationSeconds:90});
+assert.equal(calculateOneHandScore(2,10).score,0);
+assert.equal(calculateOneHandScore(NaN,Infinity).score,0);
 assert.equal(createRomajiInputMatcher('か', ['CA'], { allowedKeys: getHandKeys('left') }).getSuggestion(), '');
 assert.ok(createRomajiInputMatcher('もみじ', [], { allowedKeys: getHandKeys('right') }).isComplete('MOMIJI'));
 

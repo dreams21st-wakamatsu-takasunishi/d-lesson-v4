@@ -73,7 +73,7 @@ async function check(page, jwt) {
     await page.locator('.keyboard-card-hiragana').click();
     await page.locator('#screen-keyboard-menu').getByRole('button', { name: '左手タイピング', exact: true }).click();
     const rects = await page.locator('#one-hand-stages button').evaluateAll(nodes => nodes.map(node => ({ x: node.getBoundingClientRect().x, y: node.getBoundingClientRect().y })));
-    assert(rects.length === 4 && rects.every(rect => Math.abs(rect.y - rects[0].y) < 2) && rects[3].x > rects[0].x, '4 stages horizontal');
+    assert(rects.length === 5 && rects.every(rect => Math.abs(rect.y - rects[0].y) < 2) && rects[4].x > rects[0].x, '5 stages horizontal');
     await page.locator('#screen-one-hand').screenshot({ path: 'output/playwright/one-hand-horizontal-desktop.png' });
     await page.locator('#one-hand-stages button').nth(2).click();
     await page.keyboard.press('Space'); await page.waitForTimeout(250);

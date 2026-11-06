@@ -2,14 +2,22 @@
 .touch-hand-entries { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; grid-column: 1 / -1; padding: 10px 0; }
 .touch-hand-entries button { min-width: 220px; }
 .extra-stage-list { display: grid; gap: 16px; margin: 20px 0; }
-#one-hand-stages { grid-template-columns: repeat(4, minmax(220px, 1fr)); max-width: 100%; overflow-x: auto; padding: 10px 4px 20px; }
+#one-hand-stages { grid-template-columns: repeat(5, minmax(210px, 1fr)); max-width: 100%; overflow-x: auto; padding: 10px 4px 20px; }
 .extra-stage-button { min-height: 156px; padding: 18px; text-align: left; border: 2px solid #8bb8ad; border-radius: 8px; background: #fff; color: #16362d; font: inherit; font-size: 20px; cursor: pointer; overflow-wrap: anywhere; }
 .extra-stage-button:hover { background: #eaf8ee; border-color: #2d8668; }
+.extra-stage-button:disabled { background: #f1f4f5; color: #59666b; border-color: #c1cccf; cursor: not-allowed; }
+#feedback-overlay.one-hand-score-feedback { background: #fff; }
+.one-hand-score-feedback #feedback-text { font-size: 48px; }
+.one-hand-score-feedback #feedback-time { font-size: 30px; line-height: 1.5; }
+.one-hand-score-feedback #feedback-stats { font-size: 22px; line-height: 1.7; }
 .hand-stage-name, .hand-stage-status { display: block; }
 .hand-stage-status { margin-top: 12px; color: #356353; font-size: 14px; }
 #keyboard-wrapper.hand-romaji-hidden #romaji-hint, #keyboard-wrapper.hand-romaji-hidden #blind-romaji-progress { visibility: hidden; }
 #keyboard-wrapper.hand-romaji-hidden #blind-romaji-progress.hand-typed-visible { visibility: visible; }
 #keyboard-wrapper .key[data-other-hand=true] { opacity: .3; }
+#keyboard-wrapper.hand-practice-active #main-q { width: 100%; font-size: 44px; line-height: 1.5; min-height: 66px; text-align: center; overflow-wrap: anywhere; }
+#keyboard-wrapper.hand-practice-active #romaji-hint { max-width: 100%; font-size: 28px; line-height: 1.5; min-height: 42px; overflow-wrap: anywhere; letter-spacing: 0; }
+#keyboard-wrapper.hand-practice-active #blind-romaji-progress { max-width: 100%; min-height: 48px; box-sizing: border-box; font-size: 24px; line-height: 1.5; overflow-wrap: anywhere; letter-spacing: 0; }
 #screen-one-hand, #screen-text-category, #screen-mock-exam { overflow-y: auto; justify-content: flex-start; padding: 20px; box-sizing: border-box; }
 #screen-one-hand, #screen-text-category { flex: 1 0 auto; min-height: auto; }
 #screen-one-hand > .screen-content, #screen-text-category > .screen-content { flex: 0 0 auto; min-height: auto; justify-content: flex-start; margin-top: 0; }
@@ -58,6 +66,11 @@
     .text-category-options { grid-template-columns: 1fr; }
     .text-category-options button { min-height: 150px; font-size: 22px; }
     .extra-stage-button { font-size: 18px; }
+    #keyboard-wrapper.hand-practice-active #main-q { font-size: 30px; min-height: 90px; }
+    #keyboard-wrapper.hand-practice-active #romaji-hint { font-size: 23px; }
+    .one-hand-score-feedback #feedback-text { font-size: 32px; }
+    .one-hand-score-feedback #feedback-time { font-size: 25px; }
+    .one-hand-score-feedback #feedback-stats { font-size: 17px; padding: 8px 12px; }
     .mock-setup h2 { font-size: 22px; }
     .mock-guide { padding: 10px; }
     #mock-guide-text { flex-basis: 100%; font-size: 21px; }

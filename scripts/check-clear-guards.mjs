@@ -27,7 +27,7 @@ assertMatch(
 
 assertMatch(
   coreSource,
-  /export\s+function\s+markClear\s*\(\)\s*\{\s*if\s*\(\s*isClearProcessing\s*\)\s*return\s*;\s*isClearProcessing\s*=\s*true\s*;/,
+  /export\s+function\s+markClear\s*\(\)\s*\{\s*if\s*\(\s*isClearProcessing\s*\)\s*return\s*;\s*(?:if \(getOneHandStage\(currentStage\)\?\.timed[^\n]+return;\s*)?isClearProcessing\s*=\s*true\s*;/,
   'Common clear guard at the start of markClear'
 );
 
