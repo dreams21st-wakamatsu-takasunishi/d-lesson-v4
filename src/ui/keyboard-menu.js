@@ -347,6 +347,18 @@ function renderKeyboardChapters() {
         </div>
     `;
     cont.appendChild(summary);
+    if (currentKeyboardCategory === 'hiragana') {
+        const hands = document.createElement('div');
+        hands.className = 'touch-hand-entries';
+        for (const hand of ['left', 'right']) {
+            const button = document.createElement('button');
+            button.className = 'btn-primary';
+            button.textContent = hand === 'left' ? '左手タイピング' : '右手タイピング';
+            button.onclick = () => window.openOneHandMenu(hand);
+            hands.append(button);
+        }
+        cont.append(hands);
+    }
 
     const appendRomajiButton = (target = cont) => {
         const btn = document.createElement('button');

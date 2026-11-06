@@ -27,6 +27,7 @@ import { showCustomAlert, showCustomConfirm } from '../ui/modal.js';
 import { getStageName } from '../utils/stages.js';
 import { convertNameToRomaji, shuffle } from '../utils/helpers.js';
 import { createRomajiInputMatcher } from '../utils/romaji-input.js';
+import { getOneHandStage, getHandWords, getHandKeys, ONE_HAND_STAGES } from '../data/one-hand.js';
 import { buildSequentialPracticeRounds, registerRapidMistype } from '../utils/typing-practice.js';
 import { getTrainableMistakeEntries, getValidMistakeEntries, hasTrainableMistakes, normalizeMistakeCount } from '../utils/weak-mistakes.js';
 import {
@@ -50,6 +51,7 @@ import { startVisionGame, renderVisionMenu, openVisionDifficultyForStage } from 
 export { getStageName } from '../utils/stages.js';
 
 let gameMode, currentStage, isProcessing = false;
+let practiceUserId = null;
 let mainQueue =[], currentCount = 0, totalCount = 1;
 let totalKeysTyped = 0, missKeysTyped = 0, targetKey = '', isHomeReturn = false, pendingHome = null;
 let isHiragana = false, isWord = false, currHiraObj = null, activeRomajiList =[], activeRomajiMatcher = null, currRomajiIdx = 0;
@@ -132,6 +134,7 @@ export const els = {
 };
 
 function getPracticeTitle() {
+    if (getOneHandStage(currentStage)) return getOneHandStage(currentStage).title;
     if (gameMode === 'mouse') return `マウス練習 M-${currentStage}`;
     if (isAlphabetReading) {
         const stage = ALPHABET_READING_STAGES.find(st => st.id === currentStage);
@@ -190,6 +193,11 @@ export function startDailyMissionPractice(task) {
 }
 
 function getNextStageAfterClear() {
+    const handStage = getOneHandStage(currentStage);
+    if (handStage) {
+        const next = ONE_HAND_STAGES.find(stage => stage.hand === handStage.hand && stage.number === handStage.number + 1);
+        return next ? { label: 'つぎのステージへすすむ', detail: next.name, run: () => startGame(next.id, 'keyboard') } : null;
+    }
     if (gameMode === 'mouse') {
         const nextStage = Number(currentStage || 0) + 1;
         if (nextStage <= 7) {
@@ -338,6 +346,7 @@ function isOverlayVisible(element) {
 }
 
 function recordPracticeInterrupt(shouldRecord) {
+    if (practiceUserId !== currentUser) return;
     if (!shouldRecord || !currentStage || !gameMode || !startTime || !canWriteCurrentUserRow()) return;
     if (isOverlayVisible(els.fbOverlay) || isOverlayVisible(els.failOverlay)) return;
     const elapsed = Math.max(0, (Date.now() - startTime) / 1000);
@@ -373,6 +382,7 @@ export function startGame(sid, mode, options = {}) {
     }
 
     SoundManager.init(); currentStage = sid; gameMode = mode; isProcessing = false;
+    practiceUserId = currentUser;
     isClearProcessing = false;
     pendingCertificateAward = null;
     pendingDailyMissionTask = null;
@@ -393,10 +403,13 @@ export function startGame(sid, mode, options = {}) {
     isHiragana = (sid >= 3000 && sid < 4000) || sid === 9888;
     isHiraganaGuidedPractice = (sid >= 3101 && sid <= 3115)
         || WORD_DATA.some(stage => stage.id === sid && stage.mode === 'blind' && stage.id !== 4002);
-    isWord = (sid >= 4000 && sid < 5000);
+    const handStage = getOneHandStage(sid);
+    isWord = (sid >= 4000 && sid < 5000) || Boolean(handStage);
+    if (handStage) isExam = Boolean(handStage.exam);
     hasMissLimit = isExam;
     
     if (hasMissLimit) maxMistakes = (sid === 4002 || (sid >= 2100 && sid < 2200) || (sid >= 3200 && sid <= 3300) || isHiragana) ? 5 : 3;
+    if (handStage) maxMistakes = 5;
 
     let alreadyCleared = false;
     if (mode === 'keyboard' && sid !== 9888) {
@@ -531,6 +544,9 @@ export function backToMenu(recordInterrupt = false) {
             renderVisionMenu();
             showScreen('screen-vision-menu');
         }
+        else if (getOneHandStage(currentStage)) {
+            showScreen('screen-one-hand');
+        }
         else {
             menuRefreshHandlers.updateKeyboardButtons();
             // ★追加: もしステージ一覧を開いていたなら、最新の進捗で再描画する
@@ -563,6 +579,7 @@ function updateBlindRomajiProgress() {
     );
     progress.classList.toggle('is-visible', shouldShow);
     progress.textContent = shouldShow ? typedRomajiStr : '';
+    progress.classList.toggle('hand-typed-visible', Boolean(getOneHandStage(currentStage)?.typedRomaji));
 }
 
 function speakAlphabetName(key) {
@@ -706,6 +723,7 @@ function showCarefulTypingWarning() {
 }
 
 function handleKeyDown(e) {
+    if (practiceUserId !== currentUser || !users[currentUser]) return;
     if (typeof e.key !== 'string') return;
     if (isProcessing ||['Enter', 'Shift', 'Control', 'Alt', 'Meta', 'Tab', 'CapsLock', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
     
@@ -725,7 +743,7 @@ function handleKeyDown(e) {
             activeRomajiList = suggestion ? [suggestion] : [];
             let nextChar = suggestion.charAt(currRomajiIdx);
             targetKey = (nextChar === ' ') ? 'SPACE' : nextChar;
-            if (!document.getElementById('keyboard-wrapper').classList.contains('blind-active')) updRomaji();
+            if (getOneHandStage(currentStage)?.romaji || !document.getElementById('keyboard-wrapper').classList.contains('blind-active')) updRomaji();
             updateBlindRomajiProgress();
             updateVisuals();
         }
@@ -773,7 +791,7 @@ function handleKeyDown(e) {
                 activeRomajiList = suggestion ? [suggestion] : [];
                 let nextChar = suggestion.charAt(currRomajiIdx);
                 targetKey = (nextChar === ' ') ? 'SPACE' : nextChar;
-                if (!document.getElementById('keyboard-wrapper').classList.contains('blind-active')) updRomaji();
+                if (getOneHandStage(currentStage)?.romaji || !document.getElementById('keyboard-wrapper').classList.contains('blind-active')) updRomaji();
                 updateVisuals();
             }
         } else {
@@ -785,7 +803,7 @@ function handleKeyDown(e) {
         }
     } else {
         missKeysTyped++; SoundManager.playError(); if (el) { el.classList.add('error-flash'); setTimeout(() => el.classList.remove('error-flash'), 300); }
-        const rapidMistype = gameMode === 'keyboard'
+        const rapidMistype = gameMode === 'keyboard' && !getOneHandStage(currentStage)
             ? registerRapidMistype(rapidMistypeHistory, inputChar)
             : { history: [], shouldWarn: false };
         rapidMistypeHistory = rapidMistype.history;
@@ -807,7 +825,7 @@ function handleKeyDown(e) {
         if (hasMissLimit) {
             let sk = textInputQuestion ? currHiraObj.h : targetKey; 
             mistakeStats[sk] = (mistakeStats[sk] || 0) + 1; mistakeCount++; els.missCounter.innerText = `ミス：${mistakeCount} / ${maxMistakes}`;
-            if (mistakeCount >= maxMistakes) { els.missCounter.classList.add('status-danger'); isProcessing = true; setTimeout(failExam, 500); return; }
+            if (getOneHandStage(currentStage) ? mistakeCount > maxMistakes : mistakeCount >= maxMistakes) { els.missCounter.classList.add('status-danger'); isProcessing = true; setTimeout(failExam, 500); return; }
         }
     }
 }
@@ -906,8 +924,7 @@ function setupRomajiTable(sid) {
                 const inp = cellDiv.querySelector('input');
                 inp.oninput = () => {
                     let val = inp.value.toUpperCase(); inp.value = val;
-                    let ansList = inp.getAttribute('data-ans').split(',');
-                    if (ansList.includes(val)) {
+                    if (createRomajiInputMatcher(cell.h, cell.r).isComplete(val)) {
                         inp.classList.add('correct'); inp.disabled = true; SoundManager.playType(); romajiCorrectCells++;
                         const allInputs = Array.from(container.querySelectorAll('.romaji-input:not(:disabled)'));
                         if (allInputs.length > 0) allInputs[0].focus();
@@ -930,7 +947,16 @@ function setupRomajiTable(sid) {
 
 function setupKeyboard(s) {
     renderKeyboard(); let pool =[];
-    if (isAlphabetReading) {
+    const handStage = getOneHandStage(s);
+    if (handStage) {
+        pool = shuffle(getHandWords(handStage.hand)).slice(0, 12).map(word => ({ ...word, blind: !handStage.keyboard }));
+        const wrap = document.getElementById('keyboard-wrapper');
+        wrap.classList.toggle('blind-active', !handStage.keyboard);
+        wrap.classList.toggle('hand-romaji-visible', handStage.romaji);
+        wrap.classList.toggle('hand-romaji-hidden', !handStage.romaji);
+        const handKeys = getHandKeys(handStage.hand);
+        wrap.querySelectorAll('.key').forEach(key => { key.dataset.otherHand = String(!handKeys.includes(key.dataset.key)); });
+    } else if (isAlphabetReading) {
         const stage = ALPHABET_READING_STAGES.find(item => item.id === s);
         const keys = stage ? stage.keys : [];
         if (stage?.type === 'choice') {
@@ -1094,7 +1120,8 @@ function nextKeyQ() {
         else els.instText.innerText = isWord ? 'ローマじで ことばを うとう！' : 'したのローマじを みて おそう！';
         
         if (currRomajiIdx === 0 || !activeRomajiMatcher) {
-            activeRomajiMatcher = createRomajiInputMatcher(currHiraObj.h, currHiraObj.r || []);
+            const handStage = getOneHandStage(currentStage);
+            activeRomajiMatcher = createRomajiInputMatcher(currHiraObj.h, currHiraObj.r || [], handStage ? { allowedKeys: getHandKeys(handStage.hand) } : {});
             const suggestion = activeRomajiMatcher.getSuggestion('');
             activeRomajiList = suggestion ? [suggestion] : [];
             currRomajiIdx = 0; 
@@ -1108,7 +1135,7 @@ function nextKeyQ() {
             finishItemSuccess();
             return;
         }
-        mq.innerText = currHiraObj.h; if (!isBlindItem) updRomaji();
+        mq.innerText = currHiraObj.h; if (!isBlindItem || getOneHandStage(currentStage)?.romaji) updRomaji();
         updateBlindRomajiProgress();
     } else {
         if (currentStage === 9888) els.instText.innerText = 'にがて とっくん！'; else if (!isBlindItem) els.instText.innerText = isExam ? 'もんだいのキーを おそう！' : 'ひかるキーを おそう！';
@@ -1125,6 +1152,10 @@ function completeTask(delay) {
 export function markClear() {
     if (isClearProcessing) return;
     isClearProcessing = true;
+    if (practiceUserId !== currentUser || !users[currentUser]) {
+        backToMenu();
+        return;
+    }
     isProcessing = true;
     pendingDailyMissionTask = null;
     try {
@@ -1181,6 +1212,17 @@ export function markClear() {
             }
             
             timeMsg = `タイム: ${elapsed.toFixed(1)}秒${isExamMode ? '<br><span style="font-size:24px; color:#E91E63;">(🔥 テスト合格！)</span>' : ''}`;
+        } else if (getOneHandStage(currentStage)) {
+            const user = users[currentUser];
+            if (!user.oneHandProgress) user.oneHandProgress = {};
+            const previous = user.oneHandProgress[currentStage];
+            user.oneHandProgress[currentStage] = {
+                clears: (previous?.clears || 0) + 1,
+                bestSeconds: Math.min(previous?.bestSeconds || Infinity, elapsed),
+                lastClearedAt: new Date().toISOString()
+            };
+            coinGain = previous ? 5 : 40;
+            timeMsg = `タイム: ${elapsed.toFixed(1)}秒 / ミス ${missKeysTyped}回`;
         } else {
             let acc = 0; if (totalKeysTyped + missKeysTyped > 0) acc = Math.floor((totalKeysTyped / (totalKeysTyped + missKeysTyped)) * 100);
             let kpm = Math.floor((totalKeysTyped / Math.max(elapsed, 1)) * 60);

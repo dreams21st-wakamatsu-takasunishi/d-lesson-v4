@@ -4,6 +4,7 @@ import { showScreen } from '../ui/screen.js';
 import { createConfetti } from '../ui/reward.js';
 import { showCustomAlert } from '../ui/modal.js';
 import { buildProgressLabel, findLatestPracticeLog, formatPracticeLogShort } from '../utils/practice-guidance.js';
+import { getTextCoinReward } from '../utils/text-coin-rewards.js';
 
 /* =========================================================
    [JS] 6. 文章入力練習 ＆ 自動採点
@@ -196,22 +197,6 @@ function getTextTaskRecord(task) {
 
 function getTextTaskPlainContent(task) {
     return String(task?.content || '').replace(/\{([^|]+)\|([^}]+)\}/g, '$1');
-}
-
-function getTextCoinReward(netCount) {
-    const score = Number(netCount || 0);
-    if (score >= 2001) return 15000;
-    if (score >= 1501) return 10000;
-    if (score >= 1001) return 8500;
-    if (score >= 801) return 5000;
-    if (score >= 601) return 2500;
-    if (score >= 451) return 1000;
-    if (score >= 351) return 500;
-    if (score >= 251) return 100;
-    if (score >= 101) return 50;
-    if (score >= 51) return 30;
-    if (score >= 1) return 20;
-    return 0;
 }
 
 function getTextTaskMaxCoins(task) {

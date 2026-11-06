@@ -1,0 +1,345 @@
+﻿/* 
+ * Tool      ： SP認定試験エディタ（日本語）
+ * Name      ： cert-editor-jp_CR.css(画面拡大・縮小）
+ *           ： Chrome96以後用の調整済みCSS
+ * Create    ： 2022/03/14 yok
+ * Update    ： 
+*/
+
+@charset "utf-8";
+/* ADD Start 20220411 yok rev107b 入力エリア左右位置調整 */
+.editor {
+  margin-left: 2.15em;
+}
+/* ADD End   20220411 yok rev107b 入力エリア左右位置調整 */
+
+textarea {
+  background-color: transparent;
+  position: relative;
+  z-index: 2;
+  resize: none;
+  overflow: hidden;
+  border: hidden;
+  outline: none;
+  font-family: "SnetMonoGothic";
+  font-size: 0.85em;
+  width: 48.5em;
+  tab-size: 6em;
+  word-break: break-all;
+  line-break: anywhere;
+}
+.normal-line {
+  position: relative;
+  z-index: 1;
+  top: -61.7em;
+  left: -0.17em;
+  height: 54em;
+  width: 40.8em;
+  border: solid 0.1px;
+  border-color: #ccc;
+}
+.under-line {
+  position: relative;
+  z-index: 1;
+  top: -61.7em;
+  left: -0.17em;
+  height: 54em;
+  width: 40.8em;
+  border: solid 0.1px;
+  border-color: #ccc;
+  background: -moz-linear-gradient(#ccc 1px, transparent 0);
+  background: -webkit-linear-gradient(#ccc 1px, transparent 0);
+  background: linear-gradient(#ccc 1px, transparent 0);
+  
+}
+.grid-line {
+  position: relative;
+  z-index: 1;
+  top: -61.7em;
+  left: -0.17em;
+  height: 54em;
+  width: 40.7em;
+  border: solid 0.1px;
+  border-color: #ccc;
+  background: -moz-linear-gradient(#ccc 1px, transparent 0),
+              -moz-linear-gradient(90deg, #ccc 1px, transparent 0);
+  background: -webkit-linear-gradient(#ccc 1px, transparent 0),
+              -webkit-linear-gradient(90deg, #ccc 1px, transparent 0);
+  background: linear-gradient(#ccc 1px, transparent 0),
+              linear-gradient(90deg, #ccc 1px, transparent 0);
+}
+
+/* 67% 以下*/
+@media screen and (min-width:170.001em) { 
+  textarea {
+    background-color: ButtonHighlight;
+    color:ButtonHighlight;
+    height: 70em;
+    letter-spacing: 0.2em;
+    line-height: 1.86em;
+  }
+  .normal-line {
+    top: -60.7em;
+    left: -0.11em;
+    height: 58.5em;
+    margin-top:0.79em;
+  }
+  .under-line {
+    top: -60.9em;
+    left: -0.11em;
+    height: 58.5em;
+    margin-top: 1em;
+    background-size: 1.5em 1.57em;
+  }
+  .grid-line {
+    top: -60.7em;
+    left: -0.11em;
+    height: 58.5em;
+    width: 40.8em;
+    margin-top: 0.8em;
+    margin-left:0.01em;
+    background: -moz-linear-gradient(#ccc 0.8px, transparent 0),
+                -moz-linear-gradient(90deg, #ccc 0.8px, transparent 0);
+    background: -webkit-linear-gradient(#ccc 0.8px, transparent 0),
+                -webkit-linear-gradient(90deg, #ccc 0.8px, transparent 0);
+    background: linear-gradient(#ccc 0.8px, transparent 0),
+                linear-gradient(90deg, #ccc 0.8px, transparent 0);
+    background-size: 1.02em 1.57em;
+  }
+}
+/* 75% */
+@media screen and (min-width: 155.001em) and (max-width:170em) { 
+  textarea {
+    height: 70em;
+    /* MOD Start 20220311 yok rev107 縦枠線・縦線グリッドずれ調整箇所 */
+    letter-spacing: 0.1985em;
+    /* MOD End   20220311 yok rev107 縦枠線・縦線グリッドずれ調整箇所 */
+    /* MOD Start 20220311 yok rev107 枠線・下線グリッドずれ調整箇所 */
+    line-height: 1.869em;
+    /* MOD End   20220311 yok rev107 枠線・下線グリッドずれ調整箇所 */
+  }
+  .normal-line {
+    /* MOD Start 20220311 yok rev107 枠線・下線グリッドずれ調整箇所 */
+    top: -60.9em;
+    /* MOD End   20220311 yok rev107 枠線・下線グリッドずれ調整箇所 */
+    /* MOD Start 20220311 yok rev107 縦枠線・縦線グリッドずれ調整箇所 */
+    left: -0.18em;
+    /* MOD End   20220311 yok rev107 縦枠線・縦線グリッドずれ調整箇所 */
+    /* MOD Start 20220311 yok rev107 枠線・下線グリッドずれ調整箇所 */
+    height: 57.25em;
+    /* MOD End   20220311 yok rev107 枠線・下線グリッドずれ調整箇所 */
+    margin-top:0.79em;
+  }
+  .under-line {
+    /* MOD Start 20220311 yok rev107 枠線・下線グリッドずれ調整箇所 */
+    top: -61.1em;
+    /* MOD End   20220311 yok rev107 枠線・下線グリッドずれ調整箇所 */
+    /* MOD Start 20220311 yok rev107 縦枠線・縦線グリッドずれ調整箇所 */
+    left: -0.18em;
+    /* MOD End   20220311 yok rev107 縦枠線・縦線グリッドずれ調整箇所 */
+    /* MOD Start 20220311 yok rev107 枠線・下線グリッドずれ調整箇所 */
+    height: 57.25em;
+    /* MOD End   20220311 yok rev107 枠線・下線グリッドずれ調整箇所 */
+    margin-top: 1em;
+    background-size: 0.4em 1.59em;
+  }
+  .grid-line {
+    /* MOD Start 20220311 yok rev107 枠線・下線グリッドずれ調整箇所 */
+    top: -60.9em;
+    /* MOD End   20220311 yok rev107 枠線・下線グリッドずれ調整箇所 */
+    /* MOD Start 20220311 yok rev107 縦枠線・縦線グリッドずれ調整箇所 */
+    left: -0.18em;
+    /* MOD End   20220311 yok rev107 縦枠線・縦線グリッドずれ調整箇所 */
+    /* MOD Start 20220311 yok rev107 枠線・下線グリッドずれ調整箇所 */
+    height: 57.25em;
+    /* MOD End   20220311 yok rev107 枠線・下線グリッドずれ調整箇所 */
+    width: 40.8em;
+    margin-top: 0.8em;
+    margin-left:0.01em;
+    background: -moz-linear-gradient(#ccc 0.8px, transparent 0),
+                -moz-linear-gradient(90deg, #ccc 0.8px, transparent 0);
+    background: -webkit-linear-gradient(#ccc 0.8px, transparent 0),
+                -webkit-linear-gradient(90deg, #ccc 0.8px, transparent 0);
+    background: linear-gradient(#ccc 0.8px, transparent 0),
+                linear-gradient(90deg, #ccc 0.8px, transparent 0);
+    background-size: 1.02em 1.59em;
+  }
+}
+/* 80% */
+@media screen and (min-width: 140.001em) and (max-width:155em) { 
+  textarea {
+    height: 70em;
+    /* MOD Start 20220311 yok rev107 縦枠線・縦線グリッドずれ調整箇所 */
+    letter-spacing: 0.2em;
+    /* MOD End   20220311 yok rev107 縦枠線・縦線グリッドずれ調整箇所 */
+    /* MOD Start 20220311 yok rev107 枠線・下線グリッドずれ調整箇所 */
+    line-height: 1.847em;
+    /* MOD End   20220311 yok rev107 枠線・下線グリッドずれ調整箇所 */
+  }
+  .normal-line {
+    top: -60.8em;
+    /* MOD Start 20220311 yok rev107 縦枠線・縦線グリッドずれ調整箇所 */
+    left: -0.15em;
+    /* MOD End   20220311 yok rev107 縦枠線・縦線グリッドずれ調整箇所 */
+    /* MOD Start 20220311 yok rev107 枠線・下線グリッドずれ調整箇所 */
+    height: 56.5em;
+    /* MOD End   20220311 yok rev107 枠線・下線グリッドずれ調整箇所 */
+    margin-top:0.79em;
+  }
+  .under-line {
+    top: -61em;
+    /* MOD Start 20220311 yok rev107 縦枠線・縦線グリッドずれ調整箇所 */
+    left: -0.15em;
+    /* MOD End   20220311 yok rev107 縦枠線・縦線グリッドずれ調整箇所 */
+    height: 56.5em;
+    margin-top: 1em;
+    background-size: 1.5em 1.57em;
+  }
+  .grid-line {
+    top: -60.8em;
+    height: 56.5em;
+    width: 40.8em;
+    margin-top: 0.8em;
+    margin-left:0.01em;
+    background: -moz-linear-gradient(#ccc 0.8px, transparent 0),
+                -moz-linear-gradient(90deg, #ccc 0.8px, transparent 0);
+    background: -webkit-linear-gradient(#ccc 0.8px, transparent 0),
+                -webkit-linear-gradient(90deg, #ccc 0.8px, transparent 0);
+    background: linear-gradient(#ccc 0.8px, transparent 0),
+                linear-gradient(90deg, #ccc 0.8px, transparent 0);
+    background-size: 1.02em 1.57em;
+  }
+}
+/* 90% */
+@media screen and (min-width: 127.001em) and (max-width:140em) { 
+  textarea {
+    height: 71.4em;
+    /* MOD Start 20220311 yok rev107 縦枠線・縦線グリッドずれ調整箇所 */
+    letter-spacing: 0.2em;
+    /* MOD End   20220311 yok rev107 縦枠線・縦線グリッドずれ調整箇所 */
+    /* MOD Start 20220311 yok rev107 枠線・下線グリッドずれ調整箇所 */
+    line-height: 1.8768em;
+    /* MOD End   20220311 yok rev107 枠線・下線グリッドずれ調整箇所 */
+  }
+  .normal-line {
+    /* MOD Start 20220311 yok rev107 枠線・下線グリッドずれ調整箇所 */
+    top: -62em;
+    height: 57.45em;
+    /* MOD End   20220311 yok rev107 枠線・下線グリッドずれ調整箇所 */
+    margin-top:0.79em;
+  }
+  .under-line {
+    /* MOD Start 20220311 yok rev107 枠線・下線グリッドずれ調整箇所 */
+    top: -62.5em;
+    height: 57.45em;
+    margin-top: 1.2em;
+    background-size: 2.8em 1.597em;
+    /* MOD End   20220311 yok rev107 枠線・下線グリッドずれ調整箇所 */
+  }
+  .grid-line {
+    top: -61.9em;
+    /* MOD Start 20220311 yok rev107 枠線・下線グリッドずれ調整箇所 */
+    height: 57.6em;
+    /* MOD End   20220311 yok rev107 枠線・下線グリッドずれ調整箇所 */
+    width: 40.8em;
+    margin-top: 0.5em;
+    margin-left:0.01em;
+    background: -moz-linear-gradient(#ccc 0.8px, transparent 0),
+                -moz-linear-gradient(90deg, #ccc 0.8px, transparent 0);
+    background: -webkit-linear-gradient(#ccc 0.8px, transparent 0),
+                -webkit-linear-gradient(90deg, #ccc 0.8px, transparent 0);
+    background: linear-gradient(#ccc 0.8px, transparent 0),
+                linear-gradient(90deg, #ccc 0.8px, transparent 0);
+    background-size: 1.02em 1.6em;
+  }
+}
+/* 100% */
+@media screen and (min-width: 115.001em) and (max-width:127em) { 
+  textarea {
+    height: 72em;
+    /* MOD Start 20220311 yok rev107 縦枠線・縦線グリッドずれ調整箇所 */
+    letter-spacing: 0.1965em;
+    /* MOD End   20220311 yok rev107 縦枠線・縦線グリッドずれ調整箇所 */
+    /* MOD Start 20220311 yok rev107 枠線・下線グリッドずれ調整箇所 */
+    line-height: 1.765em;
+    /* MOD End   20220311 yok rev107 枠線・下線グリッドずれ調整箇所 */
+  }
+  .under-line {
+    background-size: 1.018em 1.5em;
+  }
+  .grid-line {
+    /* MOD Start 20220311 yok rev107 縦枠線・縦線グリッドずれ調整箇所 */
+    left: -0.185em;
+    /* MOD End   20220311 yok rev107 縦枠線・縦線グリッドずれ調整箇所 */
+    background-size: 1.018em 1.5em;
+  }
+}
+/* 110% */
+@media screen and (min-width: 100.001em) and (max-width:115em) { 
+  
+  textarea {
+    height: 72em;
+    /* MOD Start 20220311 yok rev107 縦枠線・縦線グリッドずれ調整箇所 */
+    letter-spacing: 0.1971em;
+    /* MOD End   20220311 yok rev107 縦枠線・縦線グリッドずれ調整箇所 */
+    /* MOD Start 20220311 yok rev107 枠線・下線グリッドずれ調整箇所 */
+    line-height: 1.741em;
+    /* MOD End   20220311 yok rev107 枠線・下線グリッドずれ調整箇所 */
+  }
+  .normal-line {
+    /* MOD Start 20220311 yok rev107 枠線・下線グリッドずれ調整箇所 */
+    top: -61.79em;
+    /* MOD End   20220311 yok rev107 枠線・下線グリッドずれ調整箇所 */
+    height: 53.312em;
+  }
+  .under-line {
+    /* MOD Start 20220311 yok rev107 枠線・下線グリッドずれ調整箇所 */
+    top: -61.79em;
+    height: 53.312em;
+    /* MOD End   20220311 yok rev107 枠線・下線グリッドずれ調整箇所 */
+    background-size: 1.5em 1.48em;
+  }
+  .grid-line {
+    /* MOD Start 20220311 yok rev107 枠線・下線グリッドずれ調整箇所 */
+    top: -61.79em;
+    /* MOD End   20220311 yok rev107 枠線・下線グリッドずれ調整箇所 */
+    /* MOD Start 20220311 yok rev107 枠線・下線グリッドずれ調整箇所 */
+    height: 53.312em;
+    /* MOD End   20220311 yok rev107 枠線・下線グリッドずれ調整箇所 */
+    background-size: 1.019em 1.48em;
+  }
+}
+
+/* ここ(☆)のセクションは、下記「125% ~ 200%」の設定で「1024 * 768 《100%》」の表示が
+ * ずれた場合だけ追加で設定する 解像度範囲。 */
+/* (☆)のセクション　ここから　↓　↓　↓ */
+/* 1024 * 768 《100%》 */
+/*
+@media screen and (min-width: 63.999em) and (max-width:64.001em)
+and (min-height: 41.063em) and (max-height:41.064em) { 
+}
+*/
+/* (☆)のセクション　ここまで　↑　↑　↑ */
+
+/* 125% ～ */
+@media screen and (max-width:100em) {
+    textarea {
+    /* background-color: pink; for debug yok */
+    height: 72em;
+    /* MOD Start 20220311 yok rev107 縦枠線・縦線グリッドずれ調整箇所 */
+    letter-spacing: 0.1975em;
+    /* MOD End   20220311 yok rev107 縦枠線・縦線グリッドずれ調整箇所 */
+    /* MOD Start 20220311 yok rev107 枠線・下線グリッドずれ調整箇所 */
+    line-height: 1.765em;
+    /* MOD End   20220311 yok rev107 枠線・下線グリッドずれ調整箇所 */
+  }
+  .under-line {
+    background-size: 1.018em 1.5em;
+  }
+  .grid-line {
+    /* MOD Start 20220311 yok rev107 縦枠線・縦線グリッドずれ調整箇所 */
+    left: -0.145em;
+    /* MOD End   20220311 yok rev107 縦枠線・縦線グリッドずれ調整箇所 */
+    background-size: 1.018em 1.5em;
+  }
+}

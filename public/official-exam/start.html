@@ -1,0 +1,147 @@
+<!--
+' Package   ： 文章入力スピード認定試験エディタ（日本語）
+' Title     ： 文章入力スピード認定試験初期画面（日本語）
+' Name      ： start.html
+' Create    ： 2020/02/16 
+' Update    ： 2022/03/29
+-->
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="referrer" content="no-referrer"><script>if(location.hash.startsWith('#identity=')){history.replaceState(null,'',location.pathname+'?'+decodeURIComponent(location.hash.slice(10)));}(()=>{const add=window.addEventListener,remove=window.removeEventListener,unload=[];window.addEventListener=function(type,listener,options){if(type==='beforeunload')unload.push([listener,options]);return add.call(this,type,listener,options);};window.__dlessonReleaseUnload=()=>{for(const [listener,options] of unload)remove.call(window,'beforeunload',listener,options);unload.length=0;};})();</script>
+  <!-- MOD Start 20210114 mnt 表示文字の定数定義ファイル化-->
+  <!-- <title>文章入力スピード認定試験初期画面</title> -->
+  <title></title>
+  <!-- MOD End-- 20210114 mnt 表示文字の定数定義ファイル化-->
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+
+  <link rel="stylesheet" type="text/css" href="./editor-jp/css/style.css" />
+  <link rel="stylesheet" type="text/css" href="./editor-jp/css/jquery-ui-themes-1.11.4/themes/vader/jquery-ui.css"/>
+
+  <!-- debug vscode Start -->
+
+  <script type="text/javascript" src="./editor-jp/javascript/jquery-1.12.4.min.js"></script>
+  <script type="text/javascript" src="./editor-jp/javascript/jquery-ui.min.js"></script>
+  <!-- ADD Start 20210112 mnt 表示文字の定数定義ファイル化-->
+  <script type="text/javascript" src="./editor-jp/javascript/const_dsp_ed.js"></script>
+  <!-- ADD End-- 20210112 mnt 表示文字の定数定義ファイル化-->
+  <script type="text/javascript" src="./editor-jp/javascript/common.js"></script>
+  <!-- <script type="text/javascript" src="./editor-jp/javascript/jquery-1.12.4.min.js"></script>
+  <script type="text/javascript" src="./editor-jp/javascript/jquery-ui.min.js"></script>
+  <script type="text/javascript" src="./editor-jp/javascript/common.js"></script> -->
+
+
+  <!-- debug vscode End-- -->
+
+  <!-- ADD Start バージョン -->
+  <script type="text/javascript">
+    $(function() {
+      document.getElementById("leftFooter").innerHTML = VERSION; // MOD 20220329 yok rev107 VERSION ← version
+      // ADD Start 20210112 mnt 表示文字の定数定義ファイル化
+      $("title").html(TITLE_START_PAGE);
+      $("#home").html(H1_TITLE_SHOKI_PAGE);
+      $("h2.language").html(H2_TITLE_SHIKEN_GENGO_JP);
+      $("#start").html(BTN_JUKENSHA_TOUROKU);
+      $("#startExam").html(BTN_SENNI_SHIKEN_GAMEN);
+      $('#isInsertData tr').eq(0).children('td').eq(0).html(JUKENSHA_BANGO);
+      $('#isInsertData tr').eq(1).children('td').eq(0).html(JUKENSHA_NAME);
+      $("#footer").html(FOOTER_KYOUKAI_NAME);
+      // ADD End-- 20210112 mnt 表示文字の定数定義ファイル化
+    });
+  </script>
+  <!-- ADD End-- バージョン -->
+</head>
+  <body>
+  <!-- ADD Start 受験番号と名前表示 -->
+  <table>
+    <tr>
+      <td id="stuNo"></td>
+    </tr>
+    <tr>
+      <td id="stuName"></td>
+    </tr>
+    <tr>
+      <td id="infoMsg"></td>
+    </tr>
+  </table>
+  <!-- ADD End-- 受験番号と名前表示 -->
+    <table>
+      <tr id="title"><p id="year" class="year"></p></tr>
+    </table>
+    <table>
+      <tr>
+      <!-- MOD Start 20210112 mnt 表示文字の定数定義ファイル化-->
+      <!--<h1 id="home">文章入力スピード認定試験</h1>-->
+        <h1 id="home"></h1>
+      <!-- MOD End-- 20210112 mnt 表示文字の定数定義ファイル化-->
+      </tr>
+      <tr>
+      <!-- MOD Start 20210112 mnt 表示文字の定数定義ファイル化-->
+        <!-- <h2 class="language">（日本語）</h2>-->
+        <h2 class="language"></h2>
+      <!-- MOD End-- 20210112 mnt 表示文字の定数定義ファイル化-->
+      </tr>
+    </table>
+    <div align="center">
+      <span class="examStart">
+      <!-- MOD Start 20210112 mnt 表示文字の定数定義ファイル化-->
+        <!-- <button id="start">受験者登録</button>-->
+        <button id="start"></button>
+      <!-- MOD End-- 20210112 mnt 表示文字の定数定義ファイル化-->
+      </span>
+      <!-- MOD Start 20210112 mnt 表示文字の定数定義ファイル化-->
+      <!-- <button id="startExam">入力画面を開く</button>-->
+      <button id="startExam">く</button>
+      <!-- MOD End-- 20210112 mnt 表示文字の定数定義ファイル化-->
+    </div>
+    <form id="isInsertData" class="hidden" method="GET">
+      <table align="center">
+        <tr>
+      <!-- MOD Start 20210112 mnt 表示文字の定数定義ファイル化-->
+          <!-- <td border="0">受験番号：</td>-->
+          <td border="0"></td>
+      <!-- MOD End-- 20210112 mnt 表示文字の定数定義ファイル化-->
+          <td class="frame">
+            <input type="text" id="受験番号" name="受験番号" maxlength="50" />
+          </td>
+        </tr>
+        <tr>
+      <!-- MOD Start 20210112 mnt 表示文字の定数定義ファイル化-->
+          <!-- <td border="0">名前：</td> -->
+          <td border="0"></td>
+      <!-- MOD End-- 20210112 mnt 表示文字の定数定義ファイル化-->
+          <td class="frame">
+            <input
+              type="text"
+              id="受験者名"
+              name="受験者名"
+              inputmode="kana"
+              maxlength="50"
+            />
+          </td>
+        </tr>
+      </table>
+    </form>
+    <!-- MOD Start 20210112 mnt 表示文字の定数定義ファイル化 -->
+    <!-- <p id="footer">日本情報処理検定協会</p> -->
+    <p id="footer"></p>
+    <!-- MOD End-- 20210112 mnt 表示文字の定数定義ファイル化-->
+    <!-- MOD Start Version -->
+    <p id="leftFooter"></p>
+    <!-- MOD End-- Version -->
+
+    <!-- ADD Start 20210318 mnt (Shift＋BackSpace)、(Alt＋⇒)、(Shift＋マウススクロール)キー無効化-->
+    <script>
+      window.document.onkeydown = function(event){
+        if( (event.shiftKey && event.key == "Backspace")
+            || ( (event.altKey || event.metaKey) && (event.key === "ArrowRight" || event.key === "Right") ) ){
+          event.preventDefault();
+        }
+      }
+      $(document).on('mousewheel DOMMouseScroll', function(event){
+        if(event.shiftKey){ event.preventDefault(); }
+      });
+    </script>
+    <!-- ADD End-- 20210318 mnt (Shift＋BackSpace)、(Alt＋⇒)、(Shift＋マウススクロール)キー無効化-->
+  </body>
+</html>

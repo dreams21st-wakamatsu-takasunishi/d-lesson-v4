@@ -9,7 +9,7 @@ export function setScreenRefreshHandlers(handlers = {}) {
 }
 
 export function showScreen(id) {
-    const practiceScreenIds = new Set(['screen-game', 'screen-text-game', 'screen-minigame']);
+    const practiceScreenIds = new Set(['screen-game', 'screen-text-game', 'screen-minigame', 'screen-mock-exam']);
     const gameContainer = document.getElementById('game-container');
 
     document.querySelectorAll('.screen').forEach(screen => {
@@ -35,6 +35,7 @@ export function showScreen(id) {
     }
 
     if (document.activeElement) document.activeElement.blur();
+    document.dispatchEvent(new CustomEvent('lesson:screen-change', { detail: { id } }));
 }
 
 export function toggleFullScreen() {

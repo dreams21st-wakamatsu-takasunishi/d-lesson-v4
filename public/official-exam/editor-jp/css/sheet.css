@@ -1,0 +1,110 @@
+@charset "utf-8";
+
+/* 用紙設定 */
+@page {
+  size: A4; /* 用紙サイズ */
+  margin: 0; /* ヘッダー・フッダーを無効化 */
+}
+
+@font-face {
+  font-family: "SnetMonoGothic";
+  src: url("./font/SnetMonoGothic-Normal.woff2") format("woff2") ,  /* WOFF2 形式の Web フォント (変換生成したモノ) */
+       url("./font/SnetMonoGothic-Normal.woff")  format("woff");    /* WOFF  形式の Web フォント (変換生成したモノ) */
+}
+
+/* 要素の初期化 */
+* {
+  /* マージン・パディングをリセット（デザインの容易さを確保） */
+  margin: 0;
+  padding: 0;
+  /* デフォルトのフォント */
+  color: black;
+  font-weight: normal;
+  /* 背景色・背景画像を印刷する（Chromeのみで有効） */
+  -webkit-print-color-adjust: exact;
+}
+
+/* リスト初期化 */
+ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+/* ページレイアウト (section.sheet を１ページとする) */
+.sheet {
+  overflow: hidden;
+  position: relative;
+  box-sizing: border-box;
+  page-break-after: always;
+
+  /* 用紙サイズ A4 */
+  height: 297mm;
+  width: 210mm;
+
+  /* 余白サイズ */
+  padding-top: 32mm;
+  /* 課題25の反映 start mrt */
+/*
+  padding-left: 15mm;
+  padding-right: 25mm;
+*/
+  padding-left: 10mm;
+  padding-right: 20mm;
+  /* 課題25の反映 end mrt */
+}
+
+/* プレビュー用のスタイル */
+@media screen {
+  body {
+    background: #e0e0e0;
+  }
+  .sheet {
+    background: white; /* 背景を白く */
+    box-shadow: 0 0.20mm 2mm rgba(0, 0, 0, 0.3); /* ドロップシャドウ */
+    margin: 20mm auto;
+  }
+}
+
+/* 汎用クラス */
+.text-left {
+  text-align: left;
+}
+.text-center {
+  text-align: center;
+}
+.text-right {
+  text-align: right;
+}
+
+.clear-element {
+  clear: both;
+}
+
+div.row_1 {
+  height: 14mm;
+}
+div.row_2 {
+  height: 12mm;
+}
+div.row_3 {
+  height: 55mm;
+}
+div.row_3 div.col_1 {
+  width: 90mm;
+  float: left;
+}
+div.row_3 div.col_2 {
+  position: relative;
+  z-index: 2;
+  padding-top: 10mm;
+  float: left;
+}
+div.row_4 {
+  height: 18mm;
+}
+div.row_5 {
+  height: 120mm;
+}
+div.row_6 {
+  height: 18mm;
+}

@@ -645,8 +645,9 @@ function normalizeTypingWordData(wordData, fallbackText = 'れんしゅう') {
     const manualPatterns = (Array.isArray(wordData?.r) ? wordData.r : [wordData?.r])
         .map(value => String(value || '').trim().toUpperCase())
         .filter(Boolean);
-    const suggestion = createRomajiInputMatcher(text, manualPatterns).getSuggestion('');
-    const romajiList = [...new Set([...manualPatterns, suggestion].filter(Boolean))];
+    const matcher = createRomajiInputMatcher(text, manualPatterns);
+    const suggestion = matcher.getSuggestion('');
+    const romajiList = [...new Set([...manualPatterns.filter(pattern => matcher.isComplete(pattern)), suggestion].filter(Boolean))];
     return {
         ...wordData,
         h: text,

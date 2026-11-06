@@ -1,0 +1,524 @@
+﻿/* 
+ * Tool      ： SP認定試験エディタ（日本語）
+ * Name      ： cert-editor-jp_CR_old-arrange-grid.css(画面拡大・縮小）
+ *           ： Chrome95以前用の調整済みCSS
+ *           ： 「rev107 Grid線ずれ調整」時に「cert-editor-jp_CR.css」からリネーム
+ * Create    ： 2020/12/16 tht
+ * Update    ： 2022/03/14 yok
+ */
+
+/* ADD Start 20200711 ok　２５０％以上 表示調整 */
+@charset "utf-8";
+/* MOD Start 20200711 ok　６７％以下 表示調整 */
+/* 67% 以下*/
+@media screen and (min-width:160.1em) { 
+  textarea {
+    /* background-color: transparent; */
+    background-color: ButtonHighlight;
+    color:ButtonHighlight;
+    /* MOD End-- 20200711 ok　６７％以下 表示調整 */
+    position: relative;
+    z-index: 2;
+    resize: none;
+    overflow: hidden;
+    border: hidden;
+    outline: none;
+    font-family: "SnetMonoGothic";
+    font-size: 0.85em;
+    letter-spacing: 0.2em;
+    line-height: 1.89em;
+    width: 48.5em;
+    height: 70em;
+    tab-size: 6em;
+    word-break: break-all;
+    line-break: anywhere;
+  }
+
+  .normal-line {
+    position: relative;
+    z-index: 1;
+    top: -60.8em;
+    left: -1px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    /* MOD Start 20200715 ok　表示調整 */
+    /*height: 56em;*/
+    height: 58.5em;
+    /* MOD End-- 20200715 ok　表示調整 */
+    margin-top:0.79em;
+    width: 40.8em;
+  }
+  .under-line {
+    position: relative;
+    z-index: 1;
+    top: -61em;
+    left: -1px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    height: 56.5em;
+    margin-top: 1em;
+    width: 40.8em;
+    background: linear-gradient(#ccc 1px, transparent 0);
+    background-size: 1.5em 1.57em;
+  }
+  .grid-line {
+    position: relative;
+    z-index: 1;
+    top: -60.8em;
+    left: -1.5px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    margin-top: 0.8em;
+    margin-left:0.01em;
+    height: 56.5em;
+    width: 40.8em;
+    background: linear-gradient(#ccc 0.8px, transparent 0),
+                linear-gradient(90deg, #ccc 0.8px, transparent 0);
+    background-size: 1.02em 1.57em;
+  }
+}
+/* 75% */
+/* MOD Start 20200715 ok　客先指摘表示調整 */
+/*@media screen and (min-width: 150em) and (max-width:160em) { */
+@media screen and (min-width: 150.1em) and (max-width:160em) { 
+/* MOD End-- 20200715 ok　客先指摘表示調整 */
+  textarea {
+    background-color: transparent;
+    position: relative;
+    z-index: 2;
+    resize: none;
+    overflow: hidden;
+    border: hidden;
+    outline: none;
+    font-family: "SnetMonoGothic";
+    font-size: 0.85em;
+    letter-spacing: 0.2em;
+    line-height: 1.9em;
+    width: 48.5em;
+    height: 70em;
+    tab-size: 6em;
+    word-break: break-all;
+    line-break: anywhere;
+  }
+  
+  .normal-line {
+    position: relative;
+    z-index: 1;
+    top: -60.8em;
+    left: -1px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    height: 57em;
+    margin-top:0.79em;
+    width: 40.8em;
+  }
+  .under-line {
+    position: relative;
+    z-index: 1;
+    top: -61em;
+    left: -1px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    height: 57em;
+    margin-top: 1em;
+    width: 40.8em;
+    background: linear-gradient(#ccc 1px, transparent 0);
+    background-size: 0.4em 1.59em;
+  }
+  .grid-line {
+    position: relative;
+    z-index: 1;
+    top: -60.8em;
+    left: -1.5px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    margin-top: 0.8em;
+    margin-left:0.01em;
+    height: 57em;
+    width: 40.8em;
+    background: linear-gradient(#ccc 0.8px, transparent 0),
+                linear-gradient(90deg, #ccc 0.8px, transparent 0);
+    background-size: 1.02em 1.59em;
+  }
+}
+/* 80% */
+/* MOD Start 20200715 ok　客先指摘表示調整 */
+/*@media screen and (min-width: 140em) and (max-width:149.9em) { */
+@media screen and (min-width: 140em) and (max-width:150em) { 
+  /* MOD End-- 20200715 ok　客先指摘表示調整 */
+  textarea {
+    background-color: transparent;
+    position: relative;
+    z-index: 2;
+    resize: none;
+    overflow: hidden;
+    border: hidden;
+    outline: none;
+    font-family: "SnetMonoGothic";
+    font-size: 0.85em;
+    letter-spacing: 0.2em;
+/* MOD Start 20200715 ok　客先指摘表示調整 */
+    /*line-height: 1.89em;*/
+    line-height: 1.91em;
+/* MOD End-- 20200715 ok　客先指摘表示調整 */
+    width: 48.5em;
+    height: 70em;
+    tab-size: 6em;
+    word-break: break-all;
+    line-break: anywhere;
+  }
+  
+  .normal-line {
+    position: relative;
+    z-index: 1;
+    top: -60.8em;
+    left: -1px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    height: 56em;
+    margin-top:0.79em;
+    width: 40.8em;
+  }
+  .under-line {
+    position: relative;
+    z-index: 1;
+    top: -61em;
+    left: -1px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    height: 56.5em;
+    margin-top: 1em;
+    width: 40.8em;
+    background: linear-gradient(#ccc 1px, transparent 0);
+    background-size: 1.5em 1.57em;
+  }
+  .grid-line {
+    position: relative;
+    z-index: 1;
+    top: -60.8em;
+    left: -1.5px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    margin-top: 0.8em;
+    margin-left:0.01em;
+    height: 56.5em;
+    width: 40.8em;
+    background: linear-gradient(#ccc 0.8px, transparent 0),
+                linear-gradient(90deg, #ccc 0.8px, transparent 0);
+    background-size: 1.02em 1.57em;
+  }
+}
+/* 90% */
+@media screen and (min-width: 130em) and (max-width:140em) { 
+  textarea {
+    background-color: transparent;
+    position: relative;
+    z-index: 2;
+    resize: none;
+    overflow: hidden;
+    border: hidden;
+    outline: none;
+    font-family: "SnetMonoGothic";
+    font-size: 0.85em;
+    letter-spacing: 0.2em;
+    line-height: 1.89em;
+    width: 48.5em;
+    height: 71.4em;
+    tab-size: 6em;
+    word-break: break-all;
+    line-break: anywhere;
+  }
+  
+  .normal-line {
+    position: relative;
+    z-index: 1;
+    top: -61.7em;
+    left: -1px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    height: 57em;
+    margin-top:0.79em;
+    width: 40.8em;
+  }
+  .under-line {
+    position: relative;
+    z-index: 1;
+    top: -62.2em;
+    left: -1px;
+    border: solid 0.1px;
+    border-color:#ccc;
+    height: 57em;
+    margin-top: 1.2em;
+    width: 40.8em;
+    background: linear-gradient(#ccc 1px, transparent 0);
+    background-size: 2.8em 1.58em;
+  }
+  .grid-line {
+    position: relative;
+    z-index: 1;
+    top: -61.9em;
+    left: -1.5px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    margin-top: 1em;
+    margin-left:0.01em;
+    height: 57em;
+    width: 40.8em;
+    background: linear-gradient(#ccc 0.8px, transparent 0),
+                linear-gradient(90deg, #ccc 0.8px, transparent 0);
+    background-size: 1.02em 1.6em;
+  }
+}
+/* 100% */
+@media screen and (min-width: 110em) and (max-width:129.9em) { 
+  textarea {
+    background-color: transparent;
+    position: relative;
+    z-index: 2;
+    resize: none;
+    overflow: hidden;
+    border: hidden;
+    outline: none;
+    font-family: "SnetMonoGothic";
+    font-size: 0.85em;
+    letter-spacing: 0.2em;
+    line-height: 1.8em;
+    width: 48.5em;
+    height: 72em;
+    tab-size: 6em;
+    word-break: break-all;
+    line-break: anywhere;
+  }
+  
+  .normal-line {
+    position: relative;
+    z-index: 1;
+    top: -61.7em;
+    left: -1px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    height: 54em;
+    width: 40.8em;
+  }
+  .under-line {
+    position: relative;
+    z-index: 1;
+    top: -61.7em;
+    left: -1px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    height: 54em;
+    width: 40.8em;
+    background: -moz-linear-gradient(#ccc 1px, transparent 0);
+    background: -webkit-linear-gradient(#ccc 1px, transparent 0);
+    background: linear-gradient(#ccc 1px, transparent 0);
+    background-size: 1.018em 1.5em;
+  }
+  .grid-line {
+    position: relative;
+    z-index: 1;
+    top: -61.7em;
+    left: -1px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    height: 54em;
+    width: 40.7em;
+    background: -moz-linear-gradient(#ccc 1px, transparent 0),
+                -moz-linear-gradient(90deg, #ccc 1px, transparent 0);
+    background: -webkit-linear-gradient(#ccc 1px, transparent 0),
+                -webkit-linear-gradient(90deg, #ccc 1px, transparent 0);
+    background: linear-gradient(#ccc 1px, transparent 0),
+                linear-gradient(90deg, #ccc 1px, transparent 0);
+    background-size: 1.018em 1.5em;
+  }
+}
+/* 110% */
+@media screen and (min-width: 100em) and (max-width:109.9em) { 
+  
+  textarea {
+    background-color: transparent;
+    position: relative;
+    z-index: 2;
+    resize: none;
+    overflow: hidden;
+    border: hidden;
+    outline: none;
+    font-family: "SnetMonoGothic";
+    font-size: 0.85em;
+    letter-spacing: 0.2em;
+    line-height: 1.8em;
+    width: 48.5em;
+    height: 72em;
+    tab-size: 6em;
+    word-break: break-all;
+    line-break: anywhere;
+  }
+  .normal-line {
+    position: relative;
+    z-index: 1;
+    top: -61.7em;
+    left: -1px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    height: 53em;
+    width: 40.8em;
+  }
+  .under-line {
+    position: relative;
+    z-index: 1;
+    top: -61.7em;
+    left: -1px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    height: 53em;
+    width: 40.8em;
+    background: -moz-linear-gradient(#ccc 1px, transparent 0);
+    background: -webkit-linear-gradient(#ccc 1px, transparent 0);
+    background: linear-gradient(#ccc 1px, transparent 0);
+    background-size: 1.5em 1.48em;
+  }
+  .grid-line {
+    position: relative;
+    z-index: 1;
+    top: -61.7em;
+    left: -1px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    height: 53em;
+    width: 40.7em;
+    background: -moz-linear-gradient(#ccc 1px, transparent 0),
+                -moz-linear-gradient(90deg, #ccc 1px, transparent 0);
+    background: -webkit-linear-gradient(#ccc 1px, transparent 0),
+                -webkit-linear-gradient(90deg, #ccc 1px, transparent 0);
+    background: linear-gradient(#ccc 1px, transparent 0),
+                linear-gradient(90deg, #ccc 1px, transparent 0);
+    background-size: 1.019em 1.48em;
+  }
+}
+/* 125% ~ 200% */
+@media screen and (min-width: 50em) and (max-width:99.9em) { 
+  textarea {
+    background-color: transparent;
+    position: relative;
+    z-index: 2;
+    resize: none;
+    overflow: hidden;
+    border: hidden;
+    outline: none;
+    font-family: "SnetMonoGothic";
+    font-size: 0.85em;
+    letter-spacing: 0.2em;
+    line-height: 1.8em;
+    width: 48.5em;
+    height: 72em;
+    tab-size: 6em;
+    word-break: break-all;
+    line-break: anywhere;
+  }
+  
+  .normal-line {
+    position: relative;
+    z-index: 1;
+    top: -61.7em;
+    left: -1px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    height: 54em;
+    width: 40.8em;
+  }
+  .under-line {
+    position: relative;
+    z-index: 1;
+    top: -61.7em;
+    left: -1px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    height: 54em;
+    width: 40.8em;
+    background: -moz-linear-gradient(#ccc 1px, transparent 0);
+    background: -webkit-linear-gradient(#ccc 1px, transparent 0);
+    background: linear-gradient(#ccc 1px, transparent 0);
+    background-size: 1.018em 1.5em;
+  }
+  .grid-line {
+    position: relative;
+    z-index: 1;
+    top: -61.7em;
+    left: -1px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    height: 54em;
+    width: 40.7em;
+    background: -moz-linear-gradient(#ccc 1px, transparent 0),
+                -moz-linear-gradient(90deg, #ccc 1px, transparent 0);
+    background: -webkit-linear-gradient(#ccc 1px, transparent 0),
+                -webkit-linear-gradient(90deg, #ccc 1px, transparent 0);
+    background: linear-gradient(#ccc 1px, transparent 0),
+                linear-gradient(90deg, #ccc 1px, transparent 0);
+    background-size: 1.018em 1.5em;
+  }
+}
+/* 250% */
+@media screen and (max-width:49.9em) { 
+  textarea {
+    background-color: transparent;
+    position: relative;
+    z-index: 2;
+    resize: none;
+    overflow: hidden;
+    border: hidden;
+    outline: none;
+    font-family: "SnetMonoGothic";
+    font-size: 0.85em;
+    letter-spacing: 0.2em;
+    line-height: 1.77em;
+    width: 48.5em;
+    height: 72em;
+    tab-size: 6em;
+    word-break: break-all;
+    line-break: anywhere;
+  }
+  
+  .normal-line {
+    position: relative;
+    z-index: 1;
+    top: -61.7em;
+    left: -1px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    height: 54em;
+    width: 40.8em;
+  }
+  .under-line {
+    position: relative;
+    z-index: 1;
+    top: -61.7em;
+    left: -1px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    height: 54em;
+    width: 40.8em;
+    background: -moz-linear-gradient(#ccc 1px, transparent 0);
+    background: -webkit-linear-gradient(#ccc 1px, transparent 0);
+    background: linear-gradient(#ccc 1px, transparent 0);
+    background-size: 1.018em 1.5em;
+  }
+  .grid-line {
+    position: relative;
+    z-index: 1;
+    top: -61.7em;
+    left: -1px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    height: 54em;
+    width: 40.7em;
+    background: -moz-linear-gradient(#ccc 1px, transparent 0),
+                -moz-linear-gradient(90deg, #ccc 1px, transparent 0);
+    background: -webkit-linear-gradient(#ccc 1px, transparent 0),
+                -webkit-linear-gradient(90deg, #ccc 1px, transparent 0);
+    background: linear-gradient(#ccc 1px, transparent 0),
+                linear-gradient(90deg, #ccc 1px, transparent 0);
+    background-size: 1.018em 1.5em;
+  }
+}
+/* ADD End-- 20200711 ok　２５０％以上 表示調整 */

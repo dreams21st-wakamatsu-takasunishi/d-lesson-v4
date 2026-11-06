@@ -1,0 +1,222 @@
+{
+  "permissionConfirmedOn": "2026-11-05",
+  "changes": [
+    "HTML file resource URLs",
+    "client-only identity fragment conversion",
+    "parent-authorized unload listener cleanup"
+  ],
+  "files": [
+    {
+      "path": "editor-jp/cert-editor-jp_CR.html",
+      "sourceSha256": "193a0d23b77cf55c8f274bf19165c4c6880ea99d2bfcc089d7bd5c597d3463a4"
+    },
+    {
+      "path": "editor-jp/cert-editor-jp_EL.html",
+      "sourceSha256": "f4576699e0d3807110952d7c42fbf788f04d439f09c870803447a3ad4b1ed681"
+    },
+    {
+      "path": "editor-jp/cert-editor-jp_IE.html",
+      "sourceSha256": "10262dc43741d0f7fab332157e83e53423b584c2b239cbb77ee42546116f00ab"
+    },
+    {
+      "path": "editor-jp/cert-editor-jp_SF.html",
+      "sourceSha256": "32732e754c6d3e66a4be7afaf1a2c7fdfa085116cbd881b6d3d5ecf1cb254069"
+    },
+    {
+      "path": "editor-jp/css/cert-editor-jp_CR.css",
+      "sourceSha256": "5ddc118e6f6609fdd6da90e68af97d360c7655490215ad32c8c5f424e40ad4b3"
+    },
+    {
+      "path": "editor-jp/css/cert-editor-jp_CR_old-arrange-grid.css",
+      "sourceSha256": "8294453220414e2127348690c483c2f99151265a59cb65d8f2b453ba30167cd1"
+    },
+    {
+      "path": "editor-jp/css/cert-editor-jp_EL.css",
+      "sourceSha256": "3f5917fb73698de467e70332687572aa943ae9e076afb6ae6729d17a7fd2f610"
+    },
+    {
+      "path": "editor-jp/css/cert-editor-jp_IE.css",
+      "sourceSha256": "481e9f00548ee74e1d995c39888d6be23660f684f8144266728fc9d445b99a32"
+    },
+    {
+      "path": "editor-jp/css/cert-editor-jp_SF.css",
+      "sourceSha256": "37298e1de867ef777d03db3f453f28303f1bf2726be67c9660bcf0a7a84c2e65"
+    },
+    {
+      "path": "editor-jp/css/dialog.css",
+      "sourceSha256": "e551b8a78144567a3c4c64eabf50d33534cd3d6f5aa0813378a2c56b7d3a94e0"
+    },
+    {
+      "path": "editor-jp/css/font/NotoSansMonoCJKjp-Regular.otf",
+      "sourceSha256": "4b97c72f9e7d5ebaa83ece66968908027dd30c3e54f468ead74731ab0508bf45"
+    },
+    {
+      "path": "editor-jp/css/font/SnetMonoGothic-Normal.woff",
+      "sourceSha256": "6626ee7d9b73af6cce9ea2061f998e0088ac8381ec2fff1df08ac3ad92a9788f"
+    },
+    {
+      "path": "editor-jp/css/font/SnetMonoGothic-Normal.woff2",
+      "sourceSha256": "2ab1de5c0124862d736ec74eb220e2099536476ac1566b3200717e71e92a0e7c"
+    },
+    {
+      "path": "editor-jp/css/jquery-ui-themes-1.11.4/themes/vader/images/ui-bg_flat_0_aaaaaa_40x100.png",
+      "sourceSha256": "a2d063894c6e8c36b4bc256b8f775da6927455290c8d4c836e43dfcfc833b355"
+    },
+    {
+      "path": "editor-jp/css/jquery-ui-themes-1.11.4/themes/vader/images/ui-bg_flat_0_eeeeee_40x100.png",
+      "sourceSha256": "e656ee62d6cbfbae2cee7e36aaede1252f9b50ce5800633cda4b223ad22b991f"
+    },
+    {
+      "path": "editor-jp/css/jquery-ui-themes-1.11.4/themes/vader/images/ui-bg_flat_55_ffffff_40x100.png",
+      "sourceSha256": "7d8e11e60d4bea1be893967121726137eeca9ad95bfab62cfecf8e2fe20093c7"
+    },
+    {
+      "path": "editor-jp/css/jquery-ui-themes-1.11.4/themes/vader/images/ui-bg_flat_75_ffffff_40x100.png",
+      "sourceSha256": "7d8e11e60d4bea1be893967121726137eeca9ad95bfab62cfecf8e2fe20093c7"
+    },
+    {
+      "path": "editor-jp/css/jquery-ui-themes-1.11.4/themes/vader/images/ui-bg_glass_65_ffffff_1x400.png",
+      "sourceSha256": "df0e358a3ca818e80363eca0157bd99fcd01942be3e72be03c2ecb90aaa6b0f0"
+    },
+    {
+      "path": "editor-jp/css/jquery-ui-themes-1.11.4/themes/vader/images/ui-bg_glass_95_fef1ec_1x400.png",
+      "sourceSha256": "8734f91a232bc936f1820cfd96a540aa78472c90b7d3e1419e2de537c9f24e5a"
+    },
+    {
+      "path": "editor-jp/css/jquery-ui-themes-1.11.4/themes/vader/images/ui-bg_gloss-wave_16_121212_500x100.png",
+      "sourceSha256": "d5a97abb177f404e5e226dcbbbba671387b6e05b9bc9fe8f325924942d27f832"
+    },
+    {
+      "path": "editor-jp/css/jquery-ui-themes-1.11.4/themes/vader/images/ui-bg_highlight-hard_15_888888_1x100.png",
+      "sourceSha256": "a050c8bdbe5d08bfcad17289b7b735552e1615f962224abd4f8cd64f89a7ddff"
+    },
+    {
+      "path": "editor-jp/css/jquery-ui-themes-1.11.4/themes/vader/images/ui-bg_highlight-hard_55_555555_1x100.png",
+      "sourceSha256": "2a92f3673bf352522a1bd63f69b97c3a315249d5c8be653087939065ae5257fc"
+    },
+    {
+      "path": "editor-jp/css/jquery-ui-themes-1.11.4/themes/vader/images/ui-bg_highlight-soft_100_f6f6f6_1x100.png",
+      "sourceSha256": "74445c9f3b9edf9ca7ebad26b8353d75e165334f30afb2dc603ae852d45913f4"
+    },
+    {
+      "path": "editor-jp/css/jquery-ui-themes-1.11.4/themes/vader/images/ui-bg_highlight-soft_25_0073ea_1x100.png",
+      "sourceSha256": "98dd8a3df9c7eb283b8d51e03251ceb269a59f2ebd0b69fde68699e73a312593"
+    },
+    {
+      "path": "editor-jp/css/jquery-ui-themes-1.11.4/themes/vader/images/ui-bg_highlight-soft_35_adadad_1x100.png",
+      "sourceSha256": "300ba0d1dec589af54dfe7aa6706d40d60ba3d3320c4d785223d6d065beb0518"
+    },
+    {
+      "path": "editor-jp/css/jquery-ui-themes-1.11.4/themes/vader/images/ui-bg_highlight-soft_50_dddddd_1x100.png",
+      "sourceSha256": "02b1b09873495dd7d769e9b8bc3a9d9c283f8e05dfc5c54f7c6b64ec3c63afb3"
+    },
+    {
+      "path": "editor-jp/css/jquery-ui-themes-1.11.4/themes/vader/images/ui-bg_highlight-soft_60_dddddd_1x100.png",
+      "sourceSha256": "5cbca7013be068d67b1da1c65e354bf5802956d1ce15e0a715c834b48616e28f"
+    },
+    {
+      "path": "editor-jp/css/jquery-ui-themes-1.11.4/themes/vader/images/ui-bg_inset-soft_15_121212_1x100.png",
+      "sourceSha256": "333d344e1be4456e19af0ea982d90bf58ed8fb584ab50e73705be61f6b034d93"
+    },
+    {
+      "path": "editor-jp/css/jquery-ui-themes-1.11.4/themes/vader/images/ui-icons_0073ea_256x240.png",
+      "sourceSha256": "49e25d084017cf25430a806aec2f164f38545ddc668df872b26065cb6578ccc6"
+    },
+    {
+      "path": "editor-jp/css/jquery-ui-themes-1.11.4/themes/vader/images/ui-icons_454545_256x240.png",
+      "sourceSha256": "e91610092766073057aa9484261def450a77e7380321f6cfc8136f17edd8ffee"
+    },
+    {
+      "path": "editor-jp/css/jquery-ui-themes-1.11.4/themes/vader/images/ui-icons_666666_256x240.png",
+      "sourceSha256": "9d9a25d5798d989965da5db4795e127f6ca7298dd8984e845c47942cffb0ff90"
+    },
+    {
+      "path": "editor-jp/css/jquery-ui-themes-1.11.4/themes/vader/images/ui-icons_aaaaaa_256x240.png",
+      "sourceSha256": "3b886f73fd44befa7640ea962aeaef90dbdfd6736da44a3277ce449971ae4d31"
+    },
+    {
+      "path": "editor-jp/css/jquery-ui-themes-1.11.4/themes/vader/images/ui-icons_bbbbbb_256x240.png",
+      "sourceSha256": "18ec3126f6a7e65c598763967e5a8e6d5378797ec1cda2edca2c28fe4e9815c7"
+    },
+    {
+      "path": "editor-jp/css/jquery-ui-themes-1.11.4/themes/vader/images/ui-icons_c98000_256x240.png",
+      "sourceSha256": "2eac1f8b8cc2ce43b9aabaeac9379351cc16d645a5ebbfccc2960f3ddd075682"
+    },
+    {
+      "path": "editor-jp/css/jquery-ui-themes-1.11.4/themes/vader/images/ui-icons_cccccc_256x240.png",
+      "sourceSha256": "38544945e416a852af7455dca7cbad9bf001a5813d7c1f46d01eab76aa709de8"
+    },
+    {
+      "path": "editor-jp/css/jquery-ui-themes-1.11.4/themes/vader/images/ui-icons_cd0a0a_256x240.png",
+      "sourceSha256": "81d9988ce4caf15d3e8f81a193c95f52602e976286a8d3a6335676d03ff3665a"
+    },
+    {
+      "path": "editor-jp/css/jquery-ui-themes-1.11.4/themes/vader/images/ui-icons_f29a00_256x240.png",
+      "sourceSha256": "164988af1286c17d5277322e049c2c755aabe603ce59f114604719e6caeb704a"
+    },
+    {
+      "path": "editor-jp/css/jquery-ui-themes-1.11.4/themes/vader/images/ui-icons_ff0084_256x240.png",
+      "sourceSha256": "6598ae4ef367983bd840438ad9546a3c9dd6cb90f1d67ecf6d7151f66f65507b"
+    },
+    {
+      "path": "editor-jp/css/jquery-ui-themes-1.11.4/themes/vader/images/ui-icons_ffffff_256x240.png",
+      "sourceSha256": "963b8b0d4a624d76cd243094606ab6f99d7b6f838103a2cc43dbf78275993506"
+    },
+    {
+      "path": "editor-jp/css/jquery-ui-themes-1.11.4/themes/vader/jquery-ui.css",
+      "sourceSha256": "8e820d75726ec422928f5dfc870899e007e73b37cd95f86c9637e403b3e3d790"
+    },
+    {
+      "path": "editor-jp/css/jquery-ui-themes-1.11.4/themes/vader/jquery-ui.min.css",
+      "sourceSha256": "8c65885a81bb8236823d856dc48ca837d7b8ec3585def258c7c69517160b7948"
+    },
+    {
+      "path": "editor-jp/css/jquery-ui-themes-1.11.4/themes/vader/theme.css",
+      "sourceSha256": "eb84ae2faf79956548cc27410fc1ff808b89178177dcf668fce9a7d3a5875814"
+    },
+    {
+      "path": "editor-jp/css/sheet.css",
+      "sourceSha256": "7c435010756f7708c5e2066020c10b13b6e5a92f05a5e017616d0917ce41580f"
+    },
+    {
+      "path": "editor-jp/css/style.css",
+      "sourceSha256": "671f6b00b0643e41b318cef52b7fac1a06210b333369bfef6a29f3383d10e3ef"
+    },
+    {
+      "path": "editor-jp/javascript/20210201/20210201.js",
+      "sourceSha256": "c80656a7c2df153341904968d104103a6864cfcf56dfe7c9c7ab8659eeaaa330"
+    },
+    {
+      "path": "editor-jp/javascript/20210201/20210201_4ed.js",
+      "sourceSha256": "2a4aad9a9abc98941fd0099ccf5672481288aeaf8889c47fe5411b98d33e3bc3"
+    },
+    {
+      "path": "editor-jp/javascript/20210201/md5.min.js",
+      "sourceSha256": "31d57206075645a34f442e3a56d5d2b445e437cf99739889bc1d65662b02bc31"
+    },
+    {
+      "path": "editor-jp/javascript/common.js",
+      "sourceSha256": "79511829535b3017156a839925d91bfe41ab63b265fcee1322693386d1b14913"
+    },
+    {
+      "path": "editor-jp/javascript/const_dsp_ed.js",
+      "sourceSha256": "9a77448dc319e3c5e61473d0a824b6495a249ba21b2e10ceb06ccc668879d171"
+    },
+    {
+      "path": "editor-jp/javascript/jquery-1.12.4.min.js",
+      "sourceSha256": "2ebb96dd6b570fcc5c1f5c99b3a0fba6285950267bb81da4f57796054d4979b6"
+    },
+    {
+      "path": "editor-jp/javascript/jquery-ui.min.js",
+      "sourceSha256": "ddda40e8e4026f0c3412a0944a86c5de28f0a50ee4cb7e42abe2f6cf32746e06"
+    },
+    {
+      "path": "editor-jp/javascript/SP_Editor_NoCP.js",
+      "sourceSha256": "16f492457d03062e5865ac3b0911c120f9f5f8cd3bfbb7d1c7a53bdea2e2a9ee"
+    },
+    {
+      "path": "start.html",
+      "sourceSha256": "2a7947f61bfb37a7b4cad103e7ad5c6c159fb209b79969cf079ca25ab30bb4ca"
+    }
+  ]
+}

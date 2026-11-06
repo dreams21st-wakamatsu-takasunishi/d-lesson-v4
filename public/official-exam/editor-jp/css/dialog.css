@@ -1,0 +1,28 @@
+@charset "utf-8";
+.hidden {
+  display:none
+}
+#startExam{
+  font-size: 30px;
+  width: 250px;
+  font-weight: bold;
+}
+#受験番号{
+  width: 245px;
+}
+
+#受験者名{
+  width: 245px;
+}
+#isOKCancel{
+  visibility: hidden;
+}
+#candidateNo{
+	visibility: hidden;
+}
+#candidateName{
+	visibility: hidden;
+}
+.frame{
+	border: 1px solid gray;
+}

@@ -1,0 +1,213 @@
+@charset "utf-8";
+
+.hidden {
+  display: none;
+}
+#editHead {
+  width: 100%;
+}
+#title {
+  text-align: left;
+  font-size: 20px;
+  margin-top: 0px;
+  padding-left: 50px;
+}
+#date {
+  margin-left: 47%;
+}
+#studentName {
+  padding-left: 100px;
+}
+#rollNo {
+  padding-left: 100px;
+}
+.isEnd {
+  text-align: center;
+}
+.timeText {
+  font-size: 30px;
+  text-align: center;
+}
+.profile {
+  padding-left: 300px;
+}
+.radioRuled {
+  margin-left: 1%;
+}
+input[name="ruled"] {
+  margin-left: 1px;
+}
+#timeAdjust {
+  padding-left: 530px;
+}
+#dialogAdjust {
+  padding-left: 100px;
+}
+.textClear {
+  margin-left: 150px;
+}
+.btnEnd {
+  padding: 5px 11px 5px 11px;
+  margin-right: 5%;
+}
+/* ADD Start 20210113 mnt 表示文字の定数定義ファイル化 */
+.btnSave_CR {
+  padding: 5px 11px 5px 11px;
+  margin-right: 5%;
+}
+/* ADD End-- 20210113 mnt 表示文字の定数定義ファイル化 */
+
+.btnSave {
+  padding: 5px 11px 5px 11px;
+  margin-right: 5%;
+}
+/* ADD Start 20210113 mnt 表示文字の定数定義ファイル化 */
+.btnSave_IE {
+  padding: 5px 11px 5px 11px;
+  margin-right: 5%;
+}
+/* ADD End-- 20210113 mnt 表示文字の定数定義ファイル化 */
+.btnReset {
+  padding: 5px 11px 5px 11px;
+  margin-left: 5%;
+}
+.end {
+  margin-left: 5%;
+}
+#footer {
+  position: absolute;
+  bottom: 0;
+  /* MOD Start 画面調整　20200801 tht */
+  /* width: 100%; */
+  width: 99%;
+  /* MOD End-- 画面調整　20200801 tht */
+  text-align: right;
+}
+/* ADD Start ver追加　20200801 tht */
+#leftFooter {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 99%;
+  text-align: left;
+  margin-left: 0.7%;
+}
+/* ADD End-- ver追加　20200801 tht */
+.language {
+  text-align: center;
+  /* ADD Start 文字サイズ変更 20200801 tht */
+  font-size:  50px;
+  /* ADD End-- 文字サイズ変更 20200801 tht */
+}
+.year {
+  font-size: 30px;
+  font-weight: bold;
+}
+
+#home {
+  text-align: center;
+  font-size: 80px;
+}
+#start {
+  font-size: 30px;
+  width: 250px;
+  font-weight: bold;
+}
+
+#startExam {
+  font-size: 30px;
+  width: 250px;
+  font-weight: bold;
+}
+
+.examEnd {
+  text-align: center;
+  font-size: 120px;
+}
+/* ADD Start 画面上文字表示調整 20201126 tht */
+.saveScreenMsg {
+  position: fixed;
+  top: 10em;
+  right: 5em;
+  z-index: 3;
+  color:rgb(105,105,105);
+  background-color:rgba(224,224,224,0.9);
+}
+/* ADD Start 保存文字改行 20201201 tht */
+.saveScreenMsgBtm {
+  position: fixed;
+  top: 11.5em;
+  right: 5em;
+  z-index: 3;
+  color:rgb(105,105,105);
+  background-color:rgba(224,224,224,0.9);
+}
+/* ADD End-- 保存文字改行 20201201 tht */
+.maxScreenMsg {
+  position: fixed;
+  top: 10em;
+  left: 6.5em;
+  z-index: 3;
+  color:rgb(105,105,105);
+  background-color:rgba(224,224,224,0.9);
+}
+.minScreenMsg {
+  position: fixed;
+  top: 12em;
+  left: 6.5em;
+  z-index: 3;
+  color:rgb(105,105,105);
+  background-color:rgba(224,224,224,0.9);
+}
+.letr-cnt{
+  font-family: SnetMonoGothic;
+  /* ADD Start 文字サイズの設定　20201204 tht */
+  /* MOD Start 文字サイズ変更（ご要望）　20210212 ok */
+  /* font-size: 1.125em; */
+  font-size: 0.625em;
+  /* MOD End   文字サイズ変更（ご要望）　20210212 ok */
+  /* ADD End-- 文字サイズの設定　20201204 tht */
+  z-index: 3;
+  position: fixed;
+  bottom: 1em;
+  /* MOD Start 入力文字数左寄せの修正　20201204 tht */
+  /* right: 1em; */
+  left: 1em;
+  /* MOD End-- 入力文字数左寄せの修正　20201204 tht */
+  color:rgb(100,100,100);
+  background-color: rgba(235,235,235,0.6);
+}
+/* ADD End-- 画面上文字表示調整 20201126 tht */
+/* DEL Start 文字色付け 20201204 tht */
+/*
+.KeyShap {
+  border: 1px solid #aaa; 
+  -moz-border-radius: 2px;
+  -webkit-border-radius: 2px;
+  border-radius: 2px;
+  -moz-box-shadow: 1px 2px 2px #ddd;
+  -webkit-box-shadow: 1px 2px 2px #ddd;
+  box-shadow: 1px 2px 2px #ddd;
+  background-color: #f9f9f9;
+  background-image: -moz-linear-gradient(top, #eee, #f9f9f9, #eee);
+  background-image: -o-linear-gradient(top, #eee, #f9f9f9, #eee);
+  background-image: -webkit-linear-gradient(top, #eee, #f9f9f9, #eee); 
+  background-image: linear-gradient(top, #eee, #f9f9f9, #eee);
+  padding: 1px 3px;
+  font-family: inherit;
+  font-size: 0.85em;
+}
+*/
+/* DEL End-- 文字色付け 20201204 tht */
+/* ADD Start 受験番号と名前表示 20201207 tht */
+#stuNo {
+  color: blue;
+}
+#stuName {
+  color: blue;
+}
+#infoMsg {
+  color:blue;
+  font-size: 0.875em;
+}
+/* ADD End-- 受験番号と名前表示 20201207 tht */

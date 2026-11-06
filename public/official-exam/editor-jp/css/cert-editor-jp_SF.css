@@ -1,0 +1,756 @@
+﻿/* 
+' Tool      ： SP認定試験エディタ（日本語）
+' Name      ： screensize.css(Safari用ブラウザの画面拡大・縮小）
+' Create    ： 2020/12/16 tht
+' Update    ：  
+*/
+@charset "utf-8";
+/* ADD Start 20200911 tht　５０％以下 表示調整 */
+@media screen and (min-width: 200.1em) and (max-width: 250em){ 
+  textarea {
+    background-color:  #e0e0e0;
+    color: #e0e0e0;
+    position: relative;
+    z-index: 1;
+    resize: none;
+    overflow: hidden;
+    border: hidden;
+    outline: none;
+    font-family: "SnetMonoGothic";
+    font-size: 0.85em;
+    letter-spacing: 0.185em;
+    line-height: 1.8em;
+    width: 35em;
+    height: 50em;
+    tab-size: 6em;
+    top:-1.5em;
+    word-break: break-all;
+    line-break: anywhere;
+  }
+  .normal-line {
+    position: relative;
+  }
+  .under-line {
+    position: relative;
+  }
+}
+/* ADD End-- 20200911 tht　５０％以下 表示調整 */
+/* 75% */
+@media screen and (min-width: 120.9em) and (max-width: 200em){ 
+  textarea {
+    background-color:  #e0e0e0;
+    color: #e0e0e0;
+    position: relative;
+    z-index: 1;
+    resize: none;
+    overflow: hidden;
+    border: hidden;
+    outline: none;
+    font-family: "SnetMonoGothic";
+    font-size: 0.85em;
+    letter-spacing: 0.185em;
+    line-height: 1.8em;
+    width: 35em;
+    height: 50em;
+    tab-size: 6em;
+    top:-1.5em;
+    word-break: break-all;
+    line-break: anywhere;
+  }
+  .normal-line {
+    position: relative;
+  }
+  .under-line {
+    position: relative;
+  }
+}
+/* 85% */
+@media screen and (min-width: 110.9em) and (max-width: 120em) { 
+  textarea {
+    background-color:  transparent;
+    position: relative;
+    z-index: 2;
+    resize: none;
+    overflow: hidden;
+    border: hidden;
+    outline: none;
+    font-family: "SnetMonoGothic";
+    font-size: 0.85em;
+    letter-spacing: 0.199em;
+    line-height: 1.8em;
+    width: 48em;
+    height: 72em;
+    tab-size: 6em;
+    word-break: break-all;
+    line-break: anywhere;
+  }
+  .normal-line {
+    position: relative;
+    z-index: 1;
+    top: -61.4em;
+    left: -1px;
+    border: solid 1px;
+    border-color: #ccc;
+    height: 54em;
+    width: 40em;
+  }
+  .under-line {
+    position: relative;
+    z-index: 1;
+    top: -61.4em;
+    left: -1px;
+    /*border: solid 1px;*/
+    border-left: solid 1px;
+    border-bottom: solid 1px;
+    border-right: solid 1px;
+    border-color: #ccc;
+    height: 54em;
+    width: 40em;
+    background: -webkit-linear-gradient(#ccc 1px, transparent 0);
+    background-size: 1.01em 1.5em;
+  }
+  .grid-line {
+    position: relative;
+    z-index: 1;
+    top: -61.4em;
+    left: -1.5px;
+    /*border: solid 1px;*/
+    border-left: solid 1px;
+    border-bottom: solid 1px;
+    border-color: #ccc;
+    height: 54em;
+    width: 40em;
+    background: -webkit-linear-gradient(#ccc 1px, transparent 0),
+                -webkit-linear-gradient(180deg, #ccc 1px, transparent 0);
+    background-size: 1.028em 1.5em;
+  }
+}
+/* 100% */
+@media screen and (min-width: 89.9em) and (max-width: 110em) { 
+  textarea {
+    background-color:  transparent;
+    position: relative;
+    z-index: 2;
+    resize: none;
+    overflow: hidden;
+    border: hidden;
+    outline: none;
+    font-family: "SnetMonoGothic";
+    font-size: 0.85em;
+    letter-spacing: 0.179em;
+    line-height: 1.87em;
+    width: 49em;
+    height: 71.9em;
+    tab-size: 6em;
+    word-break: break-all;
+    line-break: anywhere;
+  }
+  .normal-line {
+    position: relative;
+    z-index: 1;
+    top: -61.4em;
+    left: -1px;
+    border: solid 1px;
+    border-color: #ccc;
+    height: 54em;
+    width: 41.1em;
+  }
+  .under-line {
+    position: relative;
+    z-index: 1;
+    top: -61.4em;
+    left: -1px;
+    /*border: solid 1px;*/
+    border-left: solid 1px;
+    border-bottom: solid 1px;
+    border-left: solid 1px;
+    border-right: solid 1px;
+    border-color: #ccc;
+    height: 55.3em;
+    width: 41.1em;
+    background: -webkit-linear-gradient(#ccc 1px, transparent 0);
+    background-size: 1.01em 1.56em;
+  }
+  .grid-line {
+    position: relative;
+    z-index: 1;
+    top: -61.4em;
+    left: -1.5px;
+    /*border: solid 1px;*/
+    border-left: solid 1px;
+    border-bottom: solid 1px;
+    border-left: solid 1px;
+    border-right: solid 1px;
+    border-color: #ccc;
+    height: 55.3em;
+    width: 41.1em;
+    background: -webkit-linear-gradient(#ccc 1px, transparent 0),
+                -webkit-linear-gradient(180deg, #ccc 1px, transparent 0);
+    background-size: 1.029em 1.56em;
+  }
+}
+/* 115% */
+@media screen and (min-width: 79.9em) and (max-width: 90em) { 
+  textarea {
+    background-color:  transparent;
+    position: relative;
+    z-index: 2;
+    resize: none;
+    overflow: hidden;
+    border: hidden;
+    outline: none;
+    font-family: "SnetMonoGothic";
+    font-size: 0.85em;
+    letter-spacing: 0.185em;
+    line-height: 1.8em;
+    width: 49em;
+    height: 72em;
+    tab-size: 6em;
+    word-break: break-all;
+    line-break: anywhere;
+  }
+  .normal-line {
+    position: relative;
+    z-index: 1;
+    top: -61.4em;
+    left: -1px;
+    border: solid 1px;
+    border-color: #ccc;
+    height: 54em;
+    width: 41.1em;
+  }
+  .under-line {
+    position: relative;
+    z-index: 1;
+    top: -61.4em;
+    left: -1px;
+    /*border: solid 1px;*/
+    border-left: solid 1px;
+    border-bottom: solid 1px;
+    border-left: solid 1px;
+    border-right: solid 1px;
+    border-color: #ccc;
+    height: 54em;
+    width: 41.1em;
+    background: -webkit-linear-gradient(#ccc 1px, transparent 0);
+    background-size: 1.01em 1.5em;
+  }
+  .grid-line {
+    position: relative;
+    z-index: 1;
+    top: -61.4em;
+    left: -1.5px;
+    /*border: solid 1px;*/
+    border-left: solid 1px;
+    border-bottom: solid 1px;
+    border-left: solid 1px;
+    border-right: solid 1px;
+    border-color: #ccc;
+    height: 54em;
+    width: 41.1em;
+    background: -webkit-linear-gradient(#ccc 1px, transparent 0),
+                -webkit-linear-gradient(180deg, #ccc 1px, transparent 0);
+    background-size: 1.028em 1.5em;
+  }
+}
+/* 125% */
+@media screen and (min-width: 73em) and (max-width:79.8em) { 
+  textarea {
+    background-color:  transparent;
+    position: relative;
+    z-index: 2;
+    resize: none;
+    overflow: hidden;
+    border: hidden;
+    outline: none;
+    font-family: "SnetMonoGothic";
+    font-size: 0.85em;
+    letter-spacing: 0.189em;
+    line-height: 1.8em;
+    width: 49em;
+    height: 72em;
+    tab-size: 6em;
+    word-break: break-all;
+    line-break: anywhere;
+  }
+  .normal-line {
+    position: relative;
+    z-index: 1;
+    top: -61.4em;
+    left: -1px;
+    border: solid 1px;
+    border-color: #ccc;
+    height: 54.5em;
+    width: 41.1em;
+  }
+  .under-line {
+    position: relative;
+    z-index: 1;
+    top: -61.4em;
+    left: -1px;
+    /*border: solid 1px;*/
+    border-left: solid 1px;
+    border-bottom: solid 1px;
+    border-left: solid 1px;
+    border-right: solid 1px;
+    border-color: #ccc;
+    height: 54.5em;
+    width: 41.1em;
+    background: -webkit-linear-gradient(#ccc 1px, transparent 0);
+    background-size: 1.01em 1.53em;
+  }
+  .grid-line {
+    position: relative;
+    z-index: 1;
+    top: -61.4em;
+    left: -1.5px;
+    /*border: solid 1px;*/
+    border-left: solid 1px;
+    border-bottom: solid 1px;
+    border-left: solid 1px;
+    border-right: solid 1px;
+    border-color: #ccc;
+    height: 54.5em;
+    width: 41.1em;
+    background: -webkit-linear-gradient(#ccc 1px, transparent 0),
+                -webkit-linear-gradient(180deg, #ccc 1px, transparent 0);
+    background-size: 1.0139266em 1.53em;
+  }
+}
+/* 150% */
+@media screen and (min-width: 71em) and (max-width:72.9em) { 
+  textarea {
+    background-color:  transparent;
+    position: relative;
+    z-index: 2;
+    resize: none;
+    overflow: hidden;
+    border: hidden;
+    outline: none;
+    font-family: "SnetMonoGothic";
+    font-size: 0.85em;
+    letter-spacing: 0.179em;
+    line-height: 1.8em;
+    width: 48em;
+    height: 72em;
+    tab-size: 6em;
+    word-break: break-all;
+    line-break: anywhere;
+  }
+  .normal-line {
+    position: relative;
+    z-index: 1;
+    top: -61.4em;
+    left: -1px;
+    border: solid 1px;
+    border-color: #ccc;
+    height: 54em;
+    width: 39.9em;
+  }
+  .under-line {
+    position: relative;
+    z-index: 1;
+    top: -61.4em;
+    left: -1px;
+    /*border: solid 1px;*/
+    border-left: solid 1px;
+    border-bottom: solid 1px;
+    border-left: solid 1px;
+    border-right: solid 1px;
+    border-color: #ccc;
+    height: 54em;
+    width: 39.9m;
+    background: -webkit-linear-gradient(#ccc 1px, transparent 0);
+    background-size: 1.01em 1.49em;
+  }
+  .grid-line {
+    position: relative;
+    z-index: 1;
+    top: -61.4em;
+    left: -1.5px;
+    /*border: solid 1px;*/
+    border-left: solid 1px;
+    border-bottom: solid 1px;
+    border-left: solid 1px;
+    border-right: solid 1px;
+    border-color: #ccc;
+    height: 54em;
+    width: 39.9em;
+    background: -webkit-linear-gradient(#ccc 1px, transparent 0),
+                -webkit-linear-gradient(180deg, #ccc 1px, transparent 0);
+    background-size: 1.011em 1.49em;
+  }
+}
+/* 175% */
+@media screen and (min-width: 60em) and (max-width:70.9em) { 
+  textarea {
+    background-color:  transparent;
+    position: relative;
+    z-index: 2;
+    resize: none;
+    overflow: hidden;
+    border: hidden;
+    outline: none;
+    font-family: "SnetMonoGothic";
+    font-size: 0.85em;
+    letter-spacing: 0.194em;
+    line-height: 1.8em;
+    width: 47em;
+    height: 72em;
+    tab-size: 6em;
+    word-break: break-all;
+    line-break: anywhere;
+  }
+  .normal-line {
+    position: relative;
+    z-index: 1;
+    top: -61.4em;
+    left: -1px;
+    border: solid 1px;
+    border-color: #ccc;
+    height: 54em;
+    width: 40em;
+  }
+  .under-line {
+    position: relative;
+    z-index: 1;
+    top: -61.4em;
+    left: -1px;
+    border-left: solid 1px;
+    border-bottom: solid 1px;
+    border-left: solid 1px;
+    border-right: solid 1px;
+    border-color: #ccc;
+    height: 54em;
+    width: 40m;
+    background: -webkit-linear-gradient(#ccc 1px, transparent 0);
+    background-size: 1.01em 1.49em;
+  }
+  .grid-line {
+    position: relative;
+    z-index: 1;
+    top: -61.4em;
+    left: -1.5px;
+    border-left: solid 1px;
+    border-bottom: solid 1px;
+    border-left: solid 1px;
+    border-color: #ccc;
+    height: 54em;
+    width: 40em;
+    background: -webkit-linear-gradient(#ccc 1px, transparent 0),
+                -webkit-linear-gradient(180deg, #ccc 1px, transparent 0);
+    background-size: 1.01em 1.49em;
+  }
+}
+/* 200% */
+@media screen and (min-width: 46em) and (max-width:59.9em) { 
+  textarea {
+    background-color:  transparent;
+    position: relative;
+    z-index: 2;
+    resize: none;
+    overflow: hidden;
+    border: hidden;
+    outline: none;
+    font-family: "SnetMonoGothic";
+    font-size: 0.85em;
+    letter-spacing: 0.172em;
+    line-height: 1.8em;
+    width: 48em;
+    height: 72em;
+    tab-size: 6em;
+    word-break: break-all;
+    line-break: anywhere;
+  }
+  .normal-line {
+    position: relative;
+    z-index: 1;
+    top: -61.4em;
+    left: -1px;
+    border: solid 1px;
+    border-color: #ccc;
+    height: 54em;
+    width: 39.9em;
+  }
+  .under-line {
+    position: relative;
+    z-index: 1;
+    top: -61.4em;
+    left: -1px;
+    /*border: solid 1px;*/
+    border-left: solid 1px;
+    border-bottom: solid 1px;
+    border-left: solid 1px;
+    border-right: solid 1px;
+    border-color: #ccc;
+    height: 54em;
+    width: 39.9m;
+    background: -webkit-linear-gradient(#ccc 1px, transparent 0);
+    background-size: 1.01em 1.49em;
+  }
+  .grid-line {
+    position: relative;
+    z-index: 1;
+    top: -61.4em;
+    left: -1.5px;
+    border-left: solid 1px;
+    border-bottom: solid 1px;
+    border-left: solid 1px;
+    border-right: solid 1px;
+    border-color: #ccc;
+    height: 54em;
+    width: 39.9em;
+    background: -webkit-linear-gradient(#ccc 1px, transparent 0),
+                -webkit-linear-gradient(180deg, #ccc 1px, transparent 0);
+    background-size: 1.0em 1.49em;
+  }
+}
+/* 250% */
+@media screen and (min-width: 40em) and (max-width:45.9em) { 
+  textarea {
+    background-color:  transparent;
+    position: relative;
+    z-index: 2;
+    resize: none;
+    overflow: hidden;
+    border: hidden;
+    outline: none;
+    font-family: "SnetMonoGothic";
+    font-size: 0.85em;
+    letter-spacing: 0.18em;
+    line-height: 1.79em;
+    width: 48em;
+    height: 72em;
+    tab-size: 6em;
+    word-break: break-all;
+    line-break: anywhere;
+  }
+  .normal-line {
+    position: relative;
+    z-index: 1;
+    top: -61.4em;
+    left: -1px;
+    border: solid 1px;
+    border-color: #ccc;
+    height: 54em;
+    width: 39.9em;
+  }
+  .under-line {
+    position: relative;
+    z-index: 1;
+    top: -61.4em;
+    left: -1.5px;
+    border-left: solid 1px;
+    border-bottom: solid 1px;
+    border-left: solid 1px;
+    border-right: solid 1px;
+    border-color: #ccc;
+    height: 54em;
+    width: 39.9m;
+    background: -webkit-linear-gradient(#ccc 1px, transparent 0);
+    background-size: 1.01em 1.5em;
+  }
+  .grid-line {
+    position: relative;
+    z-index: 1;
+    top: -61.4em;
+    left: -1.5px;
+    border-left: solid 1px;
+    border-bottom: solid 1px;
+    border-left: solid 1px;
+    border-right: solid 1px;
+    border-color: #ccc;
+    height: 54em;
+    width: 39.9em;
+    background: -webkit-linear-gradient(#ccc 1px, transparent 0),
+                -webkit-linear-gradient(180deg, #ccc 1px, transparent 0);
+    background-size: 1.011em 1.5em;
+  }
+}
+/* 300% */
+@media screen and (min-width: 35em) and (max-width:39.9em) { 
+  textarea {
+    background-color:  transparent;
+    position: relative;
+    z-index: 2;
+    resize: none;
+    overflow: hidden;
+    border: hidden;
+    outline: none;
+    font-family: "SnetMonoGothic";
+    font-size: 0.85em;
+    letter-spacing: 0.179em;
+    line-height: 1.77em;
+    width: 48em;
+    height: 72em;
+    tab-size: 6em;
+    word-break: break-all;
+    line-break: anywhere;
+  }
+  .normal-line {
+    position: relative;
+    z-index: 1;
+    top: -61.4em;
+    left: -1.5px;
+    border: solid 1px;
+    border-color: #ccc;
+    height: 54em;
+    width: 39.9em;
+  }
+  .under-line {
+    position: relative;
+    z-index: 1;
+    top: -61.4em;
+    left: -1.5px;
+    border-left: solid 1px;
+    border-bottom: solid 1px;
+    border-left: solid 1px;
+    border-right: solid 1px;
+    border-color: #ccc;
+    height: 54em;
+    width: 39.9m;
+    background: -webkit-linear-gradient(#ccc 1px, transparent 0);
+    background-size: 1.01em 1.5em;
+  }
+  .grid-line {
+    position: relative;
+    z-index: 1;
+    top: -61.4em;
+    left: -1.5px;
+    border-left: solid 1px;
+    border-bottom: solid 1px;
+    border-left: solid 1px;
+    border-right: solid 1px;
+    border-color: #ccc;
+    height: 54em;
+    width: 39.9em;
+    background: -webkit-linear-gradient(#ccc 1px, transparent 0),
+                -webkit-linear-gradient(180deg, #ccc 1px, transparent 0);
+    background-size: 1.004em 1.5em;
+  }
+}
+/* 350% */
+@media screen and (min-width: 30em) and (max-width:34.9em) { 
+  textarea {
+    background-color:  transparent;
+    position: relative;
+    z-index: 2;
+    resize: none;
+    overflow: hidden;
+    border: hidden;
+    outline: none;
+    font-family: "SnetMonoGothic";
+    font-size: 0.85em;
+    letter-spacing: 0.175em;
+    line-height: 1.79em;
+    width: 48em;
+    height: 72em;
+    tab-size: 6em;
+    word-break: break-all;
+    line-break: anywhere;
+  }
+  .normal-line {
+    position: relative;
+    z-index: 1;
+    top: -61.4em;
+    left: -1.5px;
+    border: solid 1px;
+    border-color: #ccc;
+    height: 54.3em;
+    width: 39.9em;
+  }
+  .under-line {
+    position: relative;
+    z-index: 1;
+    top: -61.4em;
+    left: -1.5px;
+    border-left: solid 1px;
+    border-bottom: solid 1px;
+    border-left: solid 1px;
+    border-right: solid 1px;
+    border-color: #ccc;
+    height: 54.3em;
+    width: 39.9m;
+    background: -webkit-linear-gradient(#ccc 1px, transparent 0);
+    background-size: 1.01em 1.51em;
+  }
+  .grid-line {
+    position: relative;
+    z-index: 1;
+    top: -61.4em;
+    left: -1.5px;
+    border-left: solid 1px;
+    border-bottom: solid 1px;
+    border-left: solid 1px;
+    border-right: solid 1px;
+    border-color: #ccc;
+    height: 54.3em;
+    width: 39.9em;
+    background: -webkit-linear-gradient(#ccc 1px, transparent 0),
+                -webkit-linear-gradient(180deg, #ccc 1px, transparent 0);
+    background-size: 1.001em 1.51em;
+  }
+}
+/* ADD Start 20200911 tht　400％以上 表示調整 */
+@media screen and (min-width: 20em) and (max-width:29.9em) { 
+  textarea {
+    background-color:  transparent;
+    position: relative;
+    z-index: 2;
+    resize: none;
+    overflow: hidden;
+    border: hidden;
+    outline: none;
+    font-family: "SnetMonoGothic";
+    font-size: 0.85em;
+    letter-spacing: 0.175em;
+    line-height: 1.79em;
+    width: 48em;
+    height: 72em;
+    tab-size: 6em;
+    word-break: break-all;
+    line-break: anywhere;
+  }
+  .normal-line {
+    position: relative;
+    z-index: 1;
+    top: -61.4em;
+    left: -1.5px;
+    border: solid 1px;
+    border-color: #ccc;
+    height: 54.3em;
+    width: 39.9em;
+  }
+  .under-line {
+    position: relative;
+    z-index: 1;
+    top: -61.4em;
+    left: -1.5px;
+    border-left: solid 1px;
+    border-bottom: solid 1px;
+    border-left: solid 1px;
+    border-right: solid 1px;
+    border-color: #ccc;
+    height: 54.3em;
+    width: 39.9m;
+    background: -webkit-linear-gradient(#ccc 1px, transparent 0);
+    background-size: 1.01em 1.51em;
+  }
+  .grid-line {
+    position: relative;
+    z-index: 1;
+    top: -61.4em;
+    left: -1.5px;
+    border-left: solid 1px;
+    border-bottom: solid 1px;
+    border-left: solid 1px;
+    border-right: solid 1px;
+    border-color: #ccc;
+    height: 54.3em;
+    width: 39.9em;
+    background: -webkit-linear-gradient(#ccc 1px, transparent 0),
+                -webkit-linear-gradient(180deg, #ccc 1px, transparent 0);
+    background-size: 1.001em 1.51em;
+  }
+}
+/* ADD End-- 20200911 tht　400％以上 表示調整 */

@@ -1,0 +1,64 @@
+.extra-practice-screen { width: min(1180px, 100%); min-width: 0; margin: auto; }
+.touch-hand-entries { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; grid-column: 1 / -1; padding: 10px 0; }
+.touch-hand-entries button { min-width: 220px; }
+.extra-stage-list { display: grid; gap: 16px; margin: 20px 0; }
+#one-hand-stages { grid-template-columns: repeat(4, minmax(220px, 1fr)); max-width: 100%; overflow-x: auto; padding: 10px 4px 20px; }
+.extra-stage-button { min-height: 156px; padding: 18px; text-align: left; border: 2px solid #8bb8ad; border-radius: 8px; background: #fff; color: #16362d; font: inherit; font-size: 20px; cursor: pointer; overflow-wrap: anywhere; }
+.extra-stage-button:hover { background: #eaf8ee; border-color: #2d8668; }
+.hand-stage-name, .hand-stage-status { display: block; }
+.hand-stage-status { margin-top: 12px; color: #356353; font-size: 14px; }
+#keyboard-wrapper.hand-romaji-hidden #romaji-hint, #keyboard-wrapper.hand-romaji-hidden #blind-romaji-progress { visibility: hidden; }
+#keyboard-wrapper.hand-romaji-hidden #blind-romaji-progress.hand-typed-visible { visibility: visible; }
+#keyboard-wrapper .key[data-other-hand=true] { opacity: .3; }
+#screen-one-hand, #screen-text-category, #screen-mock-exam { overflow-y: auto; justify-content: flex-start; padding: 20px; box-sizing: border-box; }
+#screen-one-hand, #screen-text-category { flex: 1 0 auto; min-height: auto; }
+#screen-one-hand > .screen-content, #screen-text-category > .screen-content { flex: 0 0 auto; min-height: auto; justify-content: flex-start; margin-top: 0; }
+.text-category-options { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 24px; margin: 32px auto; width: min(860px,100%); }
+.text-category-options button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; min-height: 200px; white-space: normal; font-size: 25px; }
+.text-category-options svg { width: 48px; height: 48px; }
+.mock-exam-workspace { width: 100%; height: 100%; max-width: 1400px; min-width: 0; min-height: 0; margin: 0 auto; color: #222; display: flex; flex-direction: column; }
+.mock-exam-workspace [hidden] { display: none !important; }
+.mock-guide { position: sticky; top: 0; z-index: 5; flex: none; display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 12px 16px; background: #e5f5ed; border-bottom: 3px solid #218265; color: #14372b; font-size: 16px; }
+#mock-guide-text { flex: 1 1 520px; min-width: 0; font-size: 23px; line-height: 2.15; overflow-wrap: anywhere; }
+.mock-exam-workspace ruby { ruby-align: center; }
+.mock-exam-workspace rt { font-size: .55em; font-weight: 400; }
+.mock-action-highlight { outline: 4px solid #ed9715 !important; outline-offset: 4px; box-shadow: 0 0 0 8px #fff0bd !important; }
+#mock-next { flex-shrink: 0; min-height: 56px; font-size: 21px; line-height: 1.8; }
+#mock-audio-check { flex: 1 0 auto; padding: 32px 16px; text-align: center; }
+#mock-audio-check h2 { font-size: 28px; }
+#mock-audio-check > svg, #mock-audio-check > [data-lesson-icon] svg { width: 84px; height: 84px; color: #1767bc; margin: 12px; }
+#mock-audio-test { display: inline-flex; align-items: center; gap: 12px; margin: 20px; padding: 16px 24px; font-size: 22px; }
+.mock-guide button { min-height: 40px; padding: 7px 12px; background: #fff; border: 1px solid #718a81; border-radius: 4px; color: #16372c; cursor: pointer; }
+.mock-icon-button { position: relative; display: inline-flex; align-items: center; justify-content: center; }
+.mock-icon-button:hover::after { content: attr(title); position: absolute; top: 100%; right: 0; width: 140px; padding: 6px; color: white; background: #263c33; font-size: 12px; z-index: 6; }
+#mock-timer { font: bold 24px var(--lesson-font); min-width: 80px; text-align: center; }
+.mock-setup { width: min(1100px, 100%); box-sizing: border-box; margin: 24px auto; flex: none; }
+.mock-setup h2 { font-size: 28px; }
+.mock-setup label { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 15px 0; }
+.mock-setup input:not([type=checkbox]), .mock-setup textarea { padding: 10px; border: 1px solid #81948b; border-radius: 4px; background: #fff; color: #222; font: inherit; max-width: 100%; box-sizing: border-box; }
+.mock-setup textarea { width: 100%; }
+.mock-round-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(260px,1fr)); gap: 22px; margin: 24px 0; }
+.mock-round-item { min-width: 0; }
+.mock-round-card.stage-btn { width: 100%; height: 158px; box-sizing: border-box; padding: 18px; gap: 12px; margin: 0; color: #23443b; border-color: #47a482; background: #fff; text-align: center; }
+.mock-round-card strong { font-size: 22px; }
+.mock-round-card span { font-size: 16px; }
+.mock-round-card small { color: #576d63; font-size: 14px; }
+.mock-catalog-edit { padding: 7px; margin-top: 8px; font: inherit; color: #245c49; background: transparent; border: 0; cursor: pointer; text-decoration: underline; }
+#mock-catalog-admin { margin-top: 24px; padding-top: 16px; border-top: 1px solid #acbdb3; }
+#mock-official-host { flex: 1 1 0; min-height: 380px; display: flex; background: #e0e0e0; }
+#mock-official-frame { flex: 1; width: 100%; height: 100%; min-height: 380px; border: 0; background: #fff; }
+.mock-exam-workspace:has(#mock-official-host:not([hidden])) > .bottom-back-btn { display: none; }
+#mock-results { flex: none; background: #fff; border-top: 3px solid #2b8867; padding: 20px; margin-top: 20px; color: #222; }
+#mock-results h2 { font-size: 24px; }
+#mock-answer-review { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 2; font-size: 20px; margin: 20px 0; }
+.mock-diff-wrong, .mock-diff-extra { background: #ffdadd; color: #9b172e; text-decoration: underline; }
+.mock-diff-omitted { background: #fff2b9; color: #6f4800; border-bottom: 2px dotted; }
+@media (max-width: 600px) {
+    #screen-one-hand, #screen-text-category, #screen-mock-exam { padding: 12px; }
+    .text-category-options { grid-template-columns: 1fr; }
+    .text-category-options button { min-height: 150px; font-size: 22px; }
+    .extra-stage-button { font-size: 18px; }
+    .mock-setup h2 { font-size: 22px; }
+    .mock-guide { padding: 10px; }
+    #mock-guide-text { flex-basis: 100%; font-size: 21px; }
+}

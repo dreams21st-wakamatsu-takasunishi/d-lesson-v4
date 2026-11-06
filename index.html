@@ -747,7 +747,7 @@
                     <span class="practice-category-next" id="cat-keyboard-next">次: ABC 1</span>
                     <span class="practice-category-meter"><span id="cat-keyboard-meter"></span></span>
                 </button>
-                <button class="practice-category-card practice-card-text" id="cat-text" onclick="goToTextMenu()">
+                <button class="practice-category-card practice-card-text" id="cat-text" onclick="goToTextCategory()">
                     <span class="practice-category-icon">📝</span>
                     <span class="practice-category-course" id="cat-text-course">ぶんしょう</span>
                     <strong>ぶんしょうをうつ</strong>
@@ -839,6 +839,73 @@
     </div>
 
     <!-- ミニゲームメニュー画面 -->
+    <div id="screen-one-hand" class="screen">
+        <div class="screen-content extra-practice-screen">
+            <h2 id="one-hand-title">左手タイピング</h2>
+            <div id="one-hand-stages" class="extra-stage-list"></div>
+        </div>
+        <button class="btn-secondary bottom-back-btn" onclick="goToKeyboardMenu('hiragana')">もどる</button>
+    </div>
+    <div id="screen-text-category" class="screen">
+        <div class="screen-content extra-practice-screen">
+            <h2>ぶんしょうをうつ</h2>
+            <div class="text-category-options">
+                <button class="btn-primary" onclick="goToTextMenu()"><i data-lesson-icon="file-text"></i>文章入力れんしゅう</button>
+                <button class="btn-primary" onclick="openMockExam()"><i data-lesson-icon="clipboard-check"></i>模擬試験</button>
+            </div>
+        </div>
+        <button class="btn-secondary bottom-back-btn" onclick="showScreen('screen-practice-menu')">もどる</button>
+    </div>
+
+    <div id="screen-mock-exam" class="screen">
+        <div class="mock-exam-workspace">
+            <div class="mock-guide" aria-live="polite">
+                <button type="button" class="mock-icon-button" title="もどる" aria-label="模擬試験をやめて戻る" onclick="leaveMockExam()"><i data-lesson-icon="arrow-left"></i></button>
+                <strong id="mock-exam-title">検定模擬試験</strong>
+                <span id="mock-guide-text"><ruby>受検<rt>じゅけん</rt></ruby>する<ruby>回<rt>かい</rt></ruby>をえらびましょう。</span>
+                <label><input id="mock-voice" type="checkbox" checked onchange="stopMockVoice()">音声</label>
+                <button type="button" class="mock-icon-button" title="案内をもう一度聞く" aria-label="案内をもう一度聞く" onclick="repeatMockGuide()"><i data-lesson-icon="volume"></i></button>
+                <output id="mock-timer" aria-label="残り時間">10:00</output>
+                <button id="mock-next" type="button" hidden onclick="advanceMockExam()"><ruby>準備<rt>じゅんび</rt></ruby>できた</button>
+                <button id="mock-stop" type="button" hidden onclick="stopMockExam()">途中で終了</button>
+            </div>
+            <div id="mock-menu" class="mock-setup">
+                <h2>受検回の選択</h2>
+                <div id="mock-round-grid" class="mock-round-grid"></div>
+                <div id="mock-catalog-admin" hidden>
+                    <h3>問題登録（この端末・校舎 <span id="mock-campus"></span>）</h3>
+                    <button type="button" class="btn-secondary" onclick="editMockCatalog()">問題本文を登録・編集</button>
+                    <form id="mock-catalog-form" hidden onsubmit="storeMockProblem(event)">
+                        <label>第 <input id="mock-admin-round" type="number" min="1" max="999" required> 回</label>
+                        <label>正解本文（段落の先頭は全角空白、段落末は改行）<textarea id="mock-admin-reference" rows="8" maxlength="6000" required spellcheck="false"></textarea></label>
+                        <label><input id="mock-permission" type="checkbox" required>本文のデータ化と、この端末での教材利用が許諾されていることを確認済み</label>
+                        <button type="submit" class="btn-primary">この端末に登録</button>
+                        <button type="button" class="btn-secondary" onclick="removeMockProblem()">端末内の編集を取り消す</button>
+                    </form>
+                </div>
+            </div>
+            <section id="mock-audio-check" hidden>
+                <i data-lesson-icon="headphones"></i>
+                <h2>ヘッドホンのかくにん</h2>
+                <button id="mock-audio-test" type="button" class="btn-primary" onclick="repeatMockGuide()"><i data-lesson-icon="volume"></i><ruby>音声<rt>おんせい</rt></ruby>をためす</button>
+            </section>
+            <div id="mock-official-host" hidden>
+                <iframe id="mock-official-frame" title="文章入力スピード認定試験アプリ・模擬試験" referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-modals allow-downloads"></iframe>
+            </div>
+            <section id="mock-results" hidden>
+                <h2>結果</h2>
+                <p id="mock-result-summary"></p>
+                <p id="mock-result-details"></p>
+                <p id="mock-result-coins"></p>
+                <label><input id="mock-full-text" type="checkbox" onchange="toggleMockFullText()">問題全文を表示する</label>
+                <p>参考採点です。正式な合否ではありません。赤：誤字・余分な文字　点線：抜けた文字　□：全角空白</p>
+                <div id="mock-answer-review"></div>
+                <button type="button" class="btn-primary" onclick="saveMockAnswer()"><i data-lesson-icon="download"></i>結果を保存</button>
+            </section>
+            <button class="btn-secondary bottom-back-btn" onclick="leaveMockExam()">もどる</button>
+        </div>
+    </div>
+
     <div id="screen-minigame-menu" class="screen">
         <div class="screen-content">
             <h2>タイピングゲーム</h2>
@@ -958,7 +1025,7 @@
     <!-- 文章入力メニュー -->
     <div id="screen-text-menu" class="screen">
         <div style="width: 100%; display: flex; justify-content: center; position: relative;">
-            <h2 style="margin-top: 10px; margin-bottom: 0;">ぶんしょうをうつ</h2>
+            <h2 style="margin-top: 10px; margin-bottom: 0;">文章入力れんしゅう</h2>
             <button class="sys-btn" style="position: absolute; right: 20px; top: 10px; font-size: 20px; background: #fff;" onclick="document.getElementById('text-reward-hint-modal').style.display='flex';" title="コインのヒント">💡</button>
         </div>
         <p>先生が作った課題をえらんでね</p>
@@ -971,7 +1038,7 @@
             <button class="text-task-filter-btn" data-text-task-filter="done" onclick="setTextTaskFilter('done')">やったことあり</button>
         </div>
         <div id="text-menu-content" style="width: 100%; max-width: 1100px; display: flex; flex-direction: column; align-items: center; gap: 15px; padding-top: 15px;"></div>
-        <button class="btn-secondary bottom-back-btn" onclick="showScreen('screen-practice-menu')" tabindex="0">もどる</button>
+        <button class="btn-secondary bottom-back-btn" onclick="goToTextCategory()" tabindex="0">もどる</button>
     </div>
 
     <!-- ビジョントレーニング メニュー -->

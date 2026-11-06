@@ -1,0 +1,917 @@
+<!--
+' Package   ： 文章入力スピード認定試験エディタ（日本語）
+' Title     ： 文章入力スピード認定試験画面（日本語）【Safari版】
+' Name      ： cert-editor-jp_SF.html
+' Create    ： 2020/02/16 
+' Update    ： 2021/01/14
+-->
+<!DOCTYPE html>
+<html>
+  <head>
+<meta name="referrer" content="no-referrer"><script>if(location.hash.startsWith('#identity=')){history.replaceState(null,'',location.pathname+'?'+decodeURIComponent(location.hash.slice(10)));}(()=>{const add=window.addEventListener,remove=window.removeEventListener,unload=[];window.addEventListener=function(type,listener,options){if(type==='beforeunload')unload.push([listener,options]);return add.call(this,type,listener,options);};window.__dlessonReleaseUnload=()=>{for(const [listener,options] of unload)remove.call(window,'beforeunload',listener,options);unload.length=0;};})();</script>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <link rel="stylesheet" type="text/css" href="./css/sheet.css" />
+    <link rel="stylesheet" type="text/css" href="./css/jquery-ui-themes-1.11.4/themes/vader/jquery-ui.css" />
+    <link rel="stylesheet" type="text/css" href="./css/style.css" />
+    <!-- <link rel="stylesheet" type="text/css" href="./css/screensizeSF.css" /> -->
+    <link rel="stylesheet" type="text/css" href="./css/cert-editor-jp_SF.css" />
+	  <!-- MOD Start 20210114 mnt 表示文字の定数定義ファイル化-->
+
+    <!-- MOD Start 20210114 mnt 表示文字の定数定義ファイル化-->
+    <!-- <title>文章入力スピード認定試験</title> -->
+    <title></title>
+	  <!-- MOD End-- 20210114 mnt 表示文字の定数定義ファイル化-->
+    
+    <!-- debug vscode Start -->
+
+    <script type="text/javascript" src="./javascript/jquery-1.12.4.min.js"></script>
+	  <script type="text/javascript" src="./javascript/jquery-ui.min.js"></script>
+	  <!-- ADD Start 20210113 mnt 表示文字の定数定義ファイル化-->
+	  <script type="text/javascript" src="./javascript/const_dsp_ed.js"></script>
+	  <!-- ADD End-- 20210113 mnt 表示文字の定数定義ファイル化-->
+    <!-- ADD Start 20210129 mnt チェックサム機能-->
+    <script type="text/javascript" src="./javascript/20210201/md5.min.js"></script>
+	  <!-- ADD End-- 20210129 mnt チェックサム機能-->
+	  <script type="text/javascript" src="./javascript/common.js"></script>
+    <!-- ADD Start 20210129 mnt チェックサム機能-->
+    <script type="text/javascript" src="./javascript/20210201/20210201.js"></script>
+    <script type="text/javascript" src="./javascript/20210201/20210201_4ed.js"></script>
+	  <!-- ADD End-- 20210129 mnt チェックサム機能-->
+	  <script type="text/javascript" src="./javascript/SP_Editor_NoCP.js"></script>
+
+    <!-- debug vscode End-- -->
+
+    <script type="text/javascript">
+      $(function () {
+        // ヘッダー編集（日本語版）
+        editHeader(LANGUAGE);
+         // ADD Start 20210113 mnt 表示文字の定数定義ファイル化
+        $("title").html(TITLE_CERT_PAGE);
+        $(".profile .btnSave_IE").html(BTN_HOZON);
+        $(".btnReset").html(BTN_RESET);
+        $("#ruledTitle").html(RDO_TITLE_KEISEN);
+        $("#savewindow").html(HOZON_MESSAGE);
+        $("#isReset").html(RESET_KAKUNIN_MESSAGE);
+        $("#Reset").html(RESET_SAI_KAKUNIN_MESSAGE);
+        $('[name=ruled][value=1]').parent('label').html( $('[name=ruled][value=1]').parent('label').html() + RDO_TSUUJOU);
+        $('[name=ruled][value=2]').parent('label').html( $('[name=ruled][value=2]').parent('label').html() + RDO_KASEN);
+        $('[name=ruled][value=3]').parent('label').html( $('[name=ruled][value=3]').parent('label').html() + RDO_GRID_SEN);
+        // ADD End-- 20210113 mnt 表示文字の定数定義ファイル化
+
+        // ADD Start mnt 20211221 ブラウザ履歴削除(前のページに戻れなくするため)
+        // history.pushState(null, null, location.href);
+        // window.onpopstate = function () {
+        //   history.forward();
+        // };
+        // ADD End-- mnt 20211221 ブラウザ履歴削除(前のページに戻れなくするため)
+
+        // 罫線ラジオボタン
+        $("input[name='ruled']").change(function () {
+          var val = $(this).val();
+          switch (val) {
+            case "1":
+              var view = $(".under-line");
+              if (view.length > 0) {
+                view.toggleClass("under-line");
+              } else {
+                view = $(".grid-line");
+                view.toggleClass("grid-line");
+              }
+              view.toggleClass("normal-line");
+              break;
+            case "2":
+              var view = $(".normal-line");
+              if (view.length > 0) {
+                view.toggleClass("normal-line");
+              } else {
+                view = $(".grid-line");
+                view.toggleClass("grid-line");
+              }
+              view.toggleClass("under-line");
+              break;
+            case "3":
+              var view = $(".normal-line");
+              if (view.length > 0) {
+                view.toggleClass("normal-line");
+              } else {
+                view = $(".under-line");
+                view.toggleClass("under-line");
+              }
+              view.toggleClass("grid-line");
+            }
+          });
+        });
+    </script>
+  </head>
+  <body>
+    <table id="editHead">
+      <tr>
+        <td><p id="title"></p></td>
+        <td><p id="date"></p></td>
+      </tr>
+    </table>
+    <p id="rollNo"></p>
+    <p id="studentName"></p>
+    <div align="right">
+      <span align="right" class="profile">
+        <!-- <button class="btnSave hidden">保存</button> -->
+        <!-- MOD Start 終了処理削除 -->
+        <!-- <button class="btnEnd">保存・終了</button> -->
+        <!-- MOD Start 20210113 mnt 表示文字の定数定義ファイル化 -->
+        <!-- <button class="btnSave" id="save">保存</button> -->
+        <button class="btnSave_IE" id="save"></button>
+        <!-- MOD End-- 20210113 mnt 表示文字の定数定義ファイル化 -->
+        <!-- MOD End-- 終了処理削除 -->
+      </span>
+    </div>
+    <!-- MOD Start 20210113 mnt 表示文字の定数定義ファイル化 -->
+    <!-- <span align="left" class="reset"><button class="btnReset">リセット</button></span> -->
+    <span align="left" class="reset"><button class="btnReset"></button></span>
+    <!-- MOD End-- 20210113 mnt 表示文字の定数定義ファイル化 -->
+    <span align="left" class="radioRuled">
+      <!-- MOD Start 20210113 mnt 表示文字の定数定義ファイル化 -->
+      <!-- <span id="ruledTitle">罫線:</span> -->
+      <span id="ruledTitle"></span>
+      <!-- MOD End-- 20210113 mnt 表示文字の定数定義ファイル化 -->
+      <span class="ruledGroup">
+        <!-- MOD Start 20210113 mnt 表示文字の定数定義ファイル化 -->
+        <!-- <input type="radio" value="1" name="ruled" checked />通常
+        <input type="radio" value="2" name="ruled" />下線
+        <input type="radio" value="3" name="ruled" />グリッド線 -->
+        <label><input type="radio" value="1" name="ruled" checked /></label>
+        <label><input type="radio" value="2" name="ruled" /></label>
+        <label><input type="radio" value="3" name="ruled" /></label>
+        <!-- MOD End-- 20210113 mnt 表示文字の定数定義ファイル化 -->
+      </span>
+    </span>
+    <!-- DEL Start ファイル保存確認、拡大・縮小表示文章 --> 
+    <!-- 
+    <br>
+    <span class="saveScreenMsg">
+      保存ファイル確認：
+      <span class="KeyShap">command(⌘)</span>＋
+      <span class="KeyShap">option(⌥ )</span>＋
+      <span class="KeyShap">L</span>
+    </span>
+    <span class="saveScreenMsgBtm">同時押下げ</span>
+    <p class="maxScreenMsg">
+      画面拡大：
+      <span class="KeyShap">command(⌘)</span>＋
+      <span class="KeyShap">＋</span> 同時押下げ
+    </p><br>
+    <p class="minScreenMsg">
+      画面縮小：
+      <span class="KeyShap">command(⌘)</span>＋
+      <span class="KeyShap">－</span> 同時押下げ
+    </p>    
+    -->
+    <!-- DEL End-- ファイル保存確認、拡大・縮小表示文章 -->
+    <form class="book">
+      <!-- ADD Start 入力文字数カウンタ -->
+      <div class="letr-cnt"></div>
+      <!-- ADD End   入力文字数カウンタ -->
+      <section class="sheet">
+        <div class="editor">
+          <textarea
+            data-page="0"
+            class="userinput"
+            inputmode="kana"
+            maxlength="1477"
+            spellcheck="false"
+            oninput="inputTextarea(event)"></textarea>
+          <div class="normal-line"></div>
+        </div>
+      </section>
+    </form>
+    <form id="savewindow" class="hidden">
+      <table>
+        <!-- MOD Start 20210113 mnt 表示文字の定数定義ファイル化 -->
+        <!-- <div align="center">保存しますか？</div> -->
+        <div align="center"></div>
+        <!-- MOD End-- 20210113 mnt 表示文字の定数定義ファイル化 -->
+        <br />
+        <br />
+      </table>
+    </form>
+    <form id="popupwindow" class="hidden">
+      <table>
+        <!-- MOD Start ダイアログボックスの文章 -->
+        <!-- MOD Start 20210113 mnt 表示文字の定数定義ファイル化 -->
+        <!-- <div align="center">保存しますか？</div> -->
+        <div align="center"></div>
+        <!-- MOD End-- 20210113 mnt 表示文字の定数定義ファイル化 -->
+        <!-- MOD End-- ダイアログボックスの文章 -->
+        <br />
+        <br />
+      </table>
+    </form>
+    <form id="isReset" class="hidden">
+      <table>
+        <!-- MOD Start 20210113 mnt 表示文字の定数定義ファイル化 -->
+        <!-- <div align="center">内容をすべて削除しますか？</div> -->
+        <div align="center"></div>
+        <!-- MOD End-- 20210113 mnt 表示文字の定数定義ファイル化 -->
+        <br />
+        <br />
+      </table>
+    </form>
+    <form id="Reset" class="hidden">
+      <table>
+        <!-- MOD Start 20210113 mnt 表示文字の定数定義ファイル化 -->
+        <!-- <div align="center">本当に削除しますか？</div> -->
+        <div align="center"></div>
+        <!-- MOD End-- 20210113 mnt 表示文字の定数定義ファイル化 -->
+        <br />
+        <br />
+      </table>
+    </form>
+    <!-- ADD Start dialogボックス -->
+    <form id="isExit" class="hidden">
+      <table>
+        <div align="center">保存はできていますか？<br>保存先は間違っていませんか？</div>
+        <br>
+        <br>
+      </table>
+    </form>
+    <!-- ADD End-- dialogボックス -->
+    <script type="text/javascript">
+      var composition = true; // IME入力監視
+      var imeFlag = false; // IME入力フラグ
+      var postLineNum = 0; // 文字入力直前の行数
+      var keyCode = -1;    // キーコード
+
+      // 定数
+      const INPUT_MODE = "kana"; // 入力モード
+      const TAB_COUNT = 5;
+      const MAX_CHAR_NUM = 40; // 1行の最大文字数
+      const MAX_LENGTH = 1477; // 1シートの最大文字数(line(40*36line) + newLine(1*36line) + event(1))
+      const MAX_LINE_NUM = 36; // 1シートの最大行数
+
+      // ADD Start 入力文字数カウンタ初期表示
+      document.getElementsByClassName("letr-cnt")[0].innerHTML = FRST_DISP_CNT;
+      // ADD End-- 入力文字数カウンタ初期表示
+
+      // 画面表示時の初期フォーカス
+      document.getElementsByClassName("userinput")[0].focus();
+
+      // ADD Start 20210108 mnt F5キー無効化
+      window.document.onkeydown = function(event){
+      // MOD Start 20210319 mnt Escキー、command＋⇒無効化
+      // if(event.key == "F5"){
+         if(event.key == "F5"|| (event.metaKey && event.key === "ArrowLeft")){
+      // MOD End-- 20210319 mnt Escキー、command＋⇒無効化
+          event.preventDefault();
+         }
+       }
+      // ADD End-- 20210108 mnt F5キー無効化
+
+      $(function () {
+        /* IME入力開始 */
+        $(".book").on("compositionstart", function (e) {
+          composition = false;
+        });
+
+        /* IME入力終了 */
+        $(".book").on("compositionend", function (e) {
+          composition = true;
+          imeFlag = true;
+          inputTextarea(e);
+        });
+
+        $(".book").on("keydown", "textarea", function (e) {
+          var elem = e.target;
+          var val = elem.value;
+          var len = val.length;
+          var pos = elem.selectionStart;
+
+          var no = parseInt(elem.getAttribute("data-page"));
+          var textareas = document.getElementsByClassName("userinput");
+
+          keyCode = e.keyCode;
+          if (keyCode === BS_KCD) {
+            // back space
+            var previous = textareas[no - 1];
+            if (
+              previous !== undefined &&
+              pos == 0 &&
+              pos == elem.selectionEnd
+            ) {
+              e.preventDefault();
+              backspaceKeydown(textareas, no);
+            } else {
+              var result = getLastLineNumber(elem);
+              postLineNum = result[0];
+            }
+            // ADD Start 入力文字数カウンタ
+            DispLetterCount(textareas);
+            // ADD End-- 入力文字数カウンタ
+
+          } else if (keyCode === TAB_KCD) {
+            // tab
+            e.preventDefault();
+            // 文字の間にタブ
+            // MOD Start タブを空白TAB_COUNT分に置換
+            // elem.value = val.substr(0, pos) + '\t' + val.substr(pos, val.length);
+            elem.value = val.substr(0, pos) + FULL_SPACE.repeat(TAB_COUNT) + val.substr(pos, val.length);
+            elem.setSelectionRange(pos + TAB_COUNT, pos + TAB_COUNT);
+            // MOD End-- タブを空白TAB_COUNT分に置換
+            inputTextarea(e);
+
+          } else if (e.keyCode === LFT_KCD) {
+            // left arrow
+            var previous = textareas[no - 1];
+            if (previous !== undefined && pos == 0) {
+              e.preventDefault();
+              var result = getLastLineNumber(previous);
+              var num = result[0];
+              pos = previous.value.length;
+              if (num > MAX_LINE_NUM) {
+                pos -= 1;
+              }
+              previous.focus();
+              previous.setSelectionRange(pos, pos);
+            }
+
+          } else if (keyCode === UP_KCD) {
+            // top arrow
+            var previous = textareas[no - 1];
+            var result = function () {
+              // 先頭行でキー押下されたか判定
+              var firstLen = val.split("\n")[0].length;
+              firstLen = firstLen >= MAX_CHAR_NUM ? MAX_CHAR_NUM - 1 : firstLen;
+              return pos >= 0 && pos <= firstLen;
+            };
+            if (previous !== undefined && result()) {
+              e.preventDefault();
+              var result = getLastLineNumber(previous);
+              var ary = result[1];
+              var endLen = ary[MAX_LINE_NUM - 1].join("").length;
+              var startPos = previous.value.length - endLen;
+              pos = startPos + (pos > endLen ? endLen - 1 : pos);
+              previous.focus();
+              previous.setSelectionRange(pos, pos);
+            }
+          } else if (keyCode === RGT_KCD) {
+            // right arrow
+            var next = textareas[no + 1];
+            var result = function () {
+              // 最終行の行末でキー押下されたか判定
+              var result = getLastLineNumber(elem);
+              var num = result[0];
+              return (
+                (num > MAX_LINE_NUM && pos == val.length - 1) ||
+                (num == MAX_LINE_NUM && pos == val.length)
+              );
+            };
+            if (next !== undefined && result()) {
+              e.preventDefault();
+              next.focus();
+              next.setSelectionRange(0, 0);
+            }
+          } else if (keyCode === DWN_KCD) {
+            // down arrow
+            var next = textareas[no + 1];
+            var begin;
+            var result = function () {
+              // 最終行でキー押下されたか判定
+              var result = getLastLineNumber(elem);
+              var ary = result[1];
+              begin = len - ary[MAX_LINE_NUM - 1].join("").length;
+              return pos >= begin && pos <= len;
+            };
+            if (next !== undefined && result()) {
+              e.preventDefault();
+              var result = getLastLineNumber(next);
+              var ary = result[1];
+              firstLine = ary[0].join("");
+              var firstLen = firstLine.length;
+              if (checkNewLine(firstLine.slice(-1))) {
+                firstLen -= 1;
+              }
+              var startPos = pos - begin;
+              pos = startPos >= firstLen ? firstLen : startPos;
+              next.focus();
+              next.setSelectionRange(pos, pos);
+            }
+          } else if (keyCode === DEL_KCD) {
+            // delete
+            var next = textareas[no + 1];
+            if (
+              next !== undefined &&
+              pos == val.length &&
+              pos == elem.selectionEnd
+            ) {
+              e.preventDefault();
+              deleteKeydown(textareas, no);
+
+              // 最終頁の削除
+              var text = textareas[textareas.length - 1];
+              if (text.value.length == 0) {
+                var section = text.parentNode.parentNode;
+                section.parentNode.removeChild(section);
+              }
+            } else {
+              var result = getLastLineNumber(elem);
+              postLineNum = result[0];
+            }
+            // ADD Start 入力文字数カウンタ
+            DispLetterCount(textareas);
+            // ADD End-- 入力文字数カウンタ
+            
+          /* ADD Start 半角空白禁止 */
+          // } else if (keyCode === SP_KCD || keyCode === SHFTSP_KCD) {
+          } else if (keyCode === SP_KCD) {
+            // half-space
+            e.preventDefault();
+            elem.value = val.substr(0, pos) + FULL_SPACE + val.substr(pos, val.length);
+            elem.setSelectionRange(pos + 1, pos + 1);
+          /* ADD End-- 半角空白禁止 */
+          }
+
+          /* ADD Start タブレイアウト */
+          var ary = [];
+          var r = getLastLineNumber(elem);
+          ary = r[1];
+          var la = ary.length; // ary 配列の長さ
+          var si = "";
+          var sj = "";
+          var sk = "";
+          var f = false;
+          var half_space = "\x20";
+          for(var i = 0, j = 0; i < la; i++){
+              ary[i] = ary[i].join("");
+              si = ary[i].slice(-1);
+              sk = ary[i].slice(0,-1);
+              sj = sk.slice(-1);
+              if(si === "\n" && (sj === half_space || sj === "\t")){
+                // 末尾の半角空白・タブを削除
+                ary[i] = sk.replace(new RegExp(half_space + '+$', 'g'), "").replace(/\t+$/g, "")
+                           .replace(new RegExp(half_space + '+$', 'g'), "").replace(/\t+$/g, "");
+                // 削除した文字数分のカーソル位置を戻す。
+                sk = sk.replace(ary[i], "");
+                pos -= sk.length;
+                ary[i] = ary[i] + "\n";
+                f = true;
+              }
+          }
+          if(f){
+            elem.value = ary.join("");
+            elem.setSelectionRange(pos, pos);
+          }
+          /* ADD End-- タブレイアウト */
+
+        });
+      });
+
+      /**
+       * 行の押上処理
+       *
+       * @param {*} pages
+       * @param {*} no
+       * @param {*} lineNum
+       * @author mrt
+       */
+      function pushUpRow(pages, no, lineNum) {
+        var elem = pages[no];
+        var len = elem.value.length;
+        var pos = elem.selectionStart;
+
+        var result = function () {
+          var words = elem.value.split("\n");
+          var endLine = words[words.length - 1];
+          var endPos = pos >= len - endLine.length && pos <= len;
+          return endPos && !checkNewLine(elem.value.slice(-1));
+        };
+        if (postLineNum > lineNum || result()) {
+          // 行数が減る or 頁跨ぎの連続文字を最終行でDel/BSキーで減らす
+          deleteChar(pages, no, postLineNum - lineNum);
+          elem.focus();
+          elem.setSelectionRange(pos, pos);
+
+          if (pages[pages.length - 1].value.length == 0) {
+            var section = pages[pages.length - 1].parentNode.parentNode;
+            section.parentNode.removeChild(section);
+          }
+        }
+      }
+
+      /**
+       * 次頁文字削除
+       *
+       * @param {*} pages
+       * @param {*} no
+       * @param {*} diff
+       * @author mrt
+       */
+      function deleteChar(pages, no, diff) {
+        var page = pages[no];
+        var next = pages[no + 1];
+
+        var result = getLastLineNumber(next);
+        var num = result[0];
+        var ary = result[1];
+        for (var i = 0; i < (diff <= 0 ? 1 : diff); i++) {
+          if (ary[i] === undefined) {
+            break;
+          }
+          var line = ary[i].join("");
+          page.value = page.value + line;
+          var nextVal = next.value;
+          next.value = nextVal.substring(line.length, nextVal.length);
+        }
+        // 編集後の頁情報を取得
+        result = getLastLineNumber(page);
+        num = result[0];
+        ary = result[1];
+        if (num > MAX_LINE_NUM) {
+          writeNextSheet(pages, no, ary);
+        }
+
+        if (pages[no + 2] !== undefined) {
+          deleteChar(pages, no + 1, diff);
+        }
+      }
+
+      /**
+       * 次頁書込み処理
+       *
+       * @param {*} pages
+       * @param {*} no
+       * @param {*} ary
+       * @author mrt
+       */
+      function writeNextSheet(pages, no, ary) {
+        var next = pages[no + 1];
+        if (next === undefined) {
+          // 新規頁作成
+          next = createNextSheet(no + 1);
+        }
+
+        // 次頁書込み
+        var elem = pages[no];
+        var pos = elem.selectionStart;
+        var len = elem.value.length;
+        var endLine = "";
+        for (var i = MAX_LINE_NUM; i < ary.length; i++) {
+          endLine += ary[i].join("");
+        }
+        next.value = endLine + next.value;
+        elem.value = elem.value.substr(0, len - endLine.length);
+
+        // フォーカス設定
+        var focusArea = null;
+        var resetPos = 0;
+        if (pos >= len - endLine.length && pos <= len) {
+          focusArea = next;
+          if (imeFlag) {
+            resetPos = endLine.length;
+          }
+        } else {
+          focusArea = elem;
+          resetPos = pos;
+        }
+
+        // 後続ページの対応
+        imeFlag = false;
+        var result = getLastLineNumber(next);
+        var num = result[0];
+        var ary = result[1];
+        if (num > MAX_LINE_NUM) {
+          writeNextSheet(pages, no + 1, ary);
+        }
+        focusArea.focus();
+        focusArea.setSelectionRange(resetPos, resetPos);
+      }
+
+      /**
+       * 新規頁作成処理
+       *
+       * @param {*} nextNo
+       * @author mrt
+       */
+      function createNextSheet(nextNo) {
+        const s = document.createElement("section");
+        const d = document.createElement("div");
+        const view = document.createElement("div");
+        const t = document.createElement("textarea");
+
+        s.className = "sheet";
+        d.className = "editor";
+        t.className = "userinput";
+        t.setAttribute("data-page", nextNo);
+        t.inputmode = INPUT_MODE;
+        t.maxLength = MAX_LENGTH;
+        t.spellcheck = false;
+        t.addEventListener("input", function (e) {
+          inputTextarea(e);
+        });
+
+        // 罫線の設定
+        view.className = "normal-line";
+        if (document.getElementsByClassName("under-line").length > 0) {
+          view.className = "under-line";
+        } else if (document.getElementsByClassName("grid-line").length > 0) {
+          view.className = "grid-line";
+        }
+
+        d.appendChild(t);
+        s.appendChild(d);
+        s.appendChild(view);
+        document.getElementsByClassName("book")[0].appendChild(s);
+
+        return t;
+      }
+
+      /**
+       * 次頁書込み処理
+       *
+       * @param {*} pages
+       * @param {*} no
+       * @param {*} ary
+       * @author mrt
+       */
+      function writeNextSheet(pages, no, ary) {
+        var next = pages[no + 1];
+        if (next === undefined) {
+          // 新規頁作成
+          next = createNextSheet(no + 1);
+        }
+
+        // 次頁書込み
+        var elem = pages[no];
+        var pos = elem.selectionStart;
+        var len = elem.value.length;
+        var endLine = "";
+        for (var i = MAX_LINE_NUM; i < ary.length; i++) {
+          endLine += ary[i].join("");
+        }
+        next.value = endLine + next.value;
+        elem.value = elem.value.substr(0, len - endLine.length);
+
+        // フォーカス設定
+        var focusArea = null;
+        var resetPos = 0;
+        if (pos >= len - endLine.length && pos <= len) {
+          focusArea = next;
+          if (imeFlag) {
+            resetPos = endLine.length;
+          }
+        } else {
+          focusArea = elem;
+          resetPos = pos;
+        }
+
+        // 後続ページの対応
+        imeFlag = false;
+        var result = getLastLineNumber(next);
+        var num = result[0];
+        var ary = result[1];
+        if (num > MAX_LINE_NUM) {
+          writeNextSheet(pages, no + 1, ary);
+        }
+        focusArea.focus();
+        focusArea.setSelectionRange(resetPos, resetPos);
+      }
+
+      /**
+       * 新規頁作成処理
+       *
+       * @param {*} nextNo
+       * @returns
+       * @author mrt
+       */
+      function createNextSheet(nextNo) {
+        const s = document.createElement("section");
+        const d = document.createElement("div");
+        const view = document.createElement("div");
+        const t = document.createElement("textarea");
+
+        s.className = "sheet";
+        d.className = "editor";
+        t.className = "userinput";
+        t.setAttribute("data-page", nextNo);
+        t.inputmode = INPUT_MODE;
+        t.maxLength = MAX_LENGTH;
+        t.spellcheck = false;
+        t.addEventListener("input", function (e) {
+          inputTextarea(e);
+        });
+
+        // 罫線の設定
+        view.className = "normal-line";
+        if (document.getElementsByClassName("under-line").length > 0) {
+          view.className = "under-line";
+        } else if (document.getElementsByClassName("grid-line").length > 0) {
+          view.className = "grid-line";
+        }
+
+        d.appendChild(t);
+        s.appendChild(d);
+        s.appendChild(view);
+        document.getElementsByClassName("book")[0].appendChild(s);
+
+        return t;
+      }
+
+      /**
+       * 行数の取得処理
+       *
+       * @param {*} elem イベント
+       * @author mrt
+       */
+      function getLastLineNumber(elem) {
+        // 行列の宣言
+        row = new Array(MAX_CHAR_NUM + 1);
+        ary = new Array();
+
+        var count = 0;
+        var num = 1;
+        var letters = elem.value.split("");
+
+        for (var i = 0; i < letters.length; i++) {
+          var letter = letters[i];
+          if (checkNewLine(letter)) {
+            row[count] = letter;
+            ary.push(row);
+            row = new Array(MAX_CHAR_NUM + 1);
+            num++;
+            count = 0;
+          } else {
+            if (letter == "\t") {
+              if (count < MAX_CHAR_NUM) {
+                var temp =
+                  count % TAB_COUNT == 0
+                    ? TAB_COUNT
+                    : TAB_COUNT - (count % TAB_COUNT);
+                row[count] = letter;
+                count += temp;
+              } else {
+                row[count] = letter;
+                count++;
+                if(num >= MAX_LINE_NUM) {
+                  ary.push(row);
+                  row = new Array(MAX_CHAR_NUM + 1);
+                  num++;
+                }
+              }
+            } else {
+              if (count >= MAX_CHAR_NUM) {
+                ary.push(row);
+                row = new Array(MAX_CHAR_NUM + 1);
+                num++;
+                count = 0;
+              }
+              row[count] = letter;
+              count++;
+            }
+          }
+        }
+
+        if (row.length > 0) {
+          ary.push(row);
+        }
+
+        return [num, ary];
+      }
+
+      /**
+       * デリート（キーダウン）
+       *
+       * @param {*} text
+       * @param {*} no
+       * @author mrt
+       */
+      function deleteKeydown(text, no) {
+        var page = text[no];
+        var next = text[no + 1];
+        var val = page.value;
+        var len = val.length;
+        var nextVal = next.value;
+        var nextLen = nextVal.length;
+
+        var result = getLastLineNumber(next);
+        var post = result[0];
+        var ary = result[1];
+
+        var line = ary[0].join("");
+        var line2 = line.substring(1, line.length);
+        page.value = val + line2;
+        next.value = nextVal.substring(line.length, nextVal.length);
+
+        result = getLastLineNumber(page);
+        num = result[0];
+        ary = result[1];
+        if (num > MAX_LINE_NUM) {
+          writeNextSheet(text, no, ary);
+        }
+
+        if (text[no + 2] !== undefined) {
+          deleteKeydown(text, no + 1);
+        }
+
+        if (post > MAX_LINE_NUM) {
+          page.focus();
+          page.setSelectionRange(page.value.length, page.value.length);
+        } else {
+          next.focus();
+          next.setSelectionRange(0, 0);
+        }
+      }
+
+      /**
+       * バックスペース（キーダウン）
+       *
+       * @param {*} text
+       * @param {*} no
+       */
+      function backspaceKeydown(text, no) {
+        var page = text[no];
+        var previous = text[no - 1];
+        var val = page.value;
+        var preVal = previous.value;
+
+        // BackSpace分、1文字長さを引いておく
+        var preLen = preVal.length - 1;
+
+        var result = getLastLineNumber(page);
+        var num = result[0];
+        var ary = result[1];
+
+        result = getLastLineNumber(previous);
+        var post = result[0];
+
+        var line = ary[0].join("");
+        previous.value = preVal.substring(0, preVal.length - 1) + line;
+        page.value = val.substring(line.length, val.length);
+
+        result = getLastLineNumber(previous);
+        num = result[0];
+        ary = result[1];
+        if (num > MAX_LINE_NUM) {
+          writeNextSheet(text, no - 1, ary);
+        }
+
+        if (text[no + 1] !== undefined) {
+          backspaceKeydown(text, no + 1);
+        }
+
+        previous.focus();
+        previous.setSelectionRange(preLen, preLen);
+
+        // 最終頁の削除
+        if (text[text.length - 1].value.length == 0) {
+          var section = text[text.length - 1].parentNode.parentNode;
+          section.parentNode.removeChild(section);
+        }
+      }
+
+      /**
+       * 改行チェック
+       *
+       * @param char 文字
+       * @return 結果
+       * @author mrt
+       */
+      function checkNewLine(char) {
+        if (char == "\r" || char == "\n" || char == "\r\n") {
+          return true;
+        }
+        return false;
+      }
+
+      /**
+       * 入力イベント
+       *
+       * @param {*} e
+       * @author mrt
+      */
+      function inputTextarea(e) {
+        var elem = e.target;
+        var no = parseInt(elem.getAttribute("data-page"));
+        var pages = document.getElementsByClassName("userinput");
+
+        // 行数取得
+        var result = getLastLineNumber(elem);
+        var lineNum = result[0];
+        var ary = result[1];
+
+        if (keyCode === BS_KCD || keyCode === DEL_KCD) {
+          if (pages[no + 1] !== undefined) {
+            pushUpRow(pages, no, lineNum);
+          }
+        } else if (composition) {
+          if (lineNum > MAX_LINE_NUM) {
+            writeNextSheet(pages, no, ary);
+          }
+        }
+
+        // ADD Start 入力文字数カウンタ
+        DispLetterCount(pages);
+        // ADD End   入力文字数カウンタ
+      }
+    </script>
+  </body>
+</html>

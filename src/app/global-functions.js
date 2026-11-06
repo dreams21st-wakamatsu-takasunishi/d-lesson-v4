@@ -53,10 +53,20 @@ import {
 import { closeRewardOverlay } from '../ui/reward.js';
 import { handleGlobalBack, handleGlobalHome, handleGlobalLogout, showScreen, toggleFullScreen } from '../ui/screen.js';
 import { speakInstruction, speakTextTask } from '../ui/speech.js';
+import { openOneHandMenu, goToTextCategory } from '../ui/extra-keyboard.js';
+import {
+    advanceMockExam, editMockCatalog, leaveMockExam, openMockExam, selectMockExam,
+    toggleMockFullText, removeMockProblem, repeatMockGuide, saveMockAnswer,
+    stopMockExam, stopMockVoice, storeMockProblem
+} from '../games/mock-exam.js';
 import { closeTeacherStatus, openTeacherMenu, openTeacherStatus } from '../ui/teacher-status.js';
 
 export function registerAppGlobalHandlers() {
     const globalFunctions = [
+        openOneHandMenu, goToTextCategory,
+        advanceMockExam, editMockCatalog, leaveMockExam, openMockExam, selectMockExam,
+        toggleMockFullText, removeMockProblem, repeatMockGuide, saveMockAnswer,
+        stopMockExam, stopMockVoice, storeMockProblem,
         toggleSFX, toggleBGM, toggleFullScreen, goToGradeSelect, loginAsMaster, showScreen, showCustomAlert,
 
         goToMouseMenu, goToKeyboardCategory, goToKeyboardMenu, goToWeakTraining, goToTextMenu, goToMinigameMenu, goToFreeTimeMenu, goToVisionMenu,

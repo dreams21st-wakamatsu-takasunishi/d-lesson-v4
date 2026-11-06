@@ -1,0 +1,580 @@
+﻿/* 
+' Tool      ： SP認定試験エディタ（日本語）
+' Name      ： screensize.css(IE用ブラウザの画面拡大・縮小）
+' Create    ： 2020/12/16 tht
+' Update    ：  
+*/
+@charset "utf-8";
+/* 67% 以下*/
+@media screen and (min-width:160.1em) { 
+  textarea {
+    background-color: #e0e0e0;
+    color:#e0e0e0;
+    position: relative;
+    z-index: 2;
+    resize: none;
+    overflow: hidden;
+    border: hidden;
+    outline: none;
+    font-family: "SnetMonoGothic";
+    font-size: 0.85em;
+    letter-spacing: 0.2em;
+    line-height: 1.89em;
+    width: 48.5em;
+    height: 70em;
+    tab-size: 6em;
+    word-break: break-all;
+    line-break: anywhere;
+  }
+
+  .normal-line {
+    position: relative;
+    z-index: 1;
+    top: -60.8em;
+    left: -1px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    height: 58.5em;
+    margin-top:0.79em;
+    width: 40.8em;
+  }
+  .under-line {
+    position: relative;
+    z-index: 1;
+    top: -61em;
+    left: -1px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    height: 56.5em;
+    margin-top: 1em;
+    width: 40.8em;
+    background-size: 1.5em 1.57em;
+  }
+  .grid-line {
+    position: relative;
+    z-index: 1;
+    top: -61em;
+    left: -1px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    margin-left:0.01em;
+    height: 56.5em;
+    width: 40.8em;
+    margin-top: 1em;
+    background-size: 1.02em 1.57em;
+  }
+}
+/* 75% */
+@media screen and (min-width: 155.1em) and (max-width:175em) { 
+  textarea {
+    background-color: transparent;
+    color: black;
+    position: relative;
+    z-index: 2;
+    resize: none;
+    overflow: hidden;
+    border: hidden;
+    outline: none;
+    font-family: "SnetMonoGothic";
+    font-size: 0.85em;
+    letter-spacing: 0.2em;
+    line-height: 1.85em;
+    width: 48.5em;
+    height: 70em;
+    tab-size: 6em;
+    word-break: break-all;
+    line-break: anywhere;
+  }
+
+  .normal-line {
+    position: relative;
+    z-index: 1;
+    top: -60.8em;
+    left: -1px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    height: 57em;
+    margin-top:0.79em;
+    width: 40.8em;
+  }
+  .under-line {
+    position: relative;
+    z-index: 1;
+    top: -60.8em;
+    left: -1.5px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    height: 57em;
+    margin-top: 0.9em;
+    width: 40.8em;
+    background: linear-gradient(#ccc 1px, transparent 0);
+    background: -ms-linear-gradient(#ccc 2px, transparent 0);
+    background-size: 1.02em 1.59em;
+  }
+  .grid-line {
+    position: relative;
+    z-index: 1;
+    top: -60.8em;
+    left: -1.5px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    margin-top: 0.9em;
+    margin-left:0.01em;
+    height: 57em;
+    width: 40.8em;
+    background: linear-gradient(#ccc 0.8px, transparent 0),
+                linear-gradient(90deg, #ccc 0.8px, transparent 0);
+    background: -ms-linear-gradient(#ccc 2px, transparent 0),
+                -ms-linear-gradient(180deg, #ccc 2px, transparent 0);
+    background-size: 1.02em 1.59em;
+  }
+}
+/* 80% */
+@media screen and (min-width: 140.1em) and (max-width:155em) { 
+  textarea {
+    background-color: transparent;
+    position: relative;
+    z-index: 2;
+    resize: none;
+    overflow: hidden;
+    border: hidden;
+    outline: none;
+    font-family: "SnetMonoGothic";
+    font-size: 0.85em;
+    letter-spacing: 0.2em;
+    line-height: 1.89em;
+    width: 48.5em;
+    height: 70em;
+    tab-size: 6em;
+    word-break: break-all;
+    line-break: anywhere;
+  }
+  
+  .normal-line {
+    position: relative;
+    z-index: 1;
+    top: -60em;
+    left: -1px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    height: 57.5em;
+    margin-top:0.5em;
+    width: 40.8em;
+  }
+  .under-line {
+    position: relative;
+    z-index: 1;
+    top: -60em;
+    left: -1px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    height: 57.5em;
+    margin-top: 0.5em;
+    width: 40.8em;
+    background: -ms-linear-gradient(#ccc 1.9px, transparent 0);
+    background-size: 1.5em 1.6em;
+  }
+  .grid-line {
+    position: relative;
+    z-index: 1;
+    top: -60em;
+    left: -1.5px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    margin-top: 0.5em;
+    margin-left:0.01em;
+    height: 57.5em;
+    width: 40.8em;
+    background: -ms-linear-gradient(#ccc 1.9px, transparent 0),
+                -ms-linear-gradient(180deg, #ccc 1.9px, transparent 0);
+    background-size: 1.02em 1.6em;
+  }
+}
+/* 90% */
+@media screen and (min-width: 130em) and (max-width:140em) { 
+  textarea {
+    background-color: transparent;
+    position: relative;
+    z-index: 2;
+    resize: none;
+    overflow: hidden;
+    border: hidden;
+    outline: none;
+    font-family: "SnetMonoGothic";
+    font-size: 0.85em;
+    letter-spacing: 0.2em;
+    line-height: 1.88em;
+    width: 48.5em;
+    height: 71.4em;
+    tab-size: 6em;
+    word-break: break-all;
+    line-break: anywhere;
+  }
+  
+  .normal-line {
+    position: relative;
+    z-index: 1;
+    top: -61.9em;
+    left: -1.5px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    height: 57.8em;
+    margin-top:1em;
+    width: 40.8em;
+  }
+  .under-line {
+    position: relative;
+    z-index: 1;
+    top: -61.9em;
+    left: -1.5px;
+    border: solid 0.1px;
+    border-color:#ccc;
+    height: 57.8em;
+    margin-top: 1em;
+    width: 40.8em;
+    background: linear-gradient(#ccc 1.9px, transparent 0);
+    background-size: 1.02em 1.6em;
+  }
+  .grid-line {
+    position: relative;
+    z-index: 1;
+    top: -61.9em;
+    left: -1.5px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    margin-top: 1em;
+    margin-left:0.01em;
+    height: 57.8em;
+    width: 40.8em;
+    background: -ms-linear-gradient(#ccc 1.9px, transparent 0),
+                -ms-linear-gradient(180deg, #ccc 1.9px, transparent 0);
+    background-size: 1.02em 1.6em;
+  }
+}
+/* 95% */
+@media screen and (min-width: 120.9em) and (max-width:129.9em) { 
+  textarea {
+   background-color: transparent;
+   position: relative;
+   z-index: 2;
+   resize: none;
+   overflow: hidden;
+   border: hidden;
+   outline: none;
+   font-family: "SnetMonoGothic";
+   font-size: 0.85em;
+   letter-spacing: 0.2em;
+   line-height: 1.89em;
+   width: 48.5em;
+   height: 72em;
+   tab-size: 6em;
+   word-break: break-all;
+   line-break: anywhere;
+ }
+ 
+ .normal-line {
+   position: relative;
+   z-index: 1;
+   top: -61em;
+   left: -1.5px;
+   border: solid 0.1px;
+   border-color: #ccc;
+   height: 57.7em;
+   width: 40.8em;
+ }
+ .under-line {
+   position: relative;
+   z-index: 1;
+   top: -61em;
+   left: -1.5px;
+   border: solid 0.1px;
+   border-color: #ccc;
+   height: 57.7em;
+   width: 40.9em;
+   background: -webkit-linear-gradient(#ccc 1px, transparent 0);
+   background: linear-gradient(#ccc 1px, transparent 0);
+   background: -ms-linear-gradient(#ccc 2px, transparent 0);
+   background-size: 1.03em 1.6em;
+ }
+ .grid-line {
+   position: relative;
+   z-index: 1;
+   top: -61em;
+   left: -1.5px;
+   border: solid 0.1px;
+   border-color: #ccc;
+   height: 57.7em;
+   width: 40.8em;
+   background: -webkit-linear-gradient(#ccc 1px, transparent 0),
+               -webkit-linear-gradient(90deg, #ccc 1px, transparent 0);
+   background: linear-gradient(#ccc 1px, transparent 0),
+               linear-gradient(90deg, #ccc 1px, transparent 0);
+   background: -ms-linear-gradient(#ccc 2px, transparent 0),
+               -ms-linear-gradient(180deg, #ccc 2px, transparent 0);
+   background-size: 1.02em 1.6em;
+ }
+}
+/* 100% */
+@media screen and (min-width: 110em) and (max-width:129.9em) { 
+  textarea {
+    background-color: transparent;
+    position: relative;
+    z-index: 2;
+    resize: none;
+    overflow: hidden;
+    border: hidden;
+    outline: none;
+    font-family: "SnetMonoGothic";
+    font-size: 0.85em;
+    letter-spacing: 0.2em;
+    line-height: 1.75em;
+    width: 48.5em;
+    height: 72em;
+    tab-size: 6em;
+    word-break: break-all;
+    line-break: anywhere;
+  }
+  
+  .normal-line {
+    position: relative;
+    z-index: 1;
+    top: -61.5em;
+    left: -1px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    height: 54em;
+    width: 40.8em;
+  }
+  .under-line {
+    position: relative;
+    z-index: 1;
+    top: -61.5em;
+    left: -1px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    height: 54em;
+    width: 40.8em;
+    background: -webkit-linear-gradient(#ccc 1px, transparent 0);
+    background: linear-gradient(#ccc 1px, transparent 0);
+    background: -ms-linear-gradient(#ccc 2px, transparent 0);
+    background-size: 1.018em 1.5em;
+  }
+  .grid-line {
+    position: relative;
+    z-index: 1;
+    top: -61.5em;
+    left: -1px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    height: 54em;
+    width: 40.7em;
+    background: -webkit-linear-gradient(#ccc 1px, transparent 0),
+                -webkit-linear-gradient(90deg, #ccc 1px, transparent 0);
+    background: linear-gradient(#ccc 1px, transparent 0),
+                linear-gradient(90deg, #ccc 1px, transparent 0);
+    background: -ms-linear-gradient(#ccc 2px, transparent 0),
+                -ms-linear-gradient(180deg, #ccc 2px, transparent 0);                
+    background-size: 1.02em 1.5em;
+  }
+}
+/* 110% */
+@media screen and (min-width: 100em) and (max-width:109.9em) { 
+  textarea {
+    background-color: transparent;
+    position: relative;
+    z-index: 2;
+    resize: none;
+    overflow: hidden;
+    border: hidden;
+    outline: none;
+    font-family: "SnetMonoGothic";
+    font-size: 0.85em;
+    letter-spacing: 0.2em;
+    line-height: 1.77em;
+    width: 48.5em;
+    height: 72em;
+    tab-size: 6em;
+    word-break: break-all;
+    line-break: anywhere;
+  }
+  
+  .normal-line {
+    position: relative;
+    z-index: 1;
+    top: -61em;
+    left: -1px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    height: 54.1em;
+    width: 40.8em;
+  }
+  .under-line {
+    position: relative;
+    z-index: 1;
+    top: -61em;
+    left: -1px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    height: 54.1em;
+    width: 40.7em;
+    background: -webkit-linear-gradient(#ccc 1px, transparent 0);
+    background: linear-gradient(#ccc 1px, transparent 0);
+    background: -ms-linear-gradient(#ccc 2px, transparent 0);
+    background-size: 1.5em 1.5em;
+  }
+  .grid-line {
+    position: relative;
+    z-index: 1;
+    top: -61.09em;
+    left: -1px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    height: 54.1em;
+    width: 40.7em;
+    background: -webkit-linear-gradient(#ccc 1px, transparent 0),
+                -webkit-linear-gradient(90deg, #ccc 1px, transparent 0);
+    background: linear-gradient(#ccc 1px, transparent 0),
+                linear-gradient(90deg, #ccc 1px, transparent 0);
+    background: -ms-linear-gradient(#ccc 2px, transparent 0),
+                -ms-linear-gradient(180deg, #ccc 2px, transparent 0);
+    background-size: 1.02em 1.5em;
+  }
+}
+/* 125% ~ 200% */
+@media screen and (min-width: 50em) and (max-width:99.9em) { 
+  textarea {
+    background-color: transparent;
+    position: relative;
+    z-index: 2;
+    resize: none;
+    overflow: hidden;
+    border: hidden;
+    outline: none;
+    font-family: "SnetMonoGothic";
+    font-size: 0.85em;
+    letter-spacing: 0.2em;
+    line-height: 1.76em;
+    width: 48.5em;
+    height: 72em;
+    tab-size: 6em;
+    word-break: break-all;
+    line-break: anywhere;
+  }
+
+  .normal-line {
+    position: relative;
+    z-index: 1;
+    top: -61.4em;
+    left: -1px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    height: 54.1em;
+    width: 40.8em;
+  }
+  .under-line {
+    position: relative;
+    z-index: 1;
+    top: -61.4em;
+    left: -1.3px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    height: 54.1em;
+    width: 40.7em;
+    background: -webkit-linear-gradient(#ccc 1px, transparent 0);
+    background: linear-gradient(#ccc 1px, transparent 0);
+    background: -ms-linear-gradient(#ccc 2px, transparent 0);
+    background-size: 1.018em 1.5em;
+  }
+  .grid-line {
+    position: relative;
+    z-index: 1;
+    top: -61.4em;
+    left: -1.3px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    height: 54.1em;
+    width: 40.7em;
+    background: -webkit-linear-gradient(#ccc 1px, transparent 0),
+                -webkit-linear-gradient(90deg, #ccc 1px, transparent 0);
+    background: linear-gradient(#ccc 1px, transparent 0),
+                linear-gradient(90deg, #ccc 1px, transparent 0);
+    background: -ms-linear-gradient(#ccc 2px, transparent 0),
+                -ms-linear-gradient(180deg, #ccc 2px, transparent 0);
+    background-size: 1.025em 1.5em;
+  }
+}
+/* 250% */
+@media screen and (max-width:49.9em) { 
+  textarea {
+    background-color: transparent;
+    position: relative;
+    z-index: 2;
+    resize: none;
+    overflow: hidden;
+    border: hidden;
+    outline: none;
+    font-family: "SnetMonoGothic";
+    font-size: 0.85em;
+    letter-spacing: 0.2em;
+    line-height: 1.76em;
+    width: 48.5em;
+    height: 72em;
+    tab-size: 6em;
+    word-break: break-all;
+    line-break: anywhere;
+  }
+  
+  .normal-line {
+    position: relative;
+    z-index: 1;
+    top: -61.3em;
+    left: -1px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    height: 54em;
+    width: 40.8em;
+  }
+  .under-line {
+    position: relative;
+    z-index: 1;
+    top: -61.3em;
+    left: -1px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    height: 54em;
+    width: 40.7em;
+    background: -webkit-linear-gradient(#ccc 1px, transparent 0);
+    background: linear-gradient(#ccc 1px, transparent 0);
+    background: -ms-linear-gradient(#ccc 2px, transparent 0);
+    background-size: 1.018em 1.5em;
+  }
+  .grid-line {
+    position: relative;
+    z-index: 1;
+    top: -61.3em;
+    left: -1px;
+    border: solid 0.1px;
+    border-color: #ccc;
+    height: 54em;
+    width: 40.7em;
+    background: -webkit-linear-gradient(#ccc 1px, transparent 0),
+                -webkit-linear-gradient(90deg, #ccc 1px, transparent 0);
+    background: linear-gradient(#ccc 1px, transparent 0),
+                linear-gradient(90deg, #ccc 1px, transparent 0);
+    background: -ms-linear-gradient(#ccc 2px, transparent 0),
+                -ms-linear-gradient(180deg, #ccc 2px, transparent 0);
+    background-size: 1.02em 1.5em;
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+

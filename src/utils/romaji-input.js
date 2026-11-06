@@ -1,7 +1,7 @@
 const BASE_ROMAJI = Object.freeze({
-    'あ':['A'], 'い':['I','YI'], 'う':['U','WU','WHU'], 'え':['E'], 'お':['O'],
-    'か':['KA','CA'], 'き':['KI'], 'く':['KU','CU','QU'], 'け':['KE'], 'こ':['KO','CO'],
-    'さ':['SA'], 'し':['SI','SHI','CI'], 'す':['SU'], 'せ':['SE','CE'], 'そ':['SO'],
+    'あ':['A'], 'い':['I'], 'う':['U'], 'え':['E'], 'お':['O'],
+    'か':['KA'], 'き':['KI'], 'く':['KU'], 'け':['KE'], 'こ':['KO'],
+    'さ':['SA'], 'し':['SI','SHI'], 'す':['SU'], 'せ':['SE'], 'そ':['SO'],
     'た':['TA'], 'ち':['TI','CHI'], 'つ':['TU','TSU'], 'て':['TE'], 'と':['TO'],
     'な':['NA'], 'に':['NI'], 'ぬ':['NU'], 'ね':['NE'], 'の':['NO'],
     'は':['HA'], 'ひ':['HI'], 'ふ':['HU','FU'], 'へ':['HE'], 'ほ':['HO'],
@@ -14,13 +14,13 @@ const BASE_ROMAJI = Object.freeze({
     'だ':['DA'], 'ぢ':['DI','JI'], 'づ':['DU','ZU'], 'で':['DE'], 'ど':['DO'],
     'ば':['BA'], 'び':['BI'], 'ぶ':['BU'], 'べ':['BE'], 'ぼ':['BO'],
     'ぱ':['PA'], 'ぴ':['PI'], 'ぷ':['PU'], 'ぺ':['PE'], 'ぽ':['PO'],
-    'ぁ':['LA','XA'], 'ぃ':['LI','XI','LYI','XYI'], 'ぅ':['LU','XU'], 'ぇ':['LE','XE','LYE','XYE'], 'ぉ':['LO','XO'],
+    'ぁ':['LA','XA'], 'ぃ':['LI','XI'], 'ぅ':['LU','XU'], 'ぇ':['LE','XE'], 'ぉ':['LO','XO'],
     'ゃ':['LYA','XYA'], 'ゅ':['LYU','XYU'], 'ょ':['LYO','XYO'], 'ゎ':['LWA','XWA'],
     'きゃ':['KYA'], 'きぃ':['KYI'], 'きゅ':['KYU'], 'きぇ':['KYE'], 'きょ':['KYO'],
     'ぎゃ':['GYA'], 'ぎぃ':['GYI'], 'ぎゅ':['GYU'], 'ぎぇ':['GYE'], 'ぎょ':['GYO'],
     'しゃ':['SYA','SHA'], 'しぃ':['SYI'], 'しゅ':['SYU','SHU'], 'しぇ':['SYE','SHE'], 'しょ':['SYO','SHO'],
     'じゃ':['ZYA','JYA','JA'], 'じぃ':['ZYI','JYI'], 'じゅ':['ZYU','JYU','JU'], 'じぇ':['ZYE','JYE','JE'], 'じょ':['ZYO','JYO','JO'],
-    'ちゃ':['TYA','CYA','CHA'], 'ちぃ':['TYI','CYI'], 'ちゅ':['TYU','CYU','CHU'], 'ちぇ':['TYE','CYE','CHE'], 'ちょ':['TYO','CYO','CHO'],
+    'ちゃ':['TYA','CHA'], 'ちぃ':['TYI'], 'ちゅ':['TYU','CHU'], 'ちぇ':['TYE','CHE'], 'ちょ':['TYO','CHO'],
     'ぢゃ':['DYA'], 'ぢぃ':['DYI'], 'ぢゅ':['DYU'], 'ぢぇ':['DYE'], 'ぢょ':['DYO'],
     'にゃ':['NYA'], 'にぃ':['NYI'], 'にゅ':['NYU'], 'にぇ':['NYE'], 'にょ':['NYO'],
     'ひゃ':['HYA'], 'ひぃ':['HYI'], 'ひゅ':['HYU'], 'ひぇ':['HYE'], 'ひょ':['HYO'],
@@ -29,7 +29,7 @@ const BASE_ROMAJI = Object.freeze({
     'みゃ':['MYA'], 'みぃ':['MYI'], 'みゅ':['MYU'], 'みぇ':['MYE'], 'みょ':['MYO'],
     'りゃ':['RYA'], 'りぃ':['RYI'], 'りゅ':['RYU'], 'りぇ':['RYE'], 'りょ':['RYO'],
     'いぇ':['YE'], 'うぁ':['WHA'], 'うぃ':['WI','WHI'], 'うぇ':['WE','WHE'], 'うぉ':['WHO'],
-    'くぁ':['QA','KWA'], 'くぃ':['QI','KWI'], 'くぇ':['QE','KWE'], 'くぉ':['QO','KWO'], 'くゃ':['QYA'], 'くゅ':['QYU'], 'くょ':['QYO'],
+    'くぁ':['KWA'], 'くぃ':['KWI'], 'くぇ':['KWE'], 'くぉ':['KWO'],
     'ぐぁ':['GWA'], 'ぐぃ':['GWI'], 'ぐぇ':['GWE'], 'ぐぉ':['GWO'],
     'すぃ':['SWI'], 'ずぃ':['ZWI'], 'つぁ':['TSA'], 'つぃ':['TSI'], 'つぇ':['TSE'], 'つぉ':['TSO'],
     'てゃ':['THA'], 'てぃ':['THI'], 'てゅ':['THU'], 'てぇ':['THE'], 'てょ':['THO'],
@@ -96,7 +96,7 @@ function buildSegments(text) {
         if (token === 'ん') {
             const nextInitials = segments[index + 1]?.map(value => value[0]) || [];
             const canUseSingleN = nextInitials.length === 0 || nextInitials.every(initial => !/[AEIOUY]/.test(initial));
-            return unique(['NN', "N'", 'XN', ...(canUseSingleN ? ['N'] : [])]);
+            return unique(['NN', "N'", ...(canUseSingleN ? ['N'] : [])]);
         }
         if (token === 'っ') {
             const nextInitials = segments[index + 1]?.map(value => value.match(/^[BCDFGHJKLMNPQRSTVWXYZ]/)?.[0]) || [];
@@ -149,12 +149,18 @@ function analyzeSegments(segments, prefix) {
     return walk(0, 0);
 }
 
-export function createRomajiInputMatcher(text, manualPatterns = []) {
-    const segments = buildSegments(text);
-    const manuals = unique(Array.isArray(manualPatterns) ? manualPatterns : [manualPatterns]);
+export function createRomajiInputMatcher(text, manualPatterns = [], options = {}) {
+    const keys = options.allowedKeys ? new Set(options.allowedKeys) : null;
+    const segments = buildSegments(text).map(aliases => keys
+        ? aliases.filter(alias => [...alias].every(key => keys.has(key))) : aliases);
+    const usable = segments.length > 0 && segments.every(aliases => aliases.length > 0);
+    // Authored hints may choose a spelling, but must never bypass the shared policy.
+    const manuals = unique(Array.isArray(manualPatterns) ? manualPatterns : [manualPatterns])
+        .filter(pattern => usable && analyzeSegments(segments, pattern).complete);
 
     function analyze(value) {
         const prefix = String(value ?? '').toUpperCase();
+        if (!usable) return { valid: false, complete: false, suggestion: '' };
         const manual = manuals.find(pattern => pattern.startsWith(prefix));
         const generated = analyzeSegments(segments, prefix);
         if (manual && (!generated.valid || manual.length < generated.suggestion.length)) {

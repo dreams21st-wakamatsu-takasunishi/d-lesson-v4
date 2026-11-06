@@ -1,0 +1,2 @@
+# Preserve licensed vendor files byte-for-byte, including their original line endings.
+public/official-exam/** -text

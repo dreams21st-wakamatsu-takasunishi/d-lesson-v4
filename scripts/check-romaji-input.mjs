@@ -8,7 +8,7 @@ function accepts(kana, input) {
 
 assert.equal(accepts('し', 'SI'), true);
 assert.equal(accepts('し', 'SHI'), true);
-assert.equal(accepts('し', 'CI'), true);
+assert.equal(accepts('し', 'CI'), false);
 assert.equal(accepts('ち', 'CHI'), true);
 assert.equal(accepts('つ', 'TSU'), true);
 assert.equal(accepts('ふ', 'FU'), true);
@@ -18,7 +18,8 @@ assert.equal(accepts('ぁ', 'XA'), true);
 assert.equal(accepts('きゃ', 'KYA'), true);
 assert.equal(accepts('きゃ', 'KIXYA'), true);
 assert.equal(accepts('しゃ', 'SHA'), true);
-assert.equal(accepts('ちゃ', 'CYA'), true);
+assert.equal(accepts('ちゃ', 'CYA'), false);
+assert.equal(accepts('ちゃ', 'CHA'), true);
 assert.equal(accepts('てぃ', 'THI'), true);
 assert.equal(accepts('てぃ', 'TEXI'), true);
 assert.equal(accepts('ピッピ', 'PIPPI'), true);
@@ -29,7 +30,13 @@ assert.equal(accepts('かんい', "KAN'I"), true);
 assert.equal(accepts('かんい', 'KANI'), false);
 assert.equal(accepts('かんたん', 'KANTANN'), true);
 assert.equal(accepts('かんたん', 'KANNTANN'), true);
-assert.equal(createRomajiInputMatcher('し', ['CUSTOM']).isComplete('CUSTOM'), true);
+assert.equal(createRomajiInputMatcher('し', ['CUSTOM']).isComplete('CUSTOM'), false);
+assert.equal(accepts('ん', 'XN'), false);
+for (const [kana, unusual] of [['か', 'CA'], ['く', 'CU'], ['く', 'QU'], ['こ', 'CO'], ['せ', 'CE'], ['い', 'YI'], ['う', 'WU']]) {
+    const matcher = createRomajiInputMatcher(kana, [unusual]);
+    assert.equal(matcher.acceptsPrefix(unusual[0]), false);
+    assert.equal(matcher.isComplete(unusual), false);
+}
 
 for (const item of [...HIRAGANA_DATA, ...WORD_DATA]) {
     for (const question of item.chars) {

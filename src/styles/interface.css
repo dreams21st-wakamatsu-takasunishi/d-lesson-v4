@@ -1,5 +1,6 @@
 /* Shared navigation and learning surfaces. Game targets retain their own colors and dimensions. */
 :root {
+    --lesson-font: "UD Digi Kyokasho NK", "UD デジタル 教科書体 NK", "M PLUS Rounded 1c", "Meiryo", sans-serif;
     --lesson-ink: #243533;
     --lesson-muted: #596865;
     --lesson-line: #cfdfe7;
@@ -9,8 +10,8 @@
     --lesson-on-background: #243533;
 }
 html, body, button, input, select, textarea { letter-spacing: 0; }
-body { font-family: "M PLUS Rounded 1c", "Hiragino Rounded Gothic ProN", "Meiryo", sans-serif; font-weight: 500; }
-#screen-admin, #screen-teacher, .lesson-dialog { font-family: "Meiryo", "Yu Gothic", sans-serif; }
+body { font-family: var(--lesson-font); font-weight: 400; }
+#screen-admin, #screen-teacher, .lesson-dialog, #romaji-hint, #blind-romaji-progress { font-family: var(--lesson-font); }
 button, input, select, textarea { font-family: inherit; }
 button { touch-action: manipulation; }
 button:disabled { cursor: not-allowed; }
