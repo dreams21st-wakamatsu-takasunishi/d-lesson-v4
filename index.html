@@ -871,18 +871,9 @@
             </div>
             <div id="mock-menu" class="mock-setup">
                 <h2>受検回の選択</h2>
+                <button id="mock-refresh" type="button" class="btn-secondary" onclick="refreshMockExamMenu()"><i data-lesson-icon="refresh-cw"></i>問題を再取得</button>
+                <p id="mock-catalog-status" role="status"></p>
                 <div id="mock-round-grid" class="mock-round-grid"></div>
-                <div id="mock-catalog-admin" hidden>
-                    <h3>問題登録（この端末・校舎 <span id="mock-campus"></span>）</h3>
-                    <button type="button" class="btn-secondary" onclick="editMockCatalog()">問題本文を登録・編集</button>
-                    <form id="mock-catalog-form" hidden onsubmit="storeMockProblem(event)">
-                        <label>第 <input id="mock-admin-round" type="number" min="1" max="999" required> 回</label>
-                        <label>正解本文（段落の先頭は全角空白、段落末は改行）<textarea id="mock-admin-reference" rows="8" maxlength="6000" required spellcheck="false"></textarea></label>
-                        <label><input id="mock-permission" type="checkbox" required>本文のデータ化と、この端末での教材利用が許諾されていることを確認済み</label>
-                        <button type="submit" class="btn-primary">この端末に登録</button>
-                        <button type="button" class="btn-secondary" onclick="removeMockProblem()">端末内の編集を取り消す</button>
-                    </form>
-                </div>
             </div>
             <section id="mock-audio-check" hidden>
                 <i data-lesson-icon="headphones"></i>

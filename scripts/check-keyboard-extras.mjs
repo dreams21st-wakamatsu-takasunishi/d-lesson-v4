@@ -7,7 +7,7 @@ import { createRomajiInputMatcher } from '../src/utils/romaji-input.js';
 import { normalizeOfficialAnswer } from '../src/utils/official-exam-frame.js';
 import officialProblems from '../src/data/mock-exam-problems.json' with { type: 'json' };
 import { scoreMockExam } from '../src/utils/mock-exam-scoring.js';
-import { loadExamCatalog, saveExamProblem, deleteExamProblem } from '../src/utils/mock-exam-catalog.js';
+import { loadExamCatalog, saveExamProblem, deleteExamProblem, parseManagedMockExamCatalog, defaultMockExamCatalog } from '../src/utils/mock-exam-catalog.js';
 import { getTextCoinReward, getMockExamCoinReward } from '../src/utils/text-coin-rewards.js';
 import { parseMockGuide, mockGuidePlainText } from '../src/utils/mock-exam-guide.js';
 
@@ -46,6 +46,11 @@ assert.equal(getMockExamCoinReward(0), 0);
 assert.equal(getMockExamCoinReward(600), 3750);
 assert.equal(normalizeOfficialAnswer(['　　　　　本文\n','続き']), '　本文\n続き');
 assert.equal(officialProblems.length, 8);
+assert.equal(defaultMockExamCatalog().length, 8);
+assert.deepEqual(parseManagedMockExamCatalog([]), []);
+const managed = defaultMockExamCatalog()[0];
+for (const patch of [{id:'round-1'},{round:0},{title:'別問題'},{permissionConfirmed:false},{hidden:'false'},{reference:'　\n '}]) assert.throws(() => parseManagedMockExamCatalog([{...managed,...patch}]));
+assert.throws(() => parseManagedMockExamCatalog([managed, managed]));
 const officialManifest = JSON.parse(readFileSync(new URL('../public/official-exam/source-manifest.json', import.meta.url)));
 for (const file of officialManifest.files.filter(file => !file.path.endsWith('.html'))) {
     const bytes = readFileSync(new URL('../public/official-exam/' + file.path, import.meta.url));

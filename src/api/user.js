@@ -3,6 +3,7 @@ import { SoundManager } from '../utils/sound.js';
 import { calculateGrade, sortGrades } from '../utils/helpers.js';
 import { sanitizeGlobalMistakes } from '../utils/weak-mistakes.js';
 import { campusLearningSettings, replaceCampusCatalogs } from '../utils/managed-content.js';
+import { defaultMockExamCatalog, parseManagedMockExamCatalog } from '../utils/mock-exam-catalog.js';
 import { parseCampusRegistry, registrationCampuses, expectedFields, studentState } from '../utils/student-management.js';
 import { THEMES, EFFECTS, DEFAULT_CAMPUS_ID } from '../data/constants.js';
 export { DEFAULT_CAMPUS_ID } from '../data/constants.js';
@@ -553,6 +554,20 @@ function applyCustomGlobalSettingsIfReady() {
 export function getLearningSettings(userOrId = currentUser) {
     const user = typeof userOrId === 'string' ? users[userOrId] : userOrId;
     return campusLearningSettings(user || {}, users[GLOBAL_SETTINGS_ID] || {});
+}
+
+export async function loadCurrentMockExamCatalog() {
+    const owner = currentUser, user = users[owner];
+    if (!owner || !user) throw Error('ユーザーを選択してください。');
+    const campusId = String(user.campusId || user.campus || 'main');
+    if (guestMode || campusId === 'public' || user.isMaster || !canUseRlsCloudSync()) return { catalog: defaultMockExamCatalog(), revision: 0 };
+    const { data, error } = await supabase.from('lesson_mock_exam_catalogs').select('campus_id,catalog,revision')
+        .eq('data_table', TARGET_TABLE).eq('campus_id', campusId).maybeSingle();
+    if (owner !== currentUser || users[owner] !== user || String(user.campusId || user.campus || 'main') !== campusId) throw Error('ユーザーまたは校舎が変更されました。');
+    if (error) throw Error('模擬試験の問題を取得できませんでした。通信と配信設定を確認して再取得してください。');
+    if (!data) return { catalog: defaultMockExamCatalog(), revision: 0 };
+    if (data.campus_id !== campusId || !Number.isSafeInteger(data.revision) || data.revision < 1) throw Error('問題の配信先を確認してください。');
+    return { catalog: parseManagedMockExamCatalog(data.catalog), revision: data.revision };
 }
 
 async function loadCampusContent() {

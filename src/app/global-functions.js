@@ -55,18 +55,18 @@ import { handleGlobalBack, handleGlobalHome, handleGlobalLogout, showScreen, tog
 import { speakInstruction, speakTextTask } from '../ui/speech.js';
 import { openOneHandMenu, goToTextCategory } from '../ui/extra-keyboard.js';
 import {
-    advanceMockExam, editMockCatalog, leaveMockExam, openMockExam, selectMockExam,
-    toggleMockFullText, removeMockProblem, repeatMockGuide, saveMockAnswer,
-    stopMockExam, stopMockVoice, storeMockProblem
+    advanceMockExam, refreshMockExamMenu, leaveMockExam, openMockExam, selectMockExam,
+    toggleMockFullText, repeatMockGuide, saveMockAnswer,
+    stopMockExam, stopMockVoice
 } from '../games/mock-exam.js';
 import { closeTeacherStatus, openTeacherMenu, openTeacherStatus } from '../ui/teacher-status.js';
 
 export function registerAppGlobalHandlers() {
     const globalFunctions = [
         openOneHandMenu, goToTextCategory,
-        advanceMockExam, editMockCatalog, leaveMockExam, openMockExam, selectMockExam,
-        toggleMockFullText, removeMockProblem, repeatMockGuide, saveMockAnswer,
-        stopMockExam, stopMockVoice, storeMockProblem,
+        advanceMockExam, refreshMockExamMenu, leaveMockExam, openMockExam, selectMockExam,
+        toggleMockFullText, repeatMockGuide, saveMockAnswer,
+        stopMockExam, stopMockVoice,
         toggleSFX, toggleBGM, toggleFullScreen, goToGradeSelect, loginAsMaster, showScreen, showCustomAlert,
 
         goToMouseMenu, goToKeyboardCategory, goToKeyboardMenu, goToWeakTraining, goToTextMenu, goToMinigameMenu, goToFreeTimeMenu, goToVisionMenu,

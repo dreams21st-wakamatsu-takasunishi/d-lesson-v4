@@ -1,16 +1,14 @@
-import { currentUser, users, hasLessonRole, canWriteCurrentUserRow, saveUsers, recordPracticeActivity, refreshStudentIdleLogoutTimer } from '../api/user.js';
+import { currentUser, users, canWriteCurrentUserRow, saveUsers, recordPracticeActivity, refreshStudentIdleLogoutTimer, loadCurrentMockExamCatalog } from '../api/user.js';
 import { showScreen } from '../ui/screen.js';
 import { showCustomAlert, showCustomConfirm } from '../ui/modal.js';
-import { loadExamCatalog, saveExamProblem, deleteExamProblem } from '../utils/mock-exam-catalog.js';
 import { attachOfficialExamFrame } from '../utils/official-exam-frame.js';
 import { scoreMockExam } from '../utils/mock-exam-scoring.js';
 import { getMockExamCoinReward } from '../utils/text-coin-rewards.js';
 import { mockGuidePlainText, renderMockGuide } from '../utils/mock-exam-guide.js';
 
-let catalog = [], run = null, bridge = null, interval = null, generation = 0, narration = null, editingId = null, currentGuide = '';
+let catalog = [], run = null, bridge = null, interval = null, generation = 0, narration = null, currentGuide = '';
+let catalogVersion = 0, catalogLoading = false, catalogPoll = null;
 const $ = id => document.getElementById(id);
-const campus = () => String(users[currentUser]?.campusId || 'main');
-const canManage = () => hasLessonRole('admin', 'teacher');
 const active = () => $('screen-mock-exam').classList.contains('active');
 
 function cancelNarration(completed = false) {
@@ -56,6 +54,7 @@ export function stopMockVoice() { if (!$('mock-voice').checked) cancelNarration(
 
 function cleanup() {
     generation++; clearInterval(interval); interval = null; cancelNarration();
+    catalogVersion++; catalogLoading = false; clearInterval(catalogPoll); catalogPoll = null;
     bridge?.destroy(); bridge = null; run = null;
     $('mock-next').classList.remove('mock-action-highlight');
     $('mock-official-frame').src = 'about:blank';
@@ -67,13 +66,40 @@ export function openMockExam() {
     cleanup();
     if (!currentUser || !users[currentUser]) { showCustomAlert('ユーザーを選択してください。'); showScreen('screen-title'); return; }
     document.querySelectorAll('.confetti').forEach(particle => particle.remove());
-    catalog = loadExamCatalog(localStorage, campus());
+    catalog = [];
     $('mock-menu').hidden = false; $('mock-official-host').hidden = true; $('mock-results').hidden = true; $('mock-audio-check').hidden = true;
-    $('mock-next').hidden = true; $('mock-stop').hidden = true; $('mock-catalog-form').hidden = true;
-    $('mock-catalog-admin').hidden = !canManage(); $('mock-campus').textContent = campus();
+    $('mock-next').hidden = true; $('mock-stop').hidden = true;
     $('mock-exam-title').textContent = '検定模擬試験';
     const menuGuide = '{受検|じゅけん}する{回|かい}をえらびましょう。';
     currentGuide = mockGuidePlainText(menuGuide); renderMockGuide($('mock-guide-text'), menuGuide); $('mock-timer').textContent = '10:00';
+    $('mock-round-grid').replaceChildren();
+    showScreen('screen-mock-exam');
+    void refreshMockExamMenu();
+    catalogPoll = setInterval(() => { if (active() && !run && !document.hidden) void refreshMockExamMenu(); }, 60000);
+}
+
+export async function refreshMockExamMenu() {
+    if (!active() || run || !currentUser || !users[currentUser]) return false;
+    const version = ++catalogVersion, owner = currentUser;
+    catalogLoading = true; $('mock-catalog-status').textContent = '問題を確認しています...';
+    $('mock-round-grid').querySelectorAll('button').forEach(button => { button.disabled = true; });
+    $('mock-refresh').disabled = true;
+    try {
+        const result = await loadCurrentMockExamCatalog();
+        if (version !== catalogVersion || owner !== currentUser || !active() || run) return false;
+        catalog = result.catalog.filter(problem => !problem.hidden);
+        renderMockExamCards();
+        $('mock-catalog-status').textContent = catalog.length ? (result.revision ? `配信版 ${result.revision}` : '') : '受検できる問題はありません。';
+        return true;
+    } catch (error) {
+        if (version === catalogVersion && active() && !run) {
+            catalog = []; $('mock-round-grid').replaceChildren();
+            $('mock-catalog-status').textContent = error instanceof Error ? error.message : '問題を取得できませんでした。';
+        }
+        return false;
+    } finally { if (version === catalogVersion) { catalogLoading = false; $('mock-refresh').disabled = false; } }
+}
+function renderMockExamCards() {
     const grid = $('mock-round-grid'); grid.replaceChildren();
     for (const problem of catalog) {
         const item = document.createElement('article'); item.className = 'mock-round-item';
@@ -83,19 +109,16 @@ export function openMockExam() {
         const previous = (users[currentUser].mockExamRecords || []).filter(record => record.problemId === problem.id);
         const best = document.createElement('small'); best.textContent = previous.length ? `さいこう ${Math.max(...previous.map(record => record.net))}文字` : 'まだ';
         button.append(title, detail, best); button.onclick = () => selectMockExam(problem.id); item.append(button);
-        if (canManage() && problem.round) {
-            const edit = document.createElement('button'); edit.className = 'mock-catalog-edit'; edit.textContent = '本文を編集'; edit.onclick = () => editMockCatalog(problem.id); item.append(edit);
-        }
         grid.append(item);
     }
-    showScreen('screen-mock-exam');
 }
 
-export function selectMockExam(id) {
+export async function selectMockExam(id) {
+    if (catalogLoading || !await refreshMockExamMenu()) return;
     const problem = catalog.find(problem => problem.id === id);
     if (!problem || !currentUser || !users[currentUser]) return;
     cleanup();
-    run = { userId: currentUser, problem, phase: 'audio-check', number: '', name: '', committed: '', answer: '', result: null, coins: 0 };
+    run = { userId: currentUser, problem: structuredClone(problem), phase: 'audio-check', number: '', name: '', committed: '', answer: '', result: null, coins: 0 };
     $('mock-menu').hidden = true; $('mock-official-host').hidden = true; $('mock-results').hidden = true; $('mock-audio-check').hidden = false;
     $('mock-next').hidden = true; $('mock-stop').hidden = true;
     $('mock-exam-title').textContent = problem.title;
@@ -221,28 +244,15 @@ export function saveMockAnswer() {
     const url = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));
     const link = document.createElement('a'); link.href = url; link.download = `Dレッスン模擬試験_${run.problem.id}_${new Date().toISOString().slice(0,10)}.txt`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
-export function editMockCatalog(id) {
-    if (!canManage()) return;
-    editingId = id || null;
-    const problem = catalog.find(problem => problem.id === id);
-    $('mock-admin-round').value = problem?.round || ''; $('mock-admin-reference').value = problem?.reference || '';
-    $('mock-permission').checked = false; $('mock-catalog-form').hidden = false;
-    $('mock-admin-reference').focus();
-}
-export function storeMockProblem(event) {
-    event?.preventDefault(); if (!canManage()) return;
-    try { saveExamProblem(localStorage, campus(), { round: $('mock-admin-round').value, reference: $('mock-admin-reference').value, permissionConfirmed: $('mock-permission').checked }); openMockExam(); }
-    catch (error) { showCustomAlert(error.message); }
-}
-export function removeMockProblem() {
-    if (!canManage() || !editingId) return;
-    const id = editingId, campusId = campus();
-    showCustomConfirm('この端末の編集を取り消しますか？ 同梱の公式問題は残ります。', () => { if (canManage() && campusId === campus()) { deleteExamProblem(localStorage,campusId,id); openMockExam(); } });
-}
 export function leaveMockExam() {
     const leave = () => { cleanup(); showScreen('screen-text-category'); };
     if (run && run.phase !== 'finished') showCustomConfirm('模擬試験をやめて戻りますか？ 入力中の内容は消えます。', leave);
     else leave();
 }
-document.addEventListener('lesson:screen-change', event => { if (event.detail.id !== 'screen-mock-exam' && run) cleanup(); });
-document.addEventListener('visibilitychange', updateClock);
+document.addEventListener('lesson:screen-change', event => {
+    if (event.detail.id !== 'screen-mock-exam' && (run || catalogPoll)) {
+        cleanup(); catalog = []; $('mock-round-grid').replaceChildren();
+    }
+});
+document.addEventListener('visibilitychange', () => { updateClock(); if (!document.hidden && active() && !run) void refreshMockExamMenu(); });
+window.addEventListener('focus', () => { if (active() && !run) void refreshMockExamMenu(); });

@@ -11,6 +11,21 @@ export function validateExamProblem(value) {
 
 const catalogKey = campusId => `dlesson.mock-exam.catalog.v1:${campusId}`;
 
+export function parseManagedMockExamProblem(value) {
+    const item = validateExamProblem(value || {});
+    if (value.id !== item.id || value.title !== item.title || typeof value.hidden !== 'boolean') throw Error('模擬試験の問題を確認してください。');
+    return { ...item, hidden: value.hidden };
+}
+export function parseManagedMockExamCatalog(value) {
+    if (!Array.isArray(value) || value.length > 100) throw Error('模擬試験の一覧を確認してください。');
+    const catalog = value.map(parseManagedMockExamProblem);
+    if (new Set(catalog.map(item => item.id)).size !== catalog.length) throw Error('同じ回の問題が重複しています。');
+    return catalog.sort((a, b) => a.round - b.round);
+}
+export function defaultMockExamCatalog() {
+    return officialProblems.map(problem => parseManagedMockExamProblem({ ...problem, hidden: false, permissionConfirmed: true }));
+}
+
 export function loadExamCatalog(storage, campusId) {
     try {
         const parsed = JSON.parse(storage.getItem(catalogKey(campusId)) || '[]');

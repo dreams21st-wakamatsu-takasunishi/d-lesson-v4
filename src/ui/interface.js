@@ -1,6 +1,6 @@
-import { createElement, ArrowLeft, House, LogOut, Maximize, Mouse, Keyboard, FileText, BookOpen, Eye, Gamepad2, Globe, Trophy, Save, BadgeCheck, ExternalLink, Volume2, VolumeX, Music, Music2, X, Hand, ClipboardCheck, Repeat2, Printer, Download, Headphones } from 'lucide';
+import { createElement, ArrowLeft, House, LogOut, Maximize, Mouse, Keyboard, FileText, BookOpen, Eye, Gamepad2, Globe, Trophy, Save, BadgeCheck, ExternalLink, Volume2, VolumeX, Music, Music2, X, Hand, ClipboardCheck, Repeat2, Printer, Download, Headphones, RefreshCw } from 'lucide';
 
-const icons = { 'arrow-left': ArrowLeft, house: House, 'log-out': LogOut, maximize: Maximize, mouse: Mouse, keyboard: Keyboard, 'file-text': FileText, 'book-open': BookOpen, eye: Eye, gamepad: Gamepad2, globe: Globe, trophy: Trophy, save: Save, 'badge-check': BadgeCheck, 'external-link': ExternalLink, 'volume': Volume2, 'muted': VolumeX, music: Music, 'music-muted': Music2, x: X, hand: Hand, 'clipboard-check': ClipboardCheck, 'repeat-2': Repeat2, printer: Printer, download: Download, headphones: Headphones };
+const icons = { 'arrow-left': ArrowLeft, house: House, 'log-out': LogOut, maximize: Maximize, mouse: Mouse, keyboard: Keyboard, 'file-text': FileText, 'book-open': BookOpen, eye: Eye, gamepad: Gamepad2, globe: Globe, trophy: Trophy, save: Save, 'badge-check': BadgeCheck, 'external-link': ExternalLink, 'volume': Volume2, 'muted': VolumeX, music: Music, 'music-muted': Music2, x: X, hand: Hand, 'clipboard-check': ClipboardCheck, 'repeat-2': Repeat2, printer: Printer, download: Download, headphones: Headphones, 'refresh-cw': RefreshCw };
 
 export function setLessonIcon(element, name) {
     if (!element || !icons[name]) return;

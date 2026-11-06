@@ -15,6 +15,7 @@ async function check(page, jwt) {
     const auth = { id: authId, aud: 'authenticated', role: 'authenticated', email: 'keyboard@example.invalid', user_metadata: { user_data_id: id }, app_metadata: { provider: 'email' } };
     const session = { access_token: jwt, refresh_token: 'fixture', token_type: 'bearer', expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600, user: auth };
     let data = { displayName: '架空児童 キーボード', campusId: 'main', mouseLevel: 0, keyboardSequence: 3, coins: 0, practiceLogs: [], loginStamps: [new Date().toISOString().slice(0, 10)], examRecords: {}, visionCleared: [], repeatPractice: { enabled: true, round: 2, targets: ['keyboard:hand_left_3'], completed: [] } };
+    let sharedCatalog = null, catalogRevision = 1, catalogFailure = false, catalogReads = 0;
     const errors = [], requests = [], downloads = [];
     page.on('pageerror', error => errors.push(error.message));
     page.on('download', download => downloads.push(download));
@@ -28,6 +29,11 @@ async function check(page, jwt) {
             if (req.method() !== 'GET') { const body = req.postDataJSON(), row = Array.isArray(body) ? body[0] : body; if (row?.id === id) data = row.data; }
             json = req.headers().accept?.includes('vnd.pgrst.object') ? { id, data } : [{ id, data }];
         } else if (path === '/rest/v1/lesson_settings') json = null;
+        else if (path === '/rest/v1/lesson_mock_exam_catalogs') {
+            if (req.frame().page() === page) catalogReads++;
+            if (catalogFailure) { await route.fulfill({ status: 503, json: {message:'fictional catalog error'} }); return; }
+            json = sharedCatalog === null ? null : { campus_id:'main', catalog:sharedCatalog, revision:catalogRevision };
+        }
         else if (path === '/rest/v1/lesson_campuses') json = [{ id: 'main', name: '架空校舎', code: 'main', active: true, registration_enabled: true }];
         else if (['/rest/v1/lesson_campus_content','/rest/v1/lesson_reward_grants','/rest/v1/rpc/get_lesson_student_management_status'].includes(path)) json = [];
         else if (path === '/functions/v1/student-learning-tasks') json = { schemaVersion: 1, tasks: [] };
@@ -58,6 +64,7 @@ async function check(page, jwt) {
     assert(await page.locator('#screen-text-menu.active').isVisible(), 'existing text training retained');
     await page.locator('#screen-text-menu .bottom-back-btn').click();
     await page.getByRole('button', { name: '模擬試験', exact: true }).click();
+    await page.locator('#mock-round-grid .mock-round-card').first().waitFor();
     assert(await page.locator('#mock-round-grid .mock-round-card').count() === 8, '8 official papers');
     assert(await page.locator('#mock-round-grid select').count() === 0, 'paper cards not list');
     await page.locator('#screen-mock-exam').screenshot({ path: 'output/playwright/mock-round-cards-desktop.png' });
@@ -245,11 +252,57 @@ async function check(page, jwt) {
     await page.locator('#mock-official-host[data-phase="announcing-result"]').waitFor();
     await page.evaluate(() => { window.showScreen('screen-category'); window.__heldUtterances.at(-1).onend?.(); });
     assert(await page.locator('#screen-category.active').isVisible() && !await page.locator('#mock-results').isVisible(), 'leaving during announcement cannot reopen results');
+    const managed = round => ({id:`round-${round}`,round,title:`第${round}回過去問題`,reference:'　かくうのもんだい。',hidden:false,permissionConfirmed:true});
+    sharedCatalog = [managed(90),managed(91)];
+    await page.evaluate(() => {
+        localStorage.setItem('dlesson.mock-exam.catalog.v1:main',JSON.stringify([{id:'round-78',round:78,title:'第78回過去問題',reference:'端末だけの古い本文',permissionConfirmed:true}]));
+        window.openMockExam();
+    });
+    await page.locator('[data-round="round-90"]').waitFor();
+    assert(await page.locator('[data-round="round-78"]').count() === 0, 'shared catalog overrides bundled and local edits');
+    const second = await page.context().newPage();
+    await second.addInitScript(({session}) => {
+        sessionStorage.setItem('sb-lmonjfdxtefsvgtdixid-d-lesson-auth-token',JSON.stringify(session));
+        Object.defineProperty(window,'speechSynthesis',{configurable:true,value:{cancel(){},speak(utterance){queueMicrotask(()=>utterance.onend?.());}}});
+    },{session});
+    await second.goto('http://127.0.0.1:5174/');
+    await second.getByRole('button',{name:'スタート',exact:true}).waitFor();
+    await second.evaluate(async id => {
+        const url=performance.getEntriesByType('resource').map(entry=>entry.name).find(name=>name.includes('/src/api/user.js'));
+        const api=await import(url || '/src/api/user.js');await api.loadUsers();api.login(id);window.openMockExam();
+    },id);
+    await second.locator('[data-round="round-90"]').waitFor();
+    sharedCatalog = [managed(91)]; catalogRevision++;
+    await page.clock.fastForward(61000); await page.waitForTimeout(100);
+    assert(await page.locator('[data-round="round-90"]').count() === 0, 'menu poll applies deletion');
+    await second.locator('#mock-refresh').click(); await second.getByText('配信版 2',{exact:true}).waitFor();
+    assert(await second.locator('[data-round="round-90"]').count() === 0, 'second terminal applies same deletion');
+    sharedCatalog=[];catalogRevision++;await page.locator('#mock-refresh').click();
+    await page.getByText('受検できる問題はありません。',{exact:true}).waitFor();
+    assert(await page.locator('#mock-round-grid button').count() === 0,'empty shared catalog never restores defaults');
+    catalogFailure=true;await page.locator('#mock-refresh').click();
+    await page.getByText('模擬試験の問題を取得できませんでした。通信と配信設定を確認して再取得してください。',{exact:true}).waitFor();
+    assert(await page.locator('#mock-round-grid button').count() === 0,'network failure does not fall back to deleted papers');
+    catalogFailure=false;sharedCatalog=[managed(91)];catalogRevision++;await page.locator('#mock-refresh').click();
+    await page.locator('[data-round="round-91"]').click();await page.locator('#mock-voice').uncheck();await page.locator('#mock-next').click();
+    await frame.locator('#start').click();await frame.locator('[id="受験番号"]').fill('TEST05');await frame.locator('[id="受験者名"]').fill('架空児童');
+    await frame.getByRole('button',{name:'OK',exact:true}).click();await frame.locator('#startExam').click();
+    await page.locator('#mock-official-host[data-phase="paper"]').waitFor();await page.locator('#mock-next').click();
+    for(let i=0;i<4;i++)await page.clock.fastForward(1100);
+    const frozenAnswer=sharedCatalog[0].reference, oldRecords=JSON.stringify(data.mockExamRecords);
+    await frame.locator('.userinput').first().fill(frozenAnswer);
+    const readsBefore=catalogReads;sharedCatalog=[{...managed(91),reference:'　配信後の別の本文。'}];catalogRevision++;
+    await page.evaluate(()=>window.dispatchEvent(new Event('focus')));await page.clock.fastForward(10*60000);
+    await page.locator('#mock-results').waitFor({state:'visible'});await page.waitForTimeout(100);
+    assert(catalogReads===readsBefore,'active exam never reloads its reference');
+    assert(data.mockExamRecords.at(-1).net===frozenAnswer.length && data.mockExamRecords.at(-1).mistakes===0,'active exam scores its frozen reference');
+    assert(JSON.stringify(data.mockExamRecords.slice(0,-1))===oldRecords,'editing and deleting questions preserves past results');
+    await second.close();await page.clock.resume();
     await page.evaluate(() => window.openOneHandMenu('right')); await page.waitForTimeout(700);
     await page.screenshot({ path: 'output/playwright/one-hand-horizontal-mobile.png' });
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'hand grid scroll remains internal');
     assert(errors.length === 0, errors.join('\n'));
-    return { passed: true, realCloudAccess: false, cases: ['revised routes','typed romaji in both hand exams','horizontal stages','repeat deferred','8 official papers','original registration/editor/font/dialogs/pagination','ready highlight','headphone check','larger ruby guide','UD NK font','result waits for speech and replay','voice-off result','speech calls','10 minute deadline','IME lock','no warmup or save step','display-only full text','grade reward x1.5','no duplicate reward','empty result zero reward','desktop/mobile'] };
+    return { passed: true, realCloudAccess: false, cases: ['revised routes','typed romaji in both hand exams','horizontal stages','repeat deferred','8 official papers','original registration/editor/font/dialogs/pagination','ready highlight','headphone check','larger ruby guide','UD NK font','result waits for speech and replay','voice-off result','speech calls','10 minute deadline','IME lock','no warmup or save step','display-only full text','grade reward x1.5','no duplicate reward','empty result zero reward','two terminal shared catalog','deletion and empty catalog persistence','network failure prevents stale fallback','active exam reference frozen','old results retained','desktop/mobile'] };
 }
 const jwt = 'eyJhbGciOiJIUzI1NiJ9.' + Buffer.from(JSON.stringify({ sub: '11111111-1111-4111-8111-111111111111', role: 'authenticated', exp: Math.floor(Date.now() / 1000) + 3600 })).toString('base64url') + '.fixture';
 try {
