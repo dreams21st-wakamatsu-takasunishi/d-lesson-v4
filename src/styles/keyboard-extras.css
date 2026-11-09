@@ -61,6 +61,7 @@
 #mock-answer-review { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 2; font-size: 20px; margin: 20px 0; }
 .mock-diff-wrong, .mock-diff-extra { background: #ffdadd; color: #9b172e; text-decoration: underline; }
 .mock-diff-omitted { background: #fff2b9; color: #6f4800; border-bottom: 2px dotted; }
+.mock-diff-untyped { color: #59666b; }
 @media (max-width: 600px) {
     #screen-one-hand, #screen-text-category, #screen-mock-exam { padding: 12px; }
     .text-category-options { grid-template-columns: 1fr; }

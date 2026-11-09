@@ -86,5 +86,12 @@ export function scoreMockExam(reference, answer, { fullText = false } = {}) {
     const gross = [...typed].length;
     const mistakes = Object.values(details).reduce((a, b) => a + b, 0);
     const net = Math.max(0, gross - mistakes);
-    return { gross, mistakes, net, details, operations, ignoredRepeat, grade: EXAM_GRADES.find(([minimum]) => net >= minimum)?.[1] || '6級未満', rulesVersion: 'japanese-2021-reference-v1' };
+    return { gross, mistakes, net, details, operations, untypedSuffix: expected.slice(end).join(''), ignoredRepeat, grade: EXAM_GRADES.find(([minimum]) => net >= minimum)?.[1] || '6級未満', rulesVersion: 'japanese-2021-reference-v1' };
+}
+
+export function getMockExamReviewOperations(result, { fullText = false } = {}) {
+    // Keep the scored alignment fixed; the untyped suffix must not realign entered text.
+    return fullText && result.untypedSuffix
+        ? [...result.operations, { type: 'untyped', expected: result.untypedSuffix, typed: '' }]
+        : result.operations;
 }

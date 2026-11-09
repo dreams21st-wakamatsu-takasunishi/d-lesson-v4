@@ -2,7 +2,7 @@ import { currentUser, users, canWriteCurrentUserRow, saveUsers, recordPracticeAc
 import { showScreen } from '../ui/screen.js';
 import { showCustomAlert, showCustomConfirm } from '../ui/modal.js';
 import { attachOfficialExamFrame } from '../utils/official-exam-frame.js';
-import { scoreMockExam } from '../utils/mock-exam-scoring.js';
+import { scoreMockExam, getMockExamReviewOperations } from '../utils/mock-exam-scoring.js';
 import { getMockExamCoinReward } from '../utils/text-coin-rewards.js';
 import { mockGuidePlainText, renderMockGuide } from '../utils/mock-exam-guide.js';
 
@@ -221,9 +221,7 @@ export function toggleMockFullText() {
 }
 function renderResult() {
     const { gross, mistakes, net, grade, details } = run.result;
-    const operations = $('mock-full-text').checked
-        ? scoreMockExam(run.problem.reference, run.answer, { fullText: true }).operations
-        : run.result.operations;
+    const operations = getMockExamReviewOperations(run.result, { fullText: $('mock-full-text').checked });
     $('mock-results').hidden = false;
     $('mock-result-summary').textContent = `${run.early ? '途中終了・' : ''}参考採点：純字数 ${net}文字（総字数 ${gross} − ミス ${mistakes}）／ ${grade}相当`;
     $('mock-result-details').textContent = `誤字・空白 ${details.wrong} ／ 脱字・改行抜け ${details.omitted} ／ 余分な文字・改行 ${details.extra} ／ 半角 ${details.halfWidth} ／ 読点混在 ${details.commaMix}`;
@@ -231,8 +229,8 @@ function renderResult() {
     const review = $('mock-answer-review'); review.replaceChildren();
     for (const op of operations) {
         const span = document.createElement('span'); span.className = `mock-diff-${op.type}`;
-        span.textContent = (op.type === 'omitted' ? op.expected : op.typed).replace(/\n/g,'↵\n').replace(/ /g,'␣').replace(/　/g,'□');
-        span.title = op.type === 'correct' ? '' : `正解：${op.expected || '（なし）'} ／ 入力：${op.typed || '（抜け）'}`;
+        span.textContent = (op.type === 'omitted' || op.type === 'untyped' ? op.expected : op.typed).replace(/\n/g,'↵\n').replace(/ /g,'␣').replace(/　/g,'□');
+        span.title = op.type === 'untyped' ? '未入力（採点対象外）' : op.type === 'correct' ? '' : `正解：${op.expected || '（なし）'} ／ 入力：${op.typed || '（抜け）'}`;
         review.append(span);
     }
     if (!operations.length) review.textContent = '入力はありません。';

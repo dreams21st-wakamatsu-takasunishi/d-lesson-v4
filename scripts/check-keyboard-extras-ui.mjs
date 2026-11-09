@@ -183,8 +183,11 @@ async function check(page, jwt) {
     assert(downloads.length === 0, 'results require no save operation');
     const savedRecord = JSON.stringify(data.mockExamRecords[0]);
     const prefixLength = (await page.locator('#mock-answer-review').textContent()).length;
+    const scoredSpans = await page.locator('#mock-answer-review').innerHTML();
     await page.locator('#mock-full-text').check(); await page.waitForTimeout(200);
     assert((await page.locator('#mock-answer-review').textContent()).length > prefixLength, 'checkbox reveals full problem');
+    assert(await page.locator('#mock-answer-review').evaluate((review, before) => [...review.children].filter(span => !span.classList.contains('mock-diff-untyped')).map(span => span.outerHTML).join('') === before, scoredSpans), 'full-text view preserves exact scored positions and titles');
+    assert(await page.locator('#mock-answer-review .mock-diff-untyped').count() === 1 && await page.locator('#mock-answer-review .mock-diff-omitted').count() === 0, 'untyped suffix is not marked as a scoring omission');
     assert((await page.getByText('問題全文を表示する', { exact: true }).count()) === 1, 'new full-text label');
     await page.locator('#mock-full-text').uncheck(); await page.locator('#mock-full-text').check();
     await page.evaluate(() => { window.toggleMockFullText(); window.stopMockExam(); });

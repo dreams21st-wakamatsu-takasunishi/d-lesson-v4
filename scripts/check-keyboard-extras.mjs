@@ -6,7 +6,7 @@ import { ONE_HAND_STAGES, getHandKeys, getHandWords, isOneHandChallengeUnlocked,
 import { createRomajiInputMatcher } from '../src/utils/romaji-input.js';
 import { normalizeOfficialAnswer } from '../src/utils/official-exam-frame.js';
 import officialProblems from '../src/data/mock-exam-problems.json' with { type: 'json' };
-import { scoreMockExam } from '../src/utils/mock-exam-scoring.js';
+import { scoreMockExam, getMockExamReviewOperations } from '../src/utils/mock-exam-scoring.js';
 import { loadExamCatalog, saveExamProblem, deleteExamProblem, parseManagedMockExamCatalog, defaultMockExamCatalog } from '../src/utils/mock-exam-catalog.js';
 import { getTextCoinReward, getMockExamCoinReward } from '../src/utils/text-coin-rewards.js';
 import { parseMockGuide, mockGuidePlainText } from '../src/utils/mock-exam-guide.js';
@@ -79,6 +79,32 @@ for (const problem of officialProblems) {
 const miss = (ref, input, expected, label) => assert.equal(scoreMockExam(ref, input, { fullText: true }).mistakes, expected, label);
 assert.equal(scoreMockExam('　今日は晴れです。明日も晴れです。', '　今日は').mistakes, 0, 'unfinished suffix is free');
 assert.equal(scoreMockExam('　今日は晴れです。', '').mistakes, 0, 'empty answer');
+const screenshotReference = officialProblems[0].reference;
+const screenshotAnswer = screenshotReference.slice(0, 77);
+assert.ok(screenshotAnswer.endsWith('着物が誕生しました。'));
+const screenshotResult = scoreMockExam(screenshotReference, screenshotAnswer);
+assert.equal(screenshotResult.gross, 77);
+assert.equal(screenshotResult.mistakes, 0);
+assert.equal(screenshotResult.untypedSuffix, screenshotReference.slice(77));
+assert.ok(screenshotResult.untypedSuffix.startsWith('これは'));
+const screenshotReview = getMockExamReviewOperations(screenshotResult, { fullText: true });
+assert.deepEqual(screenshotReview.slice(0, 77), screenshotResult.operations, '77 typed characters stay in place in full-text view');
+assert.ok(screenshotReview.slice(0, 77).every(op => op.type === 'correct'));
+assert.equal(screenshotReview.at(-1).type, 'untyped', 'remaining text is not an omission');
+for (const problem of officialProblems) {
+    for (const length of [0, 1, 77, 600, problem.reference.indexOf('\n') + 2, problem.reference.length]) {
+        const answer = problem.reference.slice(0, length);
+        const variants = [answer, answer.slice(0, 20) + answer.slice(21), answer.slice(0, 20) + '誤' + answer.slice(20)];
+        for (const value of variants) {
+            const result = scoreMockExam(problem.reference, value), before = JSON.stringify(result);
+            const review = getMockExamReviewOperations(result, { fullText: true });
+            assert.deepEqual(review.filter(op => op.type !== 'untyped'), result.operations, 'full-text view preserves all scored error positions');
+            assert.equal(review.map(op => op.expected).join(''), problem.reference, 'full-text view neither loses nor duplicates reference characters');
+            assert.deepEqual(getMockExamReviewOperations(result), result.operations);
+            assert.equal(JSON.stringify(result), before, 'review does not mutate score, grade or operations');
+        }
+    }
+}
 miss('使用した紙の', '私用した紙の', 1, 'wrong character');
 miss('暮らしのさまざまな', '暮らしの様々な', 4, 'rule 1 unequal strings');
 miss('今後はこの数字を', '今後は数字を', 2, 'omissions');
