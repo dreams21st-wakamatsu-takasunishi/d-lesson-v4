@@ -859,15 +859,17 @@
 
     <div id="screen-mock-exam" class="screen">
         <div class="mock-exam-workspace">
-            <div class="mock-guide" aria-live="polite">
-                <button type="button" class="mock-icon-button" title="もどる" aria-label="模擬試験をやめて戻る" onclick="leaveMockExam()"><i data-lesson-icon="arrow-left"></i></button>
-                <strong id="mock-exam-title">検定模擬試験</strong>
-                <span id="mock-guide-text"><ruby>受検<rt>じゅけん</rt></ruby>する<ruby>回<rt>かい</rt></ruby>をえらびましょう。</span>
-                <label><input id="mock-voice" type="checkbox" checked onchange="stopMockVoice()">音声</label>
-                <button type="button" class="mock-icon-button" title="案内をもう一度聞く" aria-label="案内をもう一度聞く" onclick="repeatMockGuide()"><i data-lesson-icon="volume"></i></button>
-                <output id="mock-timer" aria-label="残り時間">10:00</output>
-                <button id="mock-next" type="button" hidden onclick="advanceMockExam()"><ruby>準備<rt>じゅんび</rt></ruby>できた</button>
-                <button id="mock-stop" type="button" hidden onclick="stopMockExam()">途中で終了</button>
+            <div class="mock-guide">
+                <div class="mock-guide-controls">
+                    <button type="button" class="mock-icon-button" title="もどる" aria-label="模擬試験をやめて戻る" onclick="leaveMockExam()"><i data-lesson-icon="arrow-left"></i></button>
+                    <strong id="mock-exam-title">検定模擬試験</strong>
+                    <label><input id="mock-voice" type="checkbox" checked onchange="stopMockVoice()">音声</label>
+                    <button type="button" class="mock-icon-button" title="案内をもう一度聞く" aria-label="案内をもう一度聞く" onclick="repeatMockGuide()"><i data-lesson-icon="volume"></i></button>
+                    <output id="mock-timer" aria-label="残り時間" aria-live="off">10:00</output>
+                    <button id="mock-next" type="button" hidden onclick="advanceMockExam()"><ruby>準備<rt>じゅんび</rt></ruby>できた</button>
+                    <button id="mock-stop" type="button" hidden onclick="stopMockExam()">途中で終了</button>
+                </div>
+                <div id="mock-guide-text" tabindex="0" aria-live="polite"><ruby>受検<rt>じゅけん</rt></ruby>する<ruby>回<rt>かい</rt></ruby>をえらびましょう。</div>
             </div>
             <div id="mock-menu" class="mock-setup">
                 <h2>受検回の選択</h2>

@@ -25,4 +25,5 @@ export function renderMockGuide(element, text) {
         element.append(ruby);
     }
     element.setAttribute('aria-label', mockGuidePlainText(text));
+    element.scrollTop = 0;
 }

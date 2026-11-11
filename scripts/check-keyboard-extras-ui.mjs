@@ -147,16 +147,56 @@ async function check(page, jwt) {
     assert(await frame.locator('.userinput').first().evaluate(e => e.readOnly), 'locked until start');
     assert(await frame.locator('.sheet').first().evaluate(e => Math.round(e.getBoundingClientRect().width) === 794), 'original A4 dimensions');
     assert(await frame.locator('.userinput').first().evaluate(async e => { await document.fonts.ready; return getComputedStyle(e).fontFamily.includes('SnetMonoGothic') && document.fonts.check('16px SnetMonoGothic'); }), 'official input font');
+    async function checkMockLayout(label, width, height, typing = false) {
+        await page.setViewportSize({ width, height });
+        const layout = await page.evaluate(() => {
+            const screen = document.getElementById('screen-mock-exam');
+            const workspace = screen.querySelector('.mock-exam-workspace').getBoundingClientRect();
+            const header = screen.querySelector('.mock-guide').getBoundingClientRect();
+            const editor = document.getElementById('mock-official-frame').getBoundingClientRect();
+            const controls = [...screen.querySelector('.mock-guide-controls').children].filter(e => !e.hidden);
+            return {
+                editorRatio: editor.height / workspace.height,
+                editorFits: editor.top >= header.bottom - 1 && editor.bottom <= innerHeight + 1,
+                controlsFit: controls.every(e => {
+                    const rect = e.getBoundingClientRect();
+                    return rect.left >= header.left && rect.right <= header.right + 1 && rect.bottom <= header.bottom;
+                }),
+                outerScroll: screen.scrollHeight - screen.clientHeight
+            };
+        });
+        assert(layout.editorRatio >= .5 && layout.editorFits && layout.controlsFit && layout.outerScroll <= 1, `${label}: bounded header and visible editor ${JSON.stringify(layout)}`);
+        if (typing) assert(await frame.locator('.userinput').first().evaluate(e => {
+            const rect = e.getBoundingClientRect();
+            return Math.min(rect.bottom, innerHeight) - Math.max(rect.top, 0) >= 32;
+        }), `${label}: input area visible without scrolling the lesson page`);
+    }
+    await checkMockLayout('paper at 300% equivalent', 634, 303);
+    await checkMockLayout('paper at mobile width', 390, 844);
+    await checkMockLayout('paper at 200% equivalent', 952, 455);
+    const guideText = page.locator('#mock-guide-text');
+    assert(await guideText.evaluate(e => e.scrollHeight > e.clientHeight && e.tabIndex === 0), 'long guide is independently keyboard-scrollable');
+    await page.screenshot({ path: 'output/playwright/mock-editor-zoom-paper.png' });
+    await guideText.evaluate(e => { e.scrollTop = e.scrollHeight; });
+    assert(await guideText.evaluate(e => e.scrollTop > 0), 'end of paper guide can be read');
     await page.clock.install();
     await page.evaluate(() => { window.__holdResult = true; });
     await page.screenshot({ path: 'output/playwright/mock-ready-highlight.png' });
     await page.locator('#mock-next').click();
     for (let i = 0; i < 4; i++) await page.clock.fastForward(1100);
     const input = frame.locator('.userinput').first();
+    await checkMockLayout('exam starts at 200% equivalent', 952, 455, true);
+    assert(await input.evaluate(e => e.ownerDocument.activeElement === e), 'editor focused at the start');
     const reference = await page.evaluate(async () => (await import('/src/data/mock-exam-problems.json')).default[0].reference);
     const coinsBefore = data.coins;
     await input.fill(reference.slice(0, 600));
+    await page.setViewportSize({ width: 1366, height: 900 });
     await page.screenshot({ path: 'output/playwright/official-mock-editor.png' });
+    await checkMockLayout('exam at 300% equivalent', 634, 303, true);
+    assert(await input.inputValue() === reference.slice(0, 600), 'resizing preserves typed answer');
+    assert(await page.locator('#mock-stop').isVisible() && await page.locator('#mock-timer').isVisible(), 'stop button and timer stay visible at zoom');
+    await page.screenshot({ path: 'output/playwright/mock-editor-zoom-exam.png' });
+    await page.setViewportSize({ width: 1366, height: 900 });
     await page.clock.fastForward(8 * 60000);
     assert((await page.locator('#mock-guide-text').getAttribute('aria-label')).includes('残り時間２分'), 'two minute guidance');
     await input.dispatchEvent('compositionstart');
@@ -237,6 +277,8 @@ async function check(page, jwt) {
     await page.screenshot({ path: 'output/playwright/mock-headphones-mobile.png' });
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'ruby and headphones fit mobile');
     await page.locator('#mock-voice').uncheck(); await page.locator('#mock-next').click();
+    await frame.locator('#start').waitFor();
+    assert(await frame.locator('#leftFooter').evaluate(e => e.getBoundingClientRect().top >= document.getElementById('startExam').getBoundingClientRect().bottom), 'mobile registration footer does not cover the controls');
     await frame.locator('#start').click(); await frame.locator('[id="受験番号"]').fill('TEST03'); await frame.locator('[id="受験者名"]').fill('架空児童');
     await frame.getByRole('button', { name: 'OK', exact: true }).click(); await frame.locator('#startExam').click();
     await page.locator('#mock-official-host[data-phase="paper"]').waitFor(); await page.waitForTimeout(300);

@@ -56,6 +56,9 @@ export function attachOfficialExamFrame(frame, handlers) {
         if (!documentInFrame?.querySelector('#start, .userinput')) return handlers.onError('公式アプリを読み込めませんでした。');
         const style = documentInFrame.createElement('style');
         style.textContent = '.dlesson-guide-target {outline:4px solid #f39915 !important;outline-offset:4px;box-shadow:0 0 0 8px #fff3bf !important;}';
+        if (documentInFrame.getElementById('start')) {
+            style.textContent += '@media (max-width:600px), (max-height:700px) {#footer,#leftFooter {position:static;width:auto;margin:8px 0;text-align:center;}}';
+        }
         documentInFrame.head.append(style);
         abort = new windowInFrame.AbortController();
         const listen = (event, callback, capture = false) => documentInFrame.addEventListener(event, callback, { capture, signal: abort.signal });
@@ -128,7 +131,14 @@ export function attachOfficialExamFrame(frame, handlers) {
     return {
         highlight, setEditable,
         getAnswer: () => normalizeOfficialAnswer(committed),
-        focus: () => documentInFrame?.querySelector('.userinput')?.focus({ preventScroll: true }),
+        focus() {
+            const area = areas()[0];
+            if (!area) return;
+            area.focus({ preventScroll: true });
+            const { top } = area.getBoundingClientRect();
+            // Reveal the first typing line without scrolling the lesson controls.
+            if (top < 0 || top + 48 > windowInFrame.innerHeight) windowInFrame.scrollBy(0, top - 8);
+        },
         clear() { windowInFrame?.textClear?.(); committed = read(); composing = false; },
         lock() { capture(); editable = false; composing = false; setEditable(false); restore(); },
         destroy() {
