@@ -52,10 +52,29 @@ export function repeatMockGuide() {
 }
 export function stopMockVoice() { if (!$('mock-voice').checked) cancelNarration(true); }
 
+function setGuideExpanded(expanded) {
+    $('mock-guide-toggle').setAttribute('aria-expanded', String(expanded));
+}
+
+$('mock-guide-toggle').addEventListener('click', () => {
+    const expanded = $('mock-guide-toggle').getAttribute('aria-expanded') !== 'true';
+    setGuideExpanded(expanded);
+    if (expanded) $('mock-guide-text').focus({ preventScroll: true });
+});
+$('mock-guide-toggle').closest('.mock-guide').addEventListener('keydown', event => {
+    if (event.target === $('mock-guide-text') && ['ArrowUp', 'ArrowDown'].includes(event.key)) event.stopPropagation();
+    if (event.key !== 'Escape' || !$('mock-guide-toggle').getClientRects().length || $('mock-guide-toggle').getAttribute('aria-expanded') !== 'true') return;
+    event.preventDefault();
+    event.stopPropagation();
+    setGuideExpanded(false);
+    $('mock-guide-toggle').focus();
+});
+
 function cleanup() {
     generation++; clearInterval(interval); interval = null; cancelNarration();
     catalogVersion++; catalogLoading = false; clearInterval(catalogPoll); catalogPoll = null;
     bridge?.destroy(); bridge = null; run = null;
+    setGuideExpanded(false);
     $('mock-next').classList.remove('mock-action-highlight');
     $('mock-official-frame').src = 'about:blank';
     $('mock-answer-review').replaceChildren();
@@ -161,6 +180,7 @@ function preparePaper() {
 export async function advanceMockExam() {
     if (run?.phase === 'audio-check') { loadOfficialExam(); return; }
     if (!run || run.phase !== 'paper') return;
+    setGuideExpanded(false);
     const session = run, token = generation;
     const current = () => run === session && token === generation && currentUser === session.userId && active();
     run.phase = 'countdown'; setPhase(); $('mock-next').disabled = true;

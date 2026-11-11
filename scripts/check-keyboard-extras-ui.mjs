@@ -1,11 +1,12 @@
 import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 const args = process.argv.slice(2), cli = args[args.indexOf('--cli') + 1];
 if (!args.includes('--cli')) throw Error('--cli required');
 mkdirSync('output/playwright', { recursive: true });
 function command(...args) {
     const result = spawnSync(process.execPath, [resolve(cli), '-s=lesson-keyboard-extras', ...args], { encoding: 'utf8', timeout: 180000, maxBuffer: 4194304 });
+    if (result.error) throw result.error;
     if (result.status !== 0 || result.stdout.includes('### Error')) throw Error(result.stdout + result.stderr);
     return result.stdout;
 }
@@ -157,6 +158,7 @@ async function check(page, jwt) {
             const controls = [...screen.querySelector('.mock-guide-controls').children].filter(e => !e.hidden);
             return {
                 editorRatio: editor.height / workspace.height,
+                headerHeight: header.height,
                 editorFits: editor.top >= header.bottom - 1 && editor.bottom <= innerHeight + 1,
                 controlsFit: controls.every(e => {
                     const rect = e.getBoundingClientRect();
@@ -165,7 +167,7 @@ async function check(page, jwt) {
                 outerScroll: screen.scrollHeight - screen.clientHeight
             };
         });
-        assert(layout.editorRatio >= .5 && layout.editorFits && layout.controlsFit && layout.outerScroll <= 1, `${label}: bounded header and visible editor ${JSON.stringify(layout)}`);
+        assert(layout.editorRatio >= .8 && layout.headerHeight <= 56 && layout.editorFits && layout.controlsFit && layout.outerScroll <= 1, `${label}: single-row header and at least 80% editor ${JSON.stringify(layout)}`);
         if (typing) assert(await frame.locator('.userinput').first().evaluate(e => {
             const rect = e.getBoundingClientRect();
             return Math.min(rect.bottom, innerHeight) - Math.max(rect.top, 0) >= 32;
@@ -173,12 +175,22 @@ async function check(page, jwt) {
     }
     await checkMockLayout('paper at 300% equivalent', 634, 303);
     await checkMockLayout('paper at mobile width', 390, 844);
+    await checkMockLayout('paper at narrow mobile width', 320, 740);
     await checkMockLayout('paper at 200% equivalent', 952, 455);
     const guideText = page.locator('#mock-guide-text');
-    assert(await guideText.evaluate(e => e.scrollHeight > e.clientHeight && e.tabIndex === 0), 'long guide is independently keyboard-scrollable');
+    const guideToggle = page.locator('#mock-guide-toggle');
+    assert(!await guideText.isVisible() && await guideToggle.isVisible(), 'long guide is collapsed in the compact editor');
     await page.screenshot({ path: 'output/playwright/mock-editor-zoom-paper.png' });
-    await guideText.evaluate(e => { e.scrollTop = e.scrollHeight; });
-    assert(await guideText.evaluate(e => e.scrollTop > 0), 'end of paper guide can be read');
+    const editorBefore = await page.locator('#mock-official-frame').boundingBox();
+    await guideToggle.click();
+    assert(await guideText.isVisible() && await guideText.evaluate(e => document.activeElement === e && getComputedStyle(e).overflowY === 'auto'), 'guide opens in a keyboard-accessible overlay');
+    assert((await guideText.getAttribute('aria-label')).includes('裏面の白紙を上にして'), 'full preparation instructions remain available');
+    assert(JSON.stringify(await page.locator('#mock-official-frame').boundingBox()) === JSON.stringify(editorBefore), 'guide does not shrink or move the editor');
+    await guideText.press('ArrowDown');
+    assert(await guideText.evaluate(e => document.activeElement === e), 'guide scrolling does not navigate to a different control');
+    await page.screenshot({ path: 'output/playwright/mock-editor-zoom-guide.png' });
+    await guideText.press('Escape');
+    assert(!await guideText.isVisible() && await guideToggle.evaluate(e => document.activeElement === e), 'Escape closes guide and returns focus');
     await page.clock.install();
     await page.evaluate(() => { window.__holdResult = true; });
     await page.screenshot({ path: 'output/playwright/mock-ready-highlight.png' });
@@ -352,6 +364,8 @@ async function check(page, jwt) {
 const jwt = 'eyJhbGciOiJIUzI1NiJ9.' + Buffer.from(JSON.stringify({ sub: '11111111-1111-4111-8111-111111111111', role: 'authenticated', exp: Math.floor(Date.now() / 1000) + 3600 })).toString('base64url') + '.fixture';
 try {
     command('open', 'about:blank'); command('snapshot');
-    const output = command('run-code', `async(page)=>{try{return await (${check.toString()})(page,${JSON.stringify(jwt)})}catch(error){await page.screenshot({path:'output/playwright/keyboard-extras-failure.png'});throw error;}}`);
+    const codeFile = resolve('output/playwright/keyboard-extras-run-code.js');
+    writeFileSync(codeFile, `async(page)=>{try{return await (${check.toString()})(page,${JSON.stringify(jwt)})}catch(error){await page.screenshot({path:'output/playwright/keyboard-extras-failure.png'});throw error;}}`);
+    const output = command('run-code', `--filename=${codeFile}`);
     const match = output.match(/### Result\s+([\s\S]*?)\s+### Ran/); if (!match || !JSON.parse(match[1]).passed) throw Error(output); console.log(match[1]);
 } finally { command('close'); }

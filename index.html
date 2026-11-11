@@ -863,7 +863,8 @@
                 <div class="mock-guide-controls">
                     <button type="button" class="mock-icon-button" title="もどる" aria-label="模擬試験をやめて戻る" onclick="leaveMockExam()"><i data-lesson-icon="arrow-left"></i></button>
                     <strong id="mock-exam-title">検定模擬試験</strong>
-                    <label><input id="mock-voice" type="checkbox" checked onchange="stopMockVoice()">音声</label>
+                    <label><input id="mock-voice" type="checkbox" aria-label="音声" checked onchange="stopMockVoice()"><span>音声</span></label>
+                    <button id="mock-guide-toggle" type="button" class="mock-icon-button" title="案内を読む" aria-label="案内を読む" aria-controls="mock-guide-text" aria-expanded="false"><i data-lesson-icon="book-open"></i></button>
                     <button type="button" class="mock-icon-button" title="案内をもう一度聞く" aria-label="案内をもう一度聞く" onclick="repeatMockGuide()"><i data-lesson-icon="volume"></i></button>
                     <output id="mock-timer" aria-label="残り時間" aria-live="off">10:00</output>
                     <button id="mock-next" type="button" hidden onclick="advanceMockExam()"><ruby>準備<rt>じゅんび</rt></ruby>できた</button>
