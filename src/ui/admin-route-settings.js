@@ -1,6 +1,6 @@
 import {
     users,
-    saveUsers,
+    saveLessonGlobalSettings,
     GLOBAL_SETTINGS_ID,
     DEFAULT_CAMPUS_ID,
     getCampusList,
@@ -216,7 +216,7 @@ export async function saveStandardRouteMode() {
         after: renderModeLabel(mode)
     });
 
-    const saved = await saveUsers(true);
+    const saved = await saveLessonGlobalSettings();
     renderStandardRouteSettingsAdmin();
     refreshRouteDependentViews();
 
@@ -248,7 +248,7 @@ export async function saveStandardRouteRule() {
         order: renderOrderText(order)
     });
 
-    const saved = await saveUsers(true);
+    const saved = await saveLessonGlobalSettings();
     renderStandardRouteSettingsAdmin();
     refreshRouteDependentViews();
 
@@ -274,7 +274,7 @@ export function deleteStandardRouteRule(ruleId) {
             order: renderOrderText(target.order)
         });
 
-        const saved = await saveUsers(true);
+        const saved = await saveLessonGlobalSettings();
         renderStandardRouteSettingsAdmin();
         refreshRouteDependentViews();
 

@@ -1,6 +1,6 @@
 import {
     users,
-    saveUsers,
+    saveLessonGlobalSettings,
     GLOBAL_SETTINGS_ID,
     getUserDisplayName,
     isSystemUserId
@@ -48,5 +48,7 @@ export function saveTicketSettings() {
     if (!users[GLOBAL_SETTINGS_ID].ticketConfig) users[GLOBAL_SETTINGS_ID].ticketConfig = { normal:{icon:'🎟️'}, newRecord:{icon:'🎟️'} };
     users[GLOBAL_SETTINGS_ID].ticketConfig.normal.name = nName; users[GLOBAL_SETTINGS_ID].ticketConfig.newRecord.name = rName;
     recordAdminAudit('チケット設定変更', { normal: nName, newRecord: rName });
-    saveUsers(true); showCustomAlert('チケット設定を保存しました！');
+    void saveLessonGlobalSettings().then(saved=>showCustomAlert(saved
+        ? 'チケット設定を保存しました！'
+        : 'チケット設定を保存できませんでした。入力は残しています。通信状態を確認して再試行してください。'));
 }

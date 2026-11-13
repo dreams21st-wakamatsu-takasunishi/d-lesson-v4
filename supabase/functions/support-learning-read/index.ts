@@ -48,7 +48,10 @@ Deno.serve(async request => {
     if (!permission || !scopes.some(scope => scope.campus_id === permission.campus_id)) {
       return reply({ error: '対象の教室児童を確認できません。IDと連携範囲を確認してください。' }, 403);
     }
-    const { data: row, error } = await client.from(table).select('id,data').eq('id', body.studentId).maybeSingle();
+    const { data: row, error } = body.action === 'history'
+      ? await client.rpc('read_support_learning_day', { p_project: body.supportProjectRef, p_org: body.organizationId,
+        p_table: table, p_student: body.studentId, p_date: body.date })
+      : await client.from(table).select('id,data').eq('id', body.studentId).maybeSingle();
     if (error) return reply({ error: '学習データを取得できません。' }, 503);
     const identity = row?.data ? classroomIdentity(row.id, row.data, sourceProject, table) : null;
     if (!identity || !identity.displayName || permission.campus_id !== identity.campusId) {

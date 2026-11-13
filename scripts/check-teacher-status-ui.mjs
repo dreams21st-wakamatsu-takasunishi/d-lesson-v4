@@ -21,7 +21,7 @@ assertSource(/id="teacher-status-sort"/, 'Teacher status sort selector');
 assertSource(/value="keyboard-low"/, 'Keyboard-low sort option');
 assertSource(/value="mouse-low"/, 'Mouse-low sort option');
 assertSource(/value="latest-old"/, 'Oldest-practice sort option');
-assertSource(/export function openTeacherMenu/, 'Teacher menu exported opener');
+assertSource(/export async function openTeacherMenu[\s\S]*?await ensureStaffRoster\(false\)/, 'Teacher menu loads the roster on demand before rendering');
 assertSource(/data-teacher-menu-action/, 'Teacher menu action wiring');
 assertSource(/先生メニュー/, 'Teacher menu title');
 assert.match(html, /id="title-teacher-menu-btn"/, 'Teacher menu title button is missing from index.html.');

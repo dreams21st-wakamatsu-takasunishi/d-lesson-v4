@@ -1,4 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
+import { readLessonUserRows } from './lesson-user-read.js';
+import { createLessonDeltaWriter } from './lesson-delta.js';
 import { SoundManager } from '../utils/sound.js';
 import { calculateGrade, sortGrades } from '../utils/helpers.js';
 import { sanitizeGlobalMistakes } from '../utils/weak-mistakes.js';
@@ -110,6 +112,9 @@ export let currentSelectedGrade = null;
 export let currentLessonAccess = [];
 let campusRegistry = null;
 let studentManagementStatus = new Map();
+const newStaffRosterState = () => ({ level: 0, pending: null, startup: null });
+let staffRosterState = newStaffRosterState();
+let studentDelta = null;
 let authGatePromise = null;
 let authGateResolve = null;
 let authGateAfterLogin = null;
@@ -575,10 +580,14 @@ async function loadCampusContent() {
     const { data, error } = await supabase.from('lesson_campus_content').select('campus_id,content').eq('data_table', TARGET_TABLE);
     if (error) throw error;
     replaceCampusCatalogs(data || []);
-    const grants = await supabase.from('lesson_reward_grants').select('student_id,reward_id').eq('data_table', TARGET_TABLE);
+}
+
+async function applyCloudRewardGrants(roster, studentId = null) {
+    const query = supabase.from('lesson_reward_grants').select('student_id,reward_id').eq('data_table', TARGET_TABLE);
+    const grants = await (studentId ? query.eq('student_id', studentId) : query);
     if (grants.error) throw grants.error;
     for (const grant of grants.data || []) {
-        const learner = users[grant.student_id];
+        const learner = roster[grant.student_id];
         if (learner) learner.items = [...new Set([...(Array.isArray(learner.items) ? learner.items : []), grant.reward_id])];
     }
 }
@@ -1777,6 +1786,7 @@ export async function saveManagedUserRows(userIds) {
     const ids = Array.from(new Set((Array.isArray(userIds) ? userIds : [userIds]).filter(Boolean)));
     if (ids.length === 0) return true;
     if (!canUseRlsCloudSync()) return saveUsers(true);
+    if (staffRosterState.level===1) return false;
     if (!navigator.onLine) {
         setSyncStatus('offline');
         return false;
@@ -1838,6 +1848,8 @@ export async function signOutSupabaseAuth(message = 'ログアウトしました
     currentUser = null;
     currentSelectedGrade = null;
     currentLessonAccess = [];
+    staffRosterState = newStaffRosterState();
+    studentDelta = null;
     users = {};
     if (ENABLE_RLS_CLOUD_SYNC) localStorage.removeItem(STORAGE_KEY);
     clearRosterDom();
@@ -1862,7 +1874,15 @@ export async function signOutSupabaseAuth(message = 'ログアウトしました
 // ==========================================
 // Data load/save functions
 // ==========================================
-export async function loadUsers() {
+export function loadUsers() {
+    const state = staffRosterState = newStaffRosterState();
+    studentDelta = null;
+    const startup = loadUsersInternal();
+    state.startup = startup;
+    return startup.finally(() => { state.startup = null; });
+}
+
+async function loadUsersInternal() {
     replaceCampusCatalogs();
     const titleScreen = document.getElementById('screen-title');
     if (!titleScreen.querySelector('.loading-msg')) {
@@ -1892,7 +1912,6 @@ export async function loadUsers() {
     const useLegacyCloudSync = canUseLegacyCloudSync();
 
     await refreshCurrentLessonAccess();
-    updateVisibleUserUi();
 
     if (!useRlsCloudSync) loadLocalUsers();
 
@@ -1911,8 +1930,19 @@ export async function loadUsers() {
 
     try {
         // RLS sync relies on Supabase policies. Legacy sync must stay disabled on public URLs.
-        const { data, error } = await supabase.from(TARGET_TABLE).select('*');
+        const studentId = getSingleStudentAccessUserId();
+        const deferRoster = useRlsCloudSync && hasLessonRole('admin', 'teacher');
+        const { data, error } = deferRoster || studentId
+            ? await supabase.from(TARGET_TABLE).select('id,data').eq('id', GLOBAL_SETTINGS_ID)
+            : await readLessonUserRows(supabase, TARGET_TABLE, studentId, GLOBAL_SETTINGS_ID);
         if (error) throw error;
+        if(studentId){
+            const snapshot=await readOwnLessonSnapshot(studentId);
+            if(snapshot){
+                data.push({id:studentId,data:snapshot.data});
+                studentDelta=makeStudentDelta(studentId,snapshot);
+            }
+        }
 
         if(data && data.length > 0) {
             let newUsers = {};
@@ -1957,8 +1987,11 @@ export async function loadUsers() {
             }
         }
         await refreshCampusRegistry();
-        await loadCampusContent();
-        await refreshStudentManagementStatus();
+        if (!deferRoster) {
+            await loadCampusContent();
+            await applyCloudRewardGrants(users, studentId);
+            await refreshStudentManagementStatus();
+        }
     } catch(e) {
         replaceCampusCatalogs();
         console.error("通信エラー", e);
@@ -1995,6 +2028,99 @@ export async function loadUsers() {
     }
 }
 
+export async function ensureStaffRoster(detail = true) {
+    const state = staffRosterState;
+    if (state.startup) await state.startup;
+    if (staffRosterState !== state) throw Error('ログインが切り替わりました。');
+    const level=detail ? 2 : 1;
+    if (!canUseRlsCloudSync() || !hasLessonRole('teacher', 'admin') || state.level>=level) return;
+    if (state.pending) {
+        await state.pending;
+        if(staffRosterState!==state)throw Error('ログインが切り替わりました。');
+        return ensureStaffRoster(detail);
+    }
+    const role = getCurrentLessonRole();
+    const assertScope = () => {
+        if (staffRosterState !== state || getCurrentLessonRole() !== role) throw Error('ログインが切り替わりました。');
+    };
+    state.pending = (async () => {
+        const data=[];
+        for(let offset=0;;offset+=100){
+            const query=detail
+                ? readLessonUserRows(supabase,TARGET_TABLE,null,GLOBAL_SETTINGS_ID).neq('id',GLOBAL_SETTINGS_ID).order('id')
+                : supabase.rpc('read_lesson_staff_roster',{p_table:TARGET_TABLE}).order('id');
+            const {data:page,error}=await query.range(offset,offset+99).retry(false);
+            if(error||!Array.isArray(page))throw error||Error('一覧を取得できませんでした。');
+            assertScope();
+            data.push(...page);
+            if(page.length<100)break;
+        }
+        const roster = Object.fromEntries((data || []).map(row => [row.id, row.data]));
+        assertScope();
+        await applyCloudRewardGrants(roster);
+        assertScope();
+        await loadCampusContent();
+        assertScope();
+        await refreshStudentManagementStatus();
+        assertScope();
+        users = { ...roster, ...Object.fromEntries(Object.entries(users).filter(([id]) => isSystemUserId(id))) };
+        normalizeUsersCollection();
+        state.level = level;
+        updateVisibleUserUi();
+    })().finally(() => { state.pending = null; });
+    return state.pending;
+}
+
+export async function readOwnLessonSnapshot(id) {
+    const {data,error}=await supabase.rpc('read_own_lesson_snapshot',{p_table:TARGET_TABLE,p_id:id});
+    if(error)throw error;
+    if(data===null)return null;
+    if(!data?.data||typeof data.revision!=='string'||!/^\d{1,10}$/.test(data.revision))throw Error('学習データの版を確認できません。');
+    return data;
+}
+
+function makeStudentDelta(id,snapshot) {
+    return {id,write:createLessonDeltaWriter(snapshot.revision,snapshot.data,async(revision,patch,removed)=>{
+        const {data,error}=await supabase.rpc('patch_own_lesson_snapshot',{
+            p_table:TARGET_TABLE,p_id:id,p_revision:revision,p_patch:patch,p_removed:removed
+        });
+        if(error)throw error;
+        return data;
+    })};
+}
+
+export async function reloadOwnLessonSnapshot(id, accept=()=>true) {
+    const state=staffRosterState, current=users[id], delta=studentDelta;
+    if(!delta||delta.write.busy())return false;
+    const before=JSON.stringify(current);
+    const result=await readOwnLessonSnapshot(id);
+    if(!result||staffRosterState!==state||getSingleStudentAccessUserId()!==id||currentUser!==id||users[id]!==current||studentDelta!==delta||
+        delta.write.busy()||JSON.stringify(current)!==before||!accept(result.data,current))return false;
+    studentDelta=makeStudentDelta(id,result);
+    users[id]=result.data;
+    return true;
+}
+
+export async function saveLessonGlobalSettings() {
+    if (!canUseRlsCloudSync()) return saveUsers(true);
+    if (!hasLessonRole('admin') || !navigator.onLine) return false;
+    setSyncStatus('syncing');
+    try {
+        if (canUseSettingsTable()) {
+            if (!await saveCloudSettingsIfEnabled()) throw Error('Settings not saved');
+        } else {
+            const {error} = await supabase.from(TARGET_TABLE).upsert({id:GLOBAL_SETTINGS_ID,data:users[GLOBAL_SETTINGS_ID]});
+            if (error) throw error;
+        }
+        setSyncStatus('rls synced');
+        updateVisibleUserUi();
+        return true;
+    } catch {
+        setSyncStatus('sync error');
+        return false;
+    }
+}
+
 export async function saveUsers(forceOverwrite = false) {
     if (!users || typeof users !== 'object') users = {};
     normalizeUsersCollection();
@@ -2023,6 +2149,16 @@ export async function saveUsers(forceOverwrite = false) {
     setSyncStatus('syncing');
 
     try {
+        if(useRlsCloudSync&&getCurrentLessonRole()==='student'){
+            const delta=studentDelta,id=currentUser;
+            if(!delta||delta.id!==id||!canWriteUserRow(id)||!users[id])throw Error('学習データを読み直してください。');
+            await delta.write(users[id],()=>studentDelta===delta&&currentUser===id&&getSingleStudentAccessUserId()===id);
+            if(studentDelta!==delta||currentUser!==id)return false;
+            setSyncStatus('rls synced');
+            return true;
+        }
+        if(useRlsCloudSync&&staffRosterState.level===1&&
+           (forceOverwrite||(currentUser&&!isSystemUserId(currentUser))))throw Error('詳細データを読み込んでから保存してください。');
         // Build the cloud upsert payload.
         let upsertData =[];
         let shouldSaveSettings = false;
@@ -2065,12 +2201,16 @@ export async function saveUsers(forceOverwrite = false) {
     } catch (e) { 
         console.error("保存エラー:", e); 
         if(e?.code==='PT409'&&String(e.message).includes('WORD_REVIEW_CHANGED'))showCustomAlert('先生のWordかくにんが届きました。\n古いデータで上書きしないため、保存を止めました。\n画面を読み直して、確認結果を受け取ってね。');
+        else if(e?.code==='PT409'&&String(e.message).includes('LESSON_SNAPSHOT_CHANGED'))showCustomAlert('別の端末などで学習記録が更新されました。古い内容での上書きを防ぐため、保存を止めました。最新の記録を読み直してください。');
         setSyncStatus('sync error'); 
         return false;
     }
 }
 
-export function goToGradeSelect() { renderGradeList(); showScreen('screen-grade'); }
+export async function goToGradeSelect() {
+    try { await ensureStaffRoster(); } catch { showCustomAlert('児童一覧を読み込めませんでした。通信状態を確認し、もう一度スタートを押してください。'); return; }
+    renderGradeList(); showScreen('screen-grade');
+}
 
 export function renderGradeList() {
     const gradeList = document.getElementById('grade-list'); gradeList.innerHTML = '';

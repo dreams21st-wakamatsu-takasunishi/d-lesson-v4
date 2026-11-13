@@ -7,6 +7,7 @@ import {
     canManageScopedUserRow,
     createUserDataId,
     deleteCloudUserRows,
+    ensureStaffRoster,
     DEFAULT_CAMPUS_ID,
     GLOBAL_SETTINGS_ID,
     getLearningSettings,
@@ -798,7 +799,9 @@ function printTeacherStudentDetail(userId) {
     setTimeout(() => printWindow.print(), 250);
 }
 
-function openTeacherStudentReport(userId) {
+async function openTeacherStudentReport(userId) {
+    try { await ensureStaffRoster(true); }
+    catch { showCustomAlert('詳細データを読み込めませんでした。通信状態を確認し、もう一度開いてください。'); return; }
     const row = getStudentRows().find(item => item.userId === userId);
     if (!row) {
         showCustomAlert('表示できる担当児童が見つかりません。');
@@ -2677,8 +2680,14 @@ function showTeacherMenuHome() {
     showScreen('screen-teacher-menu');
 }
 
-function showTeacherMenuSection(mode) {
+async function showTeacherMenuSection(mode) {
     const screen = ensureTeacherMenuScreen();
+    if (['history','grades','reports','rewards'].includes(mode)) {
+        const active=document.querySelector('.screen.active');
+        try { await ensureStaffRoster(true); }
+        catch { showCustomAlert('詳細データを読み込めませんでした。通信状態を確認し、もう一度開いてください。'); return; }
+        if(document.querySelector('.screen.active')!==active||!hasLessonRole('teacher','admin'))return;
+    }
     teacherMenuMode = TEACHER_MENU_MODES.has(mode) ? mode : 'students';
     selectedTeacherStatusUserId = '';
 
@@ -2795,12 +2804,15 @@ export function openTeacherStatus() {
     openTeacherMenu('students');
 }
 
-export function openTeacherMenu(mode = 'home') {
+export async function openTeacherMenu(mode = 'home') {
     if (!hasLessonRole('teacher', 'admin')) {
         showCustomAlert('先生または管理者アカウントでログインしてください。');
         return;
     }
 
+    try { await ensureStaffRoster(false); }
+    catch { showCustomAlert('児童情報を読み込めませんでした。通信状態を確認して、先生メニューをもう一度開いてください。'); return; }
+    if (!hasLessonRole('teacher', 'admin')) return;
     if (TEACHER_MENU_MODES.has(mode)) {
         showTeacherMenuSection(mode);
         return;

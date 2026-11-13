@@ -1,4 +1,4 @@
-import { GLOBAL_SETTINGS_ID, saveUsers, users } from '../api/user.js';
+import { GLOBAL_SETTINGS_ID, saveLessonGlobalSettings, users } from '../api/user.js';
 import {
     DEFAULT_TYPING_RANKING_NICKNAME_BLOCK_WORDS,
     formatNicknameBlockWords,
@@ -45,7 +45,7 @@ export async function saveTypingRankingNicknameBlockWords() {
         after: nextWords.length
     });
 
-    const saved = await saveUsers(true);
+    const saved = await saveLessonGlobalSettings();
     renderTypingRankingSettingsAdmin();
 
     if (!saved) {

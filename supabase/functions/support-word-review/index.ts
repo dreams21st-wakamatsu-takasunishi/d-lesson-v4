@@ -9,7 +9,7 @@ Deno.serve(async request=>{
     const raw=await request.text();if(raw.length>32768)return reply({error:'送信内容を確認してください。'},400);
     const body=JSON.parse(raw),table=Deno.env.get('LESSON_USER_DATA_TABLE')||'user_data',url=Deno.env.get('SUPABASE_URL')!;
     if(!/^[a-z0-9]{20}$/.test(body?.supportProjectRef||'')||!uuid(body?.organizationId)||!['user_data','test_user_data'].includes(table)
-      ||!['bind','unbind','inbox','artifact','decide'].includes(body?.action))return reply({error:'操作と連携先を確認してください。'},400);
+      ||!['bind','unbind','inbox','pending-count','artifact','decide'].includes(body?.action))return reply({error:'操作と連携先を確認してください。'},400);
     const client=createClient(url,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false}});
     const checkPermission=async(studentId:string,linkId?:string,childId?:string)=>{
       const {data:p,error}=await client.from('lesson_support_students').select('*').eq('support_project_ref',body.supportProjectRef).eq('organization_id',body.organizationId).eq('data_table',table).eq('student_id',studentId).eq('enabled',true).maybeSingle();
@@ -27,23 +27,37 @@ Deno.serve(async request=>{
       const {error}=await client.rpc('bind_support_word_student',{p_project:body.supportProjectRef,p_org:body.organizationId,p_table:table,p_student:body.studentId,p_link:body.linkId,p_child:body.childId,p_bind:body.action==='bind'});
       return error?reply({error:'連携状態を保存できませんでした。'},409):reply({ok:true});
     }
-    if(body.action==='inbox'){
+    if(body.action==='inbox'||body.action==='pending-count'){
+      const countOnly=body.action==='pending-count';
+      const empty=()=>reply(countOnly?{pendingCount:0}:{requests:[]});
       if(!Array.isArray(body.links)||body.links.length>100)return reply({error:'連携対象を確認してください。'},400);
-      if(!body.links.length)return reply({requests:[]});
+      if(!body.links.length)return empty();
       for(const link of body.links){
-        if(!uuid(link.id)||typeof link.child_id!=='string'||typeof link.source_student_id!=='string')return reply({error:'連携対象を確認してください。'},400);
+        if(!link||!uuid(link.id)||typeof link.child_id!=='string'||!link.child_id||link.child_id.length>160||typeof link.source_student_id!=='string'||!/^student_[A-Za-z0-9_-]{1,140}$/.test(link.source_student_id))return reply({error:'連携対象を確認してください。'},400);
       }
-      const {data:permissions,error:pError}=await client.from('lesson_support_students').select('*').eq('support_project_ref',body.supportProjectRef).eq('organization_id',body.organizationId).eq('data_table',table).eq('enabled',true).in('student_id',body.links.map((link:{source_student_id:string})=>link.source_student_id));
+      const {data:permissions,error:pError}=await client.from('lesson_support_students').select('student_id,support_link_id,support_child_id,campus_id').eq('support_project_ref',body.supportProjectRef).eq('organization_id',body.organizationId).eq('data_table',table).eq('enabled',true).in('student_id',body.links.map((link:{source_student_id:string})=>link.source_student_id));
       const {data:scopes,error:sError}=await client.from('lesson_support_scopes').select('campus_id').eq('support_project_ref',body.supportProjectRef).eq('organization_id',body.organizationId).eq('data_table',table).eq('enabled',true);
-      const {data:learners,error:lError}=await client.from(table).select('id,data').in('id',body.links.map((link:{source_student_id:string})=>link.source_student_id));
-      if(pError||sError||lError)return reply({error:'児童の連携範囲を確認できませんでした。'},503);
-      const permitted=body.links.filter((link:{id:string;child_id:string;source_student_id:string})=>{
+      if(pError||sError)return reply({error:'児童の連携範囲を確認できませんでした。'},503);
+      type Link={id:string;child_id:string;source_student_id:string};
+      const candidates=(body.links as Link[]).filter(link=>permissions?.some(p=>p.student_id===link.source_student_id&&p.support_link_id===link.id&&p.support_child_id===link.child_id&&scopes?.some(s=>s.campus_id===p.campus_id)));
+      if(!candidates.length)return empty();
+      // Keep the same identity checks, without returning the learner's practice history or display name.
+      const {data:learners,error:lError}=await client.from(table).select('id,campusId:data->campusId,campus:data->campus,isMaster:data->isMaster,isGuest:data->isGuest,publicRegistration:data->publicRegistration,registrationSource:data->registrationSource,registration_source:data->registration_source,accountType:data->accountType').not('data','is',null).in('id',[...new Set(candidates.map(link=>link.source_student_id))]);
+      if(lError)return reply({error:'児童の連携範囲を確認できませんでした。'},503);
+      const permitted=candidates.filter(link=>{
         const p=permissions?.find(p=>p.student_id===link.source_student_id&&p.support_link_id===link.id&&p.support_child_id===link.child_id);
         const learner=learners?.find(row=>row.id===link.source_student_id);
-        const identity=learner?.data?classroomIdentity(learner.id,learner.data,new URL(url).hostname.split('.')[0],table):null;
+        const identity=learner?classroomIdentity(learner.id,learner,new URL(url).hostname.split('.')[0],table):null;
         return p&&identity&&identity.campusId===p.campus_id&&scopes?.some(s=>s.campus_id===p.campus_id);
       });
-      if(!permitted.length)return reply({requests:[]});
+      if(!permitted.length)return empty();
+      if(countOnly){
+        const {count,error}=await client.from('lesson_word_requests').select('id',{count:'exact',head:true})
+          .eq('support_project_ref',body.supportProjectRef).eq('organization_id',body.organizationId).eq('data_table',table)
+          .in('link_id',permitted.map(link=>link.id)).eq('status','pending');
+        if(error||typeof count!=='number'||!Number.isSafeInteger(count)||count<0)return reply({error:'申請件数を取得できませんでした。'},503);
+        return reply({pendingCount:count});
+      }
       const base=()=>client.from('lesson_word_requests').select('*').eq('support_project_ref',body.supportProjectRef).eq('organization_id',body.organizationId).eq('data_table',table).in('link_id',permitted.map((link:{id:string})=>link.id));
       const {data:pending,error:pendingError}=await base().eq('status','pending').order('created_at',{ascending:false}).limit(1000);
       const {data:completed,error:completedError}=await base().in('status',['approved','returned','expired']).not('submitted_at','is',null).order('created_at',{ascending:false}).limit(200);

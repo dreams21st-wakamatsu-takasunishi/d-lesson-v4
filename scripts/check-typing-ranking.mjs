@@ -58,7 +58,7 @@ assertIncludes(adminRankingSource, 'saveTypingRankingNicknameBlockWords', 'Admin
 assertIncludes(adminRankingSource, 'typingRankingNicknameBlockWords', 'Admin saves custom nickname block words');
 assertIncludes(adminRankingSource, '.filter(word => word.length <= 20)', 'Admin limits individual NG word length');
 assertIncludes(adminRankingSource, '.slice(0, 80)', 'Admin limits custom NG word count');
-assertIncludes(adminRankingSource, 'saveUsers(true)', 'Admin ranking settings persist through cloud sync');
+assertIncludes(adminRankingSource, 'saveLessonGlobalSettings()', 'Admin ranking settings persist without rewriting student rows');
 
 assertIncludes(rankingSettingsSource, 'DEFAULT_TYPING_RANKING_NICKNAME_BLOCK_WORDS', 'Default nickname block words');
 assertIncludes(rankingSettingsSource, 'normalizeNicknameBlockWords', 'Nickname block word normalization');

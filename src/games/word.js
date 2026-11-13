@@ -11,8 +11,8 @@ import {
     recordPracticeActivity,
     getPracticeLogs
 } from '../api/user.js';
-import {getCurrentLessonRole} from '../api/user.js';
-import {loadStudentWordReviews,readWordStudentSnapshot} from '../api/word-review.js';
+import {getCurrentLessonRole,reloadOwnLessonSnapshot} from '../api/user.js';
+import {loadStudentWordReviews} from '../api/word-review.js';
 import {showWordSubmissionDialog} from '../ui/word-submission-dialog.js';
 import { SoundManager } from '../utils/sound.js';
 import { createBtn } from '../utils/dom.js';
@@ -43,8 +43,8 @@ async function refreshWordReviews(){
         const result=await loadStudentWordReviews(userId);if(currentUser!==userId)return;
         wordReviewState={userId,linked:result.linked,requests:result.requests};
         if(result.requests.some(row=>row.status==='approved')){
-            const data=await readWordStudentSnapshot(userId);if(currentUser!==userId)return;
-            if(data.supportWordRevision!==users[userId]?.supportWordRevision){users[userId]=data;updateGlobalHeader();}
+            if(await reloadOwnLessonSnapshot(userId,(data,current)=>data.supportWordRevision!==current?.supportWordRevision))updateGlobalHeader();
+            if(currentUser!==userId)return;
         }
         if(document.getElementById('screen-word-menu').classList.contains('active'))renderWordMenu();
         renderReviewStatus();
@@ -296,8 +296,11 @@ export async function confirmWordClear() {
         studentName: getUserDisplayName(userId), stageTitle: getCurrentWordStageLabel(),
         userDataId: userId, stageId, page,
         isCurrent: () => currentUser === userId && currentWordStageId === stageId && document.getElementById('screen-word-game').classList.contains('active'),
-        onApproved: result => {
-            users[userId] = result.data;
+        onApproved: async result => {
+            if(getCurrentLessonRole()==='student'){
+                try { if(!await reloadOwnLessonSnapshot(userId))return; }
+                catch {showCustomAlert('承認は完了しました。画面を読み直して結果を確認してください。');return;}
+            }else users[userId] = result.data;
             showWordApprovalFeedback(result.coinGain, userId);
         }
     });
