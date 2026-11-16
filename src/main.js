@@ -5,9 +5,11 @@ import './styles/interface.css';
 import './styles/keyboard-extras.css';
 
 import { initApp } from './app/bootstrap.js';
+import { initWebAppInstall } from './ui/web-app-install.js';
 
 globalThis.BUILD_COMMIT = import.meta.env.VITE_BUILD_COMMIT || 'local';
 
+initWebAppInstall();
 initApp({
     buildCommit: globalThis.BUILD_COMMIT
 });

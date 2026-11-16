@@ -13,6 +13,7 @@ import { showScreen } from '../ui/screen.js';
 import { applyTheme } from '../ui/home.js';
 import { createConfetti } from '../ui/effects.js';
 import {showCustomAlert} from '../ui/modal.js';
+import { bindWebAppInstallButton } from '../ui/web-app-install.js';
 // ==========================================
 // Database (Supabase) connection
 // ==========================================
@@ -1385,6 +1386,7 @@ function buildAuthGateHtml(isError = false) {
                 ${buildAuthGateMainPanelHtml()}
             </div>
             ${buildAuthGateActionsHtml()}
+            <button id="install-web-app" class="auth-gate-switch-button" type="button" hidden><span aria-hidden="true"></span>アプリとしてインストール</button>
         </div>
     `;
 }
@@ -1419,6 +1421,7 @@ function updateStudentLoginUi() {
 }
 
 function bindAuthGateEvents() {
+    bindWebAppInstallButton();
     document.querySelectorAll('[data-auth-gate-mode]').forEach(button => {
         button.onclick = () => setAuthGateMode(button.dataset.authGateMode);
     });

@@ -265,6 +265,8 @@ html[data-lesson-theme="default"] .keyboard-category-card { background: #f4f9ff 
 #supabase-auth-card :is(.auth-submit, .student-login-submit):active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 #114d90; }
 #supabase-auth-card .auth-gate-actions { border-top: 1px solid #dce5e1; padding-top: 18px; margin-top: 22px; gap: 8px; }
 #supabase-auth-card .auth-gate-switch-button { padding: 9px 12px; font-size: 14px; }
+#install-web-app:not([hidden]) { display: flex; align-items: center; gap: 6px; margin: 10px 0 0 auto; min-height: 40px; }
+#install-web-app svg { display: block; width: 18px; height: 18px; }
 
 @media (max-width: 1100px) {
     #global-header { gap: 10px; }
