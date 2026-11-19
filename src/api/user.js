@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { OPERATIONAL_SCHOOL, studentLoginCodes } from '../utils/single-school.js';
 import { readLessonUserRows } from './lesson-user-read.js';
 import { createLessonDeltaWriter } from './lesson-delta.js';
 import { SoundManager } from '../utils/sound.js';
@@ -1042,14 +1043,7 @@ function normalizeStudentLoginCampusCode(value) {
 }
 
 function getStudentLoginCampusCode() {
-    if (typeof window === 'undefined') return '';
-    try {
-        const params = new URLSearchParams(window.location.search);
-        const value = params.get('campus') || params.get('campusCode') || import.meta.env.VITE_STUDENT_LOGIN_CAMPUS_CODE || '';
-        return normalizeStudentLoginCampusCode(value);
-    } catch (_err) {
-        return '';
-    }
+    return OPERATIONAL_SCHOOL;
 }
 
 function buildStudentLoginEmailForCampus(number, campusCode = '') {
@@ -1058,24 +1052,7 @@ function buildStudentLoginEmailForCampus(number, campusCode = '') {
 }
 
 function getStudentLoginCampusCodesToTry() {
-    const codes = [];
-    const addCode = value => {
-        const code = normalizeStudentLoginCampusCode(value);
-        if (!codes.includes(code)) codes.push(code);
-    };
-
-    const selectedCampusCode = getStudentLoginCampusCode();
-    addCode(selectedCampusCode);
-    if (STUDENT_LOGIN_STRICT_CAMPUS && selectedCampusCode) return codes;
-
-    STUDENT_LOGIN_CAMPUS_CODES.forEach(addCode);
-    try {
-        getCampusList().forEach(campus => addCode(campus?.code || campus?.id));
-    } catch (_err) {
-        // Campus settings may not be loaded yet on the login screen.
-    }
-    addCode('');
-    return codes;
+    return studentLoginCodes();
 }
 
 function buildStudentLoginEmail(number) {

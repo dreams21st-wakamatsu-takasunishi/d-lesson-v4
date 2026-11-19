@@ -1,11 +1,11 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { classroomIdentity, secretMatches } from '../_shared/support-learning.ts';
 import { lessonLoginUrl, type AccountAccess, type AccountUser } from '../_shared/support-accounts.ts';
-import { credentialPlan, operationPasscode, operationUuid } from '../_shared/support-account-credentials.ts';
+import { chosenPasscodeProof, credentialPlan, operationPasscode, operationUuid, validChosenPasscode } from '../_shared/support-account-credentials.ts';
 
 const reply = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
 const failure = (status: number) => Object.assign(Error('Credential operation failed'), { status });
-type Operation = { id: string; phase: string; auth_user_id: string | null; target_email: string | null; campus_code: string | null; login_number: string };
+type Operation = { id: string; phase: string; auth_user_id: string | null; target_email: string | null; campus_code: string | null; campus_id: string; login_number: string; passcode_digits: 6 | 10; reset_auth_ids: string[]; custom_passcode_proof?: string | null };
 type AuthUser = AccountUser & { app_metadata?: Record<string, unknown> };
 
 Deno.serve(async request => {
@@ -20,16 +20,27 @@ Deno.serve(async request => {
   try {
     const raw = await request.text(); if (raw.length > 2048) throw failure(400);
     const body = JSON.parse(raw), table = Deno.env.get('LESSON_USER_DATA_TABLE') || 'user_data';
-    if (!['issue', 'reset'].includes(body.action) || !operationUuid(body.operationId) || !operationUuid(body.actorId) || !operationUuid(body.organizationId) || !operationUuid(body.linkId)
+    const custom = body.action === 'issue-custom' || body.action === 'reset-custom';
+    const action = body.action === 'issue-custom' ? 'issue' : body.action === 'reset-custom' ? 'reset' : body.action;
+    if (!['issue', 'reset'].includes(action) || (custom ? !validChosenPasscode(body.passcode) : body.passcode !== undefined)
+      || !operationUuid(body.operationId) || !operationUuid(body.actorId) || !operationUuid(body.organizationId) || !operationUuid(body.linkId)
       || !/^[a-z0-9]{20}$/.test(body.supportProjectRef || '') || !/^student_[A-Za-z0-9_-]{1,140}$/.test(body.studentId || '')
       || typeof body.childId !== 'string' || !body.childId || body.childId.length > 160 || !['user_data', 'test_user_data'].includes(table)) throw failure(400);
+    if (custom || body.expectedCampus !== undefined || body.expectedDataTable !== undefined) {
+      if (typeof body.expectedCampus !== 'string' || !body.expectedCampus.trim() || body.expectedCampus.length > 80
+        || body.expectedDataTable !== table) throw failure(412);
+    }
+    const passcodeProof = custom ? await chosenPasscodeProof(bridgeSecret, body.operationId, body.studentId, body.passcode) : null;
     const { data: claimed, error: claimError } = await service.rpc('claim_support_account_operation', { p: {
-      id: body.operationId, lease, action: body.action, actor: body.actorId, org: body.organizationId, project: body.supportProjectRef,
+      id: body.operationId, lease, action, actor: body.actorId, org: body.organizationId, project: body.supportProjectRef,
       student: body.studentId, child: body.childId, link: body.linkId, table,
+      passcodeProof, expectedCampus: body.expectedCampus,
     } });
-    if (claimError) throw failure(({ PT423: 423, PT429: 429, PT409: 409, '42501': 403 } as Record<string, number>)[claimError.code] || 503);
+    if (claimError) throw failure(({ PT423: 423, PT429: 429, PT409: 409, PT412: 412, PT422: 422, '42501': 403 } as Record<string, number>)[claimError.code] || 503);
     operation = claimed;
     if (!operation) throw failure(503);
+    if ((operation.custom_passcode_proof ?? null) !== passcodeProof) throw failure(503);
+    if (body.expectedCampus !== undefined && operation.campus_id !== body.expectedCampus) throw failure(412);
     const learner = async () => {
       const { data, error } = await service.from(table).select('id,data').eq('id', body.studentId).single();
       if (error) throw failure(409); return data;
@@ -59,21 +70,23 @@ Deno.serve(async request => {
       }
       const campus = Array.isArray(globalSettings?.campuses) ? globalSettings.campuses.find((value: { id?: string; campusId?: string; code?: string }) => (value.id || value.campusId || value.code) === identity.campusId) : null;
       let plan;
-      try { plan = credentialPlan(body.action, body.studentId, row.data, rows, users, owned, {
+      try { plan = credentialPlan(action, body.studentId, row.data, rows, users, owned, {
         domain: (Deno.env.get('STUDENT_LOGIN_EMAIL_DOMAIN') || '').replace(/^@/, ''), prefix: Deno.env.get('STUDENT_LOGIN_EMAIL_PREFIX') || 'dlesson-student-',
         pad: Number(Deno.env.get('STUDENT_LOGIN_NUMBER_PAD') || '3'), campusCode: typeof campus?.code === 'string' ? campus.code : identity.campusId,
       }); } catch { throw failure(409); }
       const { error: prepareError } = await service.rpc('prepare_support_account_operation', { p_id: operation.id, p_lease: lease, p_auth: plan.authId, p_email: plan.email, p_code: plan.campusCode });
       if (prepareError) throw failure(409);
-      operation = { ...operation, phase: 'auth-pending', auth_user_id: plan.authId, target_email: plan.email, campus_code: plan.campusCode };
+      const updated = await service.from('lesson_support_account_operations').select('reset_auth_ids').eq('id',operation.id).eq('lease_id',lease).single();
+      if(updated.error)throw failure(409);
+      operation = { ...operation, reset_auth_ids:updated.data.reset_auth_ids, phase: 'auth-pending', auth_user_id: plan.authId, target_email: plan.email, campus_code: plan.campusCode };
     }
     if (!operation.target_email || operation.campus_code === null) throw failure(409);
     const { error: guardError } = await service.rpc('guard_support_account_operation', { p_id: operation.id, p_lease: lease });
     if (guardError) throw failure(guardError.code === '42501' ? 403 : 409);
-    const passcode = await operationPasscode(bridgeSecret, operation.id, body.studentId);
+    const passcode = custom ? body.passcode : await operationPasscode(bridgeSecret, operation.id, body.studentId, operation.passcode_digits);
     let authId = operation.auth_user_id;
     if (operation.phase === 'auth-pending') {
-      if (body.action === 'issue') {
+      if (action === 'issue') {
         const { data: matches, error } = await service.rpc('lookup_support_account_email', { p_email: operation.target_email });
         if (error || !Array.isArray(matches) || matches.length > 1) throw failure(409);
         if (matches.length === 1) {
@@ -86,17 +99,29 @@ Deno.serve(async request => {
         }
       } else {
         if (!authId) throw failure(409);
-        const { data, error } = await service.auth.admin.getUserById(authId);
-        const owned = await service.from('lesson_user_access').select('user_data_id,role').eq('auth_user_id', authId).limit(11);
         const studentAccess = await accountRows();
-        const user = data.user;
-        if (error || !user || user.email?.toLowerCase() !== operation.target_email.toLowerCase() || (user.banned_until && Date.parse(user.banned_until) > Date.now())
-          || owned.error || owned.data?.length !== 1 || owned.data.some(access => access.user_data_id !== body.studentId || access.role !== 'student')
-          || studentAccess.length !== 1 || studentAccess[0].auth_user_id !== authId || (user.user_metadata?.user_data_id && user.user_metadata.user_data_id !== body.studentId)) throw failure(409);
-        if (user.app_metadata?.lesson_credential_operation !== operation.id) {
-          const { error: resetError } = await service.auth.admin.updateUserById(authId, { password: passcode,
-            app_metadata: { ...user.app_metadata, lesson_credential_operation: operation.id }, user_metadata: { ...user.user_metadata, user_data_id: body.studentId } });
-          if (resetError) throw failure(503);
+        const ids = operation.reset_auth_ids.length ? operation.reset_auth_ids : [authId];
+        if(studentAccess.length!==ids.length || studentAccess.some(row=>!ids.includes(row.auth_user_id)||row.role!=='student'))throw failure(409);
+        const updates: AuthUser[] = [];
+        for(const target of ids){
+          const {data,error}=await service.auth.admin.getUserById(target);
+          const owned=await service.from('lesson_user_access').select('user_data_id,role').eq('auth_user_id',target).limit(11);
+          const user=data.user;
+          if(error||!user||owned.error||owned.data?.length!==1||owned.data.some(row=>row.user_data_id!==body.studentId||row.role!=='student')
+            ||(user.banned_until&&Date.parse(user.banned_until)>Date.now())||(user.user_metadata?.user_data_id&&user.user_metadata.user_data_id!==body.studentId)
+            ||(target===authId&&user.email?.toLowerCase()!==operation.target_email.toLowerCase()))throw failure(409);
+          const aliases=[operation.campus_id,operation.campus_code,''].map(code=>`${Deno.env.get('STUDENT_LOGIN_EMAIL_PREFIX')||'dlesson-student-'}${code?code+'-':''}${operation!.login_number.padStart(Number(Deno.env.get('STUDENT_LOGIN_NUMBER_PAD')||'3'),'0')}@${(Deno.env.get('STUDENT_LOGIN_EMAIL_DOMAIN')||'').replace(/^@/,'')}`.toLowerCase());
+          if(!aliases.includes(user.email!.toLowerCase()))throw failure(409);
+          updates.push(user as AuthUser);
+        }
+        for(const user of updates){
+          const check=await service.rpc('guard_support_account_operation',{p_id:operation.id,p_lease:lease});
+          if(check.error)throw failure(409);
+          if(user.app_metadata?.lesson_credential_operation!==operation.id){
+            const {error}=await service.auth.admin.updateUserById(user.id,{password:passcode,app_metadata:{...user.app_metadata,lesson_credential_operation:operation.id},
+              user_metadata:{...user.user_metadata,user_data_id:body.studentId}});
+            if(error)throw failure(503);
+          }
         }
       }
       const saved = await service.from('lesson_support_account_operations').update({ phase: 'auth-ready', auth_user_id: authId, updated_at: new Date().toISOString() })
@@ -117,14 +142,16 @@ Deno.serve(async request => {
     if (finalError || !finalIdentity || finalIdentity.campusId !== identity.campusId) throw failure(409);
     const released = await service.from('lesson_support_account_operations').update({ lease_id: null, lease_until: null, error_code: null }).eq('id', operation.id).eq('lease_id', lease).select('id').single();
     if (released.error) throw failure(503);
-    return reply({ schemaVersion: 1, operationId: operation.id, action: body.action, childId: body.childId, linkId: body.linkId, identity: finalIdentity,
-      account: { status: 'ready', authCount: 1, loginNumber: String(Number(operation.login_number)) },
+    return reply({ schemaVersion: 1, operationId: operation.id, action, ...(custom ? { customPasscode: true } : {}), childId: body.childId, linkId: body.linkId, identity: finalIdentity,
+      account: { status: 'ready', authCount: operation.reset_auth_ids.length || 1, loginNumber: String(Number(operation.login_number)) },
       card: { verified: true, loginNumber: String(Number(operation.login_number)), loginUrl: lessonLoginUrl(operation.campus_code), passcode } });
   } catch (error) {
     const status = (error as { status?: number }).status || 503;
     if (operation) await service.from('lesson_support_account_operations').update({ lease_id: null, lease_until: null, error_code: `HTTP_${status}`,
       ...(operation.phase === 'reserved' ? { phase: 'denied', finished_at: new Date().toISOString() } : {}) }).eq('id', operation.id).eq('lease_id', lease);
     const messages: Record<number, string> = { 400: '児童と操作を確認してください。', 403: '児童の連携許可を確認してください。', 409: 'Auth・児童番号・連携状態を要確認です。新しい操作を始めず、操作履歴を確認してください。',
+      412: 'DサポートとDレッスンの連携校舎を確認してください。この再確認では合言葉を変更していません。',
+      422: '同じ操作を再確認するには、自動発行なら空欄のまま、手動設定なら最初に設定した合言葉を入力してください。',
       423: '同じ発行操作を処理中です。しばらく待って同じ操作を再確認してください。', 429: '発行操作が多すぎます。15分ほど空けてください。' };
     return reply({ error: messages[status] || '発行結果を確認できませんでした。同じ操作を再確認してください。', ...(operation ? { operationId: operation.id, resumable: operation.phase !== 'reserved' } : {}) }, status);
   }

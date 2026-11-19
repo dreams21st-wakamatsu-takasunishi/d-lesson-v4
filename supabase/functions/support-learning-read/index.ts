@@ -54,8 +54,11 @@ Deno.serve(async request => {
       : await client.from(table).select('id,data').eq('id', body.studentId).maybeSingle();
     if (error) return reply({ error: '学習データを取得できません。' }, 503);
     const identity = row?.data ? classroomIdentity(row.id, row.data, sourceProject, table) : null;
-    if (!identity || !identity.displayName || permission.campus_id !== identity.campusId) {
+    if (!identity || !identity.displayName) {
       return reply({ error: '対象の教室児童を確認できません。IDと連携範囲を確認してください。' }, 403);
+    }
+    if (permission.campus_id !== identity.campusId) {
+      return reply({ error: 'Dレッスンの所属校舎と児童の連携許可が一致しません。連携を解除せず、管理者に校舎設定の確認を依頼してください。' }, 403);
     }
     return reply({ schemaVersion: 1, identity, ...(body.action === 'history' ? {
       date: body.date, events: practiceForDate(row!.data, body.date), historyComplete: false,

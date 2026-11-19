@@ -19,6 +19,7 @@ import {
 } from '../utils/standard-route.js';
 import { showCustomAlert, showCustomConfirm } from './modal.js';
 import { recordAdminAudit } from './admin-audit.js';
+import { OPERATIONAL_SCHOOL } from '../utils/single-school.js';
 
 function escapeHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, char => ({
@@ -133,7 +134,7 @@ export function renderStandardRouteSettingsAdmin() {
     if (!root) return;
 
     const settings = getRouteSettings();
-    const selectedCampus = document.getElementById('route-rule-campus')?.value || DEFAULT_CAMPUS_ID;
+    const selectedCampus = OPERATIONAL_SCHOOL;
     const selectedGroup = document.getElementById('route-rule-group')?.value || '';
     const selectedOrder = readOrderFromForm();
     const order = selectedOrder.length ? selectedOrder : STANDARD_ROUTE_STEP_IDS;
@@ -156,12 +157,10 @@ export function renderStandardRouteSettingsAdmin() {
             </section>
 
             <section class="admin-route-settings-card">
-                <h4>校舎・グループ別ルート</h4>
-                <p>グループを空欄にすると、その校舎全体のおすすめ順として使います。</p>
+                <h4>グループ別ルート</h4>
+                <p>グループを空欄にすると、教室全体のおすすめ順として使います。</p>
                 <div class="admin-route-rule-form">
-                    <label>校舎
-                        <select id="route-rule-campus">${renderCampusOptions(selectedCampus)}</select>
-                    </label>
+                    <input type="hidden" id="route-rule-campus" value="${selectedCampus}">
                     <label>グループ
                         <select id="route-rule-group">${renderGroupOptions(selectedGroup)}</select>
                     </label>
@@ -227,7 +226,7 @@ export async function saveStandardRouteMode() {
 }
 
 export async function saveStandardRouteRule() {
-    const campusId = document.getElementById('route-rule-campus')?.value || DEFAULT_CAMPUS_ID;
+    const campusId = OPERATIONAL_SCHOOL;
     const customGroup = String(document.getElementById('route-rule-group-custom')?.value || '').trim();
     const group = customGroup || String(document.getElementById('route-rule-group')?.value || '').trim();
     const order = readOrderFromForm();

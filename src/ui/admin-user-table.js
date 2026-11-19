@@ -118,6 +118,7 @@ export function updateAdminUserTable(options = {}) {
         th.dataset.campusHeader = 'true';
         th.style.cssText = 'padding:8px; border:1px solid #ddd;';
         th.innerText = '校舎';
+        th.hidden = true;
         headerRow.insertBefore(th, headerRow.children[5] || null);
     }
     if (headerRow && !headerRow.querySelector('[data-auth-header="true"]')) {
@@ -264,16 +265,18 @@ export function updateAdminUserTable(options = {}) {
         tr.appendChild(accountTypeTd);
 
         const campusTd = document.createElement('td');
+        campusTd.hidden = true;
         campusTd.style.cssText = 'padding:5px; border:1px solid #ddd;';
         const campusSelect = document.createElement('select');
         campusSelect.style.cssText = 'width:100px; padding:2px; font-size:12px; border:1px solid #ccc;';
-        getCampusList().forEach(campus => {
+        getCampusList().filter(campus=>campus.id===item.campusId).forEach(campus => {
             const opt = document.createElement('option');
             opt.value = campus.id;
             opt.innerText = getCampusName(campus.id);
             campusSelect.appendChild(opt);
         });
         campusSelect.value = item.campusId || DEFAULT_CAMPUS_ID;
+        campusSelect.disabled = true;
         campusSelect.onchange = async () => {
             campusSelect.disabled = true;
             await updateUserCampus(item.id, campusSelect.value, options);
@@ -292,7 +295,7 @@ export function updateAdminUserTable(options = {}) {
         tr.appendChild(groupTd);
         const groupLabel = document.createElement('label'); groupLabel.textContent = 'グループ';
         groupLabel.style.cssText = 'display:block;font-size:11px;color:#64748b;margin-top:5px';
-        groupLabel.appendChild(groupInput); campusTd.appendChild(groupLabel);
+        groupLabel.appendChild(groupInput); nameTd.appendChild(groupLabel);
 
         const mouseTd = document.createElement('td');
         mouseTd.style.cssText = 'padding:5px; border:1px solid #ddd;';
@@ -323,7 +326,7 @@ export function updateAdminUserTable(options = {}) {
                 syncButton.disabled = true;
                 await syncUserCampusAuth(item.id, options);
             };
-            authTd.appendChild(syncButton);
+            // Login credentials are managed only from D Support.
         } else {
             const unlinkedLabel = document.createElement('span');
             unlinkedLabel.innerText = '未連携';
@@ -344,7 +347,7 @@ export function updateAdminUserTable(options = {}) {
                     updateAdminUserTable(options);
                 }
             };
-            authTd.appendChild(createButton);
+            // New login provisioning is managed only from D Support.
         }
         tr.appendChild(authTd);
 
@@ -361,6 +364,8 @@ export function updateAdminUserTable(options = {}) {
             const opt = document.createElement('option'); opt.value = value; opt.textContent = label; stateSelect.appendChild(opt);
         });
         stateSelect.value = studentState(item.user);
+        stateSelect.disabled = true;
+        stateSelect.title = '利用停止・復元はDサポートの児童・ログイン管理で行います';
         stateSelect.onchange = async () => {
             stateSelect.disabled = true;
             try {
@@ -445,94 +450,14 @@ export async function updateUserBirthdate(userId, newBirthdate, options = {}) {
 }
 
 export async function updateUserCampus(userId, newCampusId, options = {}) {
-    if (!users[userId]) return false;
-
-    const oldCampusId = getUserCampusId(users[userId]);
-    const campusId = normalizeCampusId(newCampusId);
-    if (oldCampusId === campusId) {
-        updateAdminUserTable(options);
-        return true;
-    }
-
-    const user = users[userId];
-    const loginNumber = cleanStudentLoginNumber(user.loginNumber);
-    if (loginNumber && studentLoginNumberExistsInCampus(loginNumber, campusId, userId)) {
-        showCustomAlert(`${getCampusName(campusId)}には、児童番号 ${loginNumber} がすでに登録されています。`);
-        updateAdminUserTable(options);
-        return false;
-    }
-
-    let authMoved = false;
-    try {
-        if (getUserAccountType(userId) === USER_ACCOUNT_TYPES.CLASSROOM && user.authUserId) {
-            await moveStudentCampusAuth(userId, campusId);
-            authMoved = true;
-        }
-
-        user.campusId = campusId;
-        const saved = await saveUsers(true);
-        if (!saved) throw new Error('児童データを保存できませんでした。');
-    } catch (error) {
-        user.campusId = oldCampusId;
-        if (authMoved) {
-            try {
-                await moveStudentCampusAuth(userId, oldCampusId);
-            } catch (rollbackError) {
-                console.error('Auth校舎変更の巻き戻しに失敗しました:', rollbackError);
-            }
-        }
-        console.error('校舎変更に失敗しました:', error);
-        showCustomAlert(`校舎を変更できませんでした。\n${error.message || error}`);
-        updateAdminUserTable(options);
-        return false;
-    }
-
-    recordAdminAudit('campus_changed', {
-        user: getUserDisplayName(userId),
-        userDataId: userId,
-        before: oldCampusId,
-        after: campusId,
-        authSynced: authMoved
-    });
+    showCustomAlert('校舎変更は廃止しました。児童の登録・ログインはDサポートで管理してください。');
     updateAdminUserTable(options);
-    runUserChanged(options);
-    return true;
+    return false;
 }
 
 export async function syncUserCampusAuth(userId, options = {}) {
-    const user = users[userId];
-    if (!user) return false;
-
-    const campusId = getUserCampusId(user);
-    const loginNumber = cleanStudentLoginNumber(user.loginNumber);
-    if (!user.authUserId || !loginNumber) {
-        showCustomAlert('Auth User IDと児童番号の両方が必要です。');
-        updateAdminUserTable(options);
-        return false;
-    }
-    if (studentLoginNumberExistsInCampus(loginNumber, campusId, userId)) {
-        showCustomAlert(`${getCampusName(campusId)}には、児童番号 ${loginNumber} が重複しています。`);
-        updateAdminUserTable(options);
-        return false;
-    }
-
-    try {
-        await moveStudentCampusAuth(userId, campusId);
-        recordAdminAudit('campus_auth_synced', {
-            user: getUserDisplayName(userId),
-            userDataId: userId,
-            campusId,
-            loginNumber
-        });
-        showCustomAlert(`${getUserDisplayName(userId)} さんのAuth校舎情報を同期しました。`);
-        updateAdminUserTable(options);
-        return true;
-    } catch (error) {
-        console.error('Auth校舎同期に失敗しました:', error);
-        showCustomAlert(`Auth校舎情報を同期できませんでした。\n${error.message || error}`);
-        updateAdminUserTable(options);
-        return false;
-    }
+    showCustomAlert('ログイン設定はDサポートの「Dレッスン管理 → 児童・ログイン管理」で確認してください。');
+    return false;
 }
 
 export async function updateUserGroup(userId, newGroup, options = {}) {

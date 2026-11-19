@@ -122,415 +122,53 @@ function getCampusInputValue(id) {
 }
 
 export function renderCampusAdmin() {
-    const campusList = getCampusList();
-    const available = getRegistrationCampuses();
-    let addCampusSelect = document.getElementById('admin-add-campus');
-    if (!addCampusSelect) {
-        const groupInput = document.getElementById('admin-add-group');
-        if (groupInput?.parentElement) {
-            addCampusSelect = document.createElement('select');
-            addCampusSelect.id = 'admin-add-campus';
-            addCampusSelect.title = '校舎';
-            addCampusSelect.style.cssText = 'margin:0; width:130px; padding:8px; font-size:16px; border:1px solid #ccc; border-radius:6px;';
-            groupInput.parentElement.insertBefore(addCampusSelect, groupInput);
-        }
+    for (const id of ['admin-campus-card', 'admin-user-campus-filter']) {
+        const element = document.getElementById(id);
+        if (element) { element.hidden = true; element.style.display = 'none'; }
     }
-
-    if (!document.getElementById('admin-campus-list')) {
-        const addNameInput = document.getElementById('admin-add-name');
-        const addCard = addNameInput?.closest('div[style]');
-        const parent = addCard?.parentElement;
-        if (parent && addCard) {
-            const campusCard = document.createElement('div');
-            campusCard.id = 'admin-campus-card';
-            campusCard.style.cssText = 'display:flex; flex-direction:column; gap:10px; background:#eefaf7; padding:15px; border-radius:8px; border:1px solid #80cbc4;';
-            campusCard.innerHTML = `
-                <details><summary>校舎台帳・管理者向け詳細設定</summary>
-                <p>既存の所属・教材・ログインは自動移動しません。本校は既存データの確認用として区別しています。</p>
-                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                    <input type="text" id="admin-campus-name" placeholder="校舎名 例: 若松校" style="margin:0; flex:1; min-width:140px; padding:8px; font-size:14px;">
-                    <input type="text" id="admin-campus-code" placeholder="コード 例: wakamatsu" style="margin:0; width:150px; padding:8px; font-size:14px;">
-                    <button type="button" class="btn-primary" onclick="adminAddCampus()" style="font-size:14px; padding:8px 12px;">校舎追加</button>
-                </div>
-                <div id="admin-campus-list" style="display:flex; flex-direction:column; gap:6px;"></div></details>
-            `;
-            parent.insertBefore(campusCard, addCard.nextSibling);
-        }
-    }
-
-    const campusFilter = document.getElementById('admin-user-campus-filter');
-    if (!campusFilter) {
-        const groupFilter = document.getElementById('admin-user-group-filter');
-        if (groupFilter?.parentElement) {
-            const select = document.createElement('select');
-            select.id = 'admin-user-campus-filter';
-            select.onchange = () => {
-                if (typeof window.updateAdminUserTable === 'function') window.updateAdminUserTable();
-            };
-            select.style.cssText = 'min-width:130px; padding:8px; font-size:14px; border:1px solid #ccc; border-radius:6px; margin:0;';
-            groupFilter.parentElement.insertBefore(select, groupFilter);
-        }
-    }
-
-    const scopeTypeSelect = document.getElementById('auth-teacher-scope-type');
-    if (scopeTypeSelect && !scopeTypeSelect.querySelector('option[value="campus"]')) {
-        const opt = document.createElement('option');
-        opt.value = 'campus';
-        opt.innerText = '校舎指定';
-        scopeTypeSelect.appendChild(opt);
-    }
-
-    const listEl = document.getElementById('admin-campus-list');
-
-    if (addCampusSelect) {
-        const current = addCampusSelect.value;
-        addCampusSelect.innerHTML = '';
-        if (available.length !== 1) {
-            const empty = document.createElement('option'); empty.value = ''; empty.textContent = '登録先校舎を選択';
-            addCampusSelect.appendChild(empty);
-        }
-        available.forEach(campus => {
-            const opt = document.createElement('option');
-            opt.value = campus.id;
-            opt.innerText = campus.name;
-            addCampusSelect.appendChild(opt);
-        });
-        addCampusSelect.value = available.some(campus => campus.id === current) ? current : available.length === 1 ? available[0].id : '';
-        addCampusSelect.hidden = available.length === 1;
-        let label = document.getElementById('admin-registration-campus');
-        if (!label) { label = document.createElement('p'); label.id = 'admin-registration-campus'; addCampusSelect.before(label); }
-        label.textContent = available.length === 1 ? `登録先：${available[0].name}` : '登録先を確認してください。本校への新規登録は停止しています。';
-        const number = document.getElementById('admin-add-login-number');
-        const suggest = () => { if (number && (!number.value || number.dataset.suggested === number.value)) {
-            number.value = nextStudentNumber(users, addCampusSelect.value); number.dataset.suggested = number.value;
-        } };
-        addCampusSelect.onchange = suggest;
-        suggest();
-    }
-
-    if (!listEl) return;
-    listEl.innerHTML = '';
-    campusList.forEach(campus => {
-        const row = document.createElement('div');
-        row.style.cssText = 'display:flex; align-items:center; justify-content:space-between; gap:8px; padding:6px 8px; border:1px solid #d8e5e3; border-radius:6px; background:#fff;';
-        const label = document.createElement('span');
-        label.innerText = `${getCampusName(campus.id)}${campus.registrationEnabled === false ? '・新規登録停止' : ''}`;
-        label.style.cssText = 'font-size:13px; color:#234; font-weight:700;';
-        row.appendChild(label);
-
-        if (campus.id !== DEFAULT_CAMPUS_ID) {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'btn-secondary';
-            btn.innerText = '削除';
-            btn.style.cssText = 'font-size:12px; padding:4px 8px;';
-            btn.onclick = () => adminDeleteCampus(campus.id);
-            row.appendChild(btn);
-        }
-        listEl.appendChild(row);
-    });
 }
 
 export async function adminAddCampus(afterChange) {
-    const nameInput = document.getElementById('admin-campus-name');
-    const codeInput = document.getElementById('admin-campus-code');
-    const name = String(nameInput?.value || '').trim();
-    const code = String(codeInput?.value || '').trim();
-    if (!name) return showCustomAlert('校舎名を入力してください。');
-
-    if (!/^[a-z][a-z0-9-]{1,79}$/.test(code)) return showCustomAlert('校舎コードは英小文字・数字・ハイフンで2～80文字にしてください。');
-    const id = code;
-    const campuses = getCampusList();
-    if (campuses.some(campus => campus.id === id || campus.name === name)) {
-        showCustomAlert('同じ校舎がすでに登録されています。');
-        return;
-    }
-
-    try { await addCampusRegistryEntry(name, code); }
-    catch (error) { return showCustomAlert(error.message); }
-    recordAdminAudit('campus_added', { id, name, code: code || id });
-    if (nameInput) nameInput.value = '';
-    if (codeInput) codeInput.value = '';
-    renderCampusAdmin();
-    runAfterChange(afterChange);
+    showCustomAlert('児童の登録・合言葉・削除と復元は、Dサポートの「Dレッスン管理 → 児童・ログイン管理」で行ってください。学習履歴は保持されます。');
+    return false;
 }
 
 export async function adminDeleteCampus(campusId, afterChange) {
-    const id = normalizeCampusId(campusId);
-    if (id === DEFAULT_CAMPUS_ID) return;
-    const used = Object.keys(users).some(userId => (
-        users[userId]
-        && !users[userId].isMaster
-        && !isSystemUserId(userId)
-        && getUserCampusId(users[userId]) === id
-    ));
-    if (used) {
-        showCustomAlert('この校舎に所属している児童がいるため削除できません。先に児童の校舎を変更してください。');
-        return;
-    }
-    try { await deleteCampusRegistryEntry(id); }
-    catch (error) { return showCustomAlert(error.message); }
-    recordAdminAudit('campus_deleted', { id });
-    renderCampusAdmin();
-    runAfterChange(afterChange);
+    showCustomAlert('児童の登録・合言葉・削除と復元は、Dサポートの「Dレッスン管理 → 児童・ログイン管理」で行ってください。学習履歴は保持されます。');
+    return false;
 }
 
 export async function adminAddUser(afterChange) {
-    const name = document.getElementById('admin-add-name').value.trim();
-    const birthdate = document.getElementById('admin-add-birth').value;
-    const campusId = document.getElementById('admin-add-campus')?.value || '';
-    const group = document.getElementById('admin-add-group').value.trim();
-    const loginNumber = getNumericInputValue('admin-add-login-number') || nextStudentNumber(users, campusId);
-    const passcode = getNumericInputValue('admin-add-passcode') || generatePasscode();
-    const shouldCreateAuth = true;
-
-    if (!name) return showCustomAlert('名前を入力してください');
-    if (userDisplayNameExists(name)) return showCustomAlert('その名前はすでに登録されています');
-    if (!birthdate) return showCustomAlert('生年月日を入力してください');
-    if (!getRegistrationCampuses().some(campus => campus.id === campusId)) return showCustomAlert('登録先校舎を確認してください。');
-    if (!/^\d+$/.test(loginNumber) || Number(loginNumber) < 1 || Number(loginNumber) > 50) return showCustomAlert('児童番号の空きがありません。管理者に確認してください。');
-    if (shouldCreateAuth && !loginNumber) return showCustomAlert('Auth作成する場合は児童番号を入力してください');
-    if (shouldCreateAuth && passcode.length < 6) return showCustomAlert('Auth作成する場合は、あいことばを6けた以上の数字で入力してください');
-    if (shouldCreateAuth && studentLoginNumberExists(loginNumber, campusId)) {
-        return showCustomAlert('同じ校舎で同じ児童番号がすでに使われています。');
-    }
-
-    showCustomConfirm(`登録内容を確認してください。\n氏名：${name}\n生年月日：${birthdate}\n校舎：${getCampusName(campusId)}\nグループ：${group || '未指定'}\n児童番号：${loginNumber}\n\nログイン設定まで作成し、ログインカードを表示します。既存アカウントがないことを確認しましたか？`, async () => {
-    const userDataId = createStudentRecord(name, birthdate, group, campusId);
-    recordAdminAudit('児童追加', {
-        user: name,
-        userDataId,
-        birthdate,
-        campusId,
-        group
-    });
-    const saved = await saveManagedUserRows(userDataId);
-    if (!saved) {
-        delete users[userDataId];
-        runAfterChange(afterChange);
-        return showCustomAlert('児童データの保存に失敗しました。通信状態または権限を確認してください。');
-    }
-
-    if (shouldCreateAuth) {
-        try {
-            const authData = await createAdminStudentAuthAccount(userDataId, loginNumber, passcode);
-            recordAdminAudit('auth_student_created', {
-                user: name,
-                userDataId,
-                authUserId: authData.authUserId,
-                email: authData.email,
-                loginNumber
-            });
-            openStudentLoginCardsPrintWindow([{
-                student_number: loginNumber,
-                display_name: name,
-                password: passcode
-            }], {
-                title: 'Dレッスン ログインカード',
-                cardsPerPage: 6
-            });
-            const loginInput = document.getElementById('admin-add-login-number');
-            const passcodeInput = document.getElementById('admin-add-passcode');
-            if (loginInput) loginInput.value = '';
-            if (passcodeInput) passcodeInput.value = '';
-        } catch (error) {
-            console.error('Admin add student auth failed:', error);
-            runAfterChange(afterChange);
-            showCustomAlert(`児童データは追加されましたが、Auth作成に失敗しました。\n${error.message}`);
-            return;
-        }
-    }
-
-    document.getElementById('admin-add-name').value = '';
-    document.getElementById('admin-add-birth').value = '';
-    document.getElementById('admin-add-group').value = '';
-    runAfterChange(afterChange);
-    showCustomAlert(shouldCreateAuth
-        ? `${name} さんを追加し、Authアカウントを作成しました！\n児童番号: ${loginNumber}`
-        : `${name} さんを追加しました！`);
-    });
+    showCustomAlert('児童の登録・合言葉・削除と復元は、Dサポートの「Dレッスン管理 → 児童・ログイン管理」で行ってください。学習履歴は保持されます。');
+    return false;
 }
 
 export async function adminCreateExistingStudentAuth(userDataId, afterChange) {
-    if (!userDataId || !users[userDataId] || isSystemUserId(userDataId)) {
-        showCustomAlert('Auth連携する児童を選択してください。');
-        return false;
-    }
-
-    const user = users[userDataId];
-    const displayName = getUserDisplayName(userDataId);
-    if (getUserAccountType(userDataId) !== USER_ACCOUNT_TYPES.CLASSROOM) {
-        showCustomAlert('Auth作成は教室児童だけが対象です。');
-        return false;
-    }
-    if (user.authUserId) {
-        showCustomAlert(`${displayName} さんはすでにAuth連携済みです。`);
-        return false;
-    }
-
-    const campusId = getUserCampusId(user);
-    const numberInput = window.prompt(`${displayName} さんの児童番号を入力してください。`, user.loginNumber || '');
-    if (numberInput === null) return false;
-    const studentNumber = String(numberInput || '').replace(/\D/g, '');
-    if (!studentNumber) {
-        showCustomAlert('児童番号を入力してください。');
-        return false;
-    }
-    if (studentLoginNumberExists(studentNumber, campusId, userDataId)) {
-        showCustomAlert(`${getCampusName(campusId)}では、児童番号 ${studentNumber} がすでに使われています。`);
-        return false;
-    }
-
-    const defaultPasscode = generatePasscode(6);
-    const passcodeInput = window.prompt(
-        `${displayName} さんのあいことばを入力してください。\n6けた以上の数字を設定します。\nこの値は保存されず、作成直後のカードにだけ表示します。`,
-        defaultPasscode
-    );
-    if (passcodeInput === null) return false;
-    const passcode = String(passcodeInput || '').replace(/\D/g, '');
-    if (passcode.length < 6) {
-        showCustomAlert('あいことばは6けた以上の数字で入力してください。');
-        return false;
-    }
-
-    try {
-        const authData = await createAdminStudentAuthAccount(userDataId, studentNumber, passcode, 'create');
-
-        recordAdminAudit('auth_existing_student_created', {
-            user: displayName,
-            userDataId,
-            campusId,
-            authUserId: authData.authUserId,
-            email: authData.email,
-            loginNumber: studentNumber
-        });
-        runAfterChange(afterChange);
-        openStudentLoginCardsPrintWindow([{
-            student_number: studentNumber,
-            display_name: displayName,
-            password: passcode
-        }], {
-            title: 'Dレッスン ログインカード',
-            cardsPerPage: 6
-        });
-        showCustomAlert(`${displayName} さんのAuthアカウントを作成しました。\n児童番号: ${studentNumber}\nログインカードを本人に渡してください。`);
-        return true;
-    } catch (error) {
-        console.error('Existing student auth creation failed:', error);
-        showCustomAlert(`Auth作成に失敗しました。\n${error.message || error}`);
-        return false;
-    }
+    showCustomAlert('児童の登録・合言葉・削除と復元は、Dサポートの「Dレッスン管理 → 児童・ログイン管理」で行ってください。学習履歴は保持されます。');
+    return false;
 }
 
 export async function adminResetStudentPasscode(userDataId, afterChange) {
-    if (!userDataId || !users[userDataId] || isSystemUserId(userDataId)) {
-        showCustomAlert('合言葉を再発行する児童を選択してください。');
-        return;
-    }
-
-    const user = users[userDataId];
-    const displayName = getUserDisplayName(userDataId);
-    const campusId = getUserCampusId(user);
-    const numberInput = window.prompt(`${displayName} さんの児童番号を確認してください。`, user.loginNumber || '');
-    if (numberInput === null) return;
-    const studentNumber = String(numberInput || '').replace(/\D/g, '');
-    if (!studentNumber) {
-        showCustomAlert('児童番号を入力してください。');
-        return;
-    }
-    if (studentLoginNumberExists(studentNumber, campusId, userDataId)) {
-        showCustomAlert('同じ校舎で同じ児童番号がすでに使われています。');
-        return;
-    }
-
-    const defaultPasscode = generatePasscode(6);
-    const passcodeInput = window.prompt(`${displayName} さんの新しいあいことばを入力してください。\nこの値は保存されず、再発行直後のカードにだけ表示します。`, defaultPasscode);
-    if (passcodeInput === null) return;
-    const passcode = String(passcodeInput || '').replace(/\D/g, '');
-    if (passcode.length < 6) {
-        showCustomAlert('あいことばは6けた以上の数字で入力してください。');
-        return;
-    }
-
-    showCustomConfirm(`${displayName} さんのあいことばを再発行しますか？\n古いあいことばではログインできなくなります。`, async () => {
-        try {
-            const authData = await createAdminStudentAuthAccount(userDataId, studentNumber, passcode, 'reset');
-            recordAdminAudit('auth_student_passcode_reset', {
-                user: displayName,
-                userDataId,
-                authUserId: authData.authUserId,
-                loginNumber: studentNumber
-            });
-            runAfterChange(afterChange);
-            openStudentLoginCardsPrintWindow([{
-                student_number: studentNumber,
-                display_name: displayName,
-                password: passcode
-            }], {
-                title: 'Dレッスン ログインカード',
-                cardsPerPage: 6
-            });
-            showCustomAlert(`${displayName} さんのあいことばを再発行しました。\nログインカードを印刷して本人に渡してください。`);
-        } catch (error) {
-            console.error('Admin reset student passcode failed:', error);
-            showCustomAlert(`あいことばの再発行に失敗しました。\n${error.message}`);
-        }
-    });
+    showCustomAlert('児童の登録・合言葉・削除と復元は、Dサポートの「Dレッスン管理 → 児童・ログイン管理」で行ってください。学習履歴は保持されます。');
+    return false;
 }
 
 export async function adminBulkAddUsers(afterChange) {
-    const textarea = document.getElementById('admin-bulk-names');
-    const text = textarea?.value || '';
-    if (!text.trim()) return showCustomAlert('入力してください');
-
-    const campusId = document.getElementById('admin-add-campus')?.value || '';
-    if (!getRegistrationCampuses().some(campus => campus.id === campusId)) return showCustomAlert('登録先の校舎を確認してください。');
-    const created = [];
-    text.split('\n').forEach(line => {
-        if (!line.trim()) return;
-        const parts = line.split(/[,、\s]+/);
-        const name = parts[0].trim();
-        const birthdate = parts.length > 1 ? parts[1].trim() : '';
-        const group = parts.length > 3 ? parts[3].trim() : (parts.length > 2 ? parts[2].trim() : '');
-        if (name && /^\d{4}-\d{2}-\d{2}$/.test(birthdate) && !userDisplayNameExists(name)) {
-            created.push(createStudentRecord(name, birthdate, group, campusId));
-        }
-    });
-
-    if (created.length && !await saveManagedUserRows(created)) {
-        created.forEach(id => { delete users[id]; });
-        return showCustomAlert('保存できませんでした。入力は残しています。再試行前に一覧を確認してください。');
-    }
-    recordAdminAudit('児童一括追加', { count: created.length });
-    runAfterChange(afterChange);
-    if (textarea) textarea.value = '';
-    showCustomAlert(`${created.length} 人の名簿を追加しました。ログインは未設定です。生年月日なし・不正形式・重複は追加していません。`);
+    showCustomAlert('児童の登録・合言葉・削除と復元は、Dサポートの「Dレッスン管理 → 児童・ログイン管理」で行ってください。学習履歴は保持されます。');
+    return false;
 }
 
 function parseCsvLine(line) {
-    const cells = [];
-    let cell = '';
-    let inQuotes = false;
-
+    const cells = []; let cell = ''; let inQuotes = false;
     for (let i = 0; i < line.length; i++) {
-        const ch = line[i];
-        const next = line[i + 1];
-        if (ch === '"' && inQuotes && next === '"') {
-            cell += '"';
-            i++;
-        } else if (ch === '"') {
-            inQuotes = !inQuotes;
-        } else if (ch === ',' && !inQuotes) {
-            cells.push(cell.trim());
-            cell = '';
-        } else {
-            cell += ch;
-        }
+        const ch = line[i], next = line[i + 1];
+        if (ch === '"' && inQuotes && next === '"') { cell += '"'; i++; }
+        else if (ch === '"') inQuotes = !inQuotes;
+        else if (ch === ',' && !inQuotes) { cells.push(cell.trim()); cell = ''; }
+        else cell += ch;
     }
-    cells.push(cell.trim());
-    return cells;
+    cells.push(cell.trim()); return cells;
 }
-
 function normalizeCsvKey(key) {
     const value = String(key || '').trim().toLowerCase();
     if (['id', 'user_id', 'user_data_id', 'userdataid'].includes(value)) return 'userDataId';
@@ -540,7 +178,6 @@ function normalizeCsvKey(key) {
     if (['campus', 'campusid', 'campus_id', 'school', 'school_id', '校舎'].includes(value)) return 'campusId';
     return value;
 }
-
 export function exportStudentCsv() {
     const rows = [['user_data_id', 'name', 'birthdate', 'campus_id', 'campus_name', 'group']];
     Object.keys(users)
@@ -666,22 +303,8 @@ export async function applyStudentCsvUpdates(afterChange) {
 }
 
 export function adminDeleteUser(userDataId, afterChange) {
-    if (!userDataId) return;
-
-    showCustomConfirm(`${getUserDisplayName(userDataId)}さんを削除しますか？`, async () => {
-        const displayName = getUserDisplayName(userDataId);
-        try {
-            const deletedByAdminFunction = await deleteCloudStudentAccount(userDataId);
-            if (!deletedByAdminFunction) await deleteCloudUserRows(userDataId);
-            delete users[userDataId];
-            recordAdminAudit('児童削除', { user: displayName, userDataId });
-            runAfterChange(afterChange);
-            showCustomAlert(`${displayName} さんを削除しました。`);
-        } catch (error) {
-            console.error('Delete user failed:', error);
-            showCustomAlert('削除に失敗しました。データは変更されていません。');
-        }
-    });
+    showCustomAlert('児童の登録・合言葉・削除と復元は、Dサポートの「Dレッスン管理 → 児童・ログイン管理」で行ってください。学習履歴は保持されます。');
+    return false;
 }
 
 export function adminAddCoins(userDataId, afterChange) {
