@@ -3,6 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "overrides": {
+    "source-map-js": "^1.2.2"
+  },
   "scripts": {
     "dev": "vite",
     "dev:local": "vite --host 127.0.0.1 --port 5174 --strictPort",
@@ -41,7 +44,7 @@
   "devDependencies": {
     "supabase": "^2.107.0",
     "typescript": "^6.0.3",
-    "vite": "^8.0.10"
+    "vite": "~8.1.6"
   },
   "dependencies": {
     "@fontsource/m-plus-rounded-1c": "^5.3.0",

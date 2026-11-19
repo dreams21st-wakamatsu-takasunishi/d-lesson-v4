@@ -53,6 +53,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Check dependencies for known vulnerabilities
+        run: node --test scripts/check-dependency-audit.test.mjs && node scripts/audit-dependencies.mjs
+
       - name: Run release checks and build
         run: npm run check:release
 
