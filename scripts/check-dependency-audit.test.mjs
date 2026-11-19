@@ -22,3 +22,20 @@ test('unavailable external audit retries then blocks, never assumes safety',asyn
  const recovered=await auditDependencies(()=>++calls===1?{status:1,stdout:''}:result(),async()=>{},()=>{});
  assert.equal(recovered.state,'passed');assert.equal(calls,2);
 });
+test('daily monitoring flags every severity while the release threshold stays high',async()=>{
+ const monitor={monitor:true};
+ for (const severity of ['info','low','moderate','high','critical']) {
+  const audit=result({[severity]:1,total:1});
+  assert.equal(classifyAudit(audit,monitor).state,'vulnerable');
+  assert.equal(classifyAudit(audit).state,['high','critical'].includes(severity)?'vulnerable':'passed');
+  await assert.rejects(()=>auditDependencies(()=>({...audit,status:1}),()=>assert.fail('known finding must not retry'),()=>{},monitor),/warnings require review/);
+ }
+ assert.equal(classifyAudit(result(),monitor).state,'passed');
+});
+test('invalid totals or a failed request with no findings never pass',()=>{
+ const monitor={monitor:true};
+ assert.equal(classifyAudit(result({low:1,total:0}),monitor).state,'unavailable');
+ assert.equal(classifyAudit(result({},1),monitor).state,'unavailable');
+ const report=classifyAudit(result({low:1,total:1,unexpected:'not for public output'}),monitor);
+ assert.equal(Object.hasOwn(report.counts,'unexpected'),false);
+});

@@ -1,0 +1,32 @@
+name: Dependency security monitoring
+
+on:
+  schedule:
+    # 08:23 Japan time, daily (UTC below).
+    - cron: '23 23 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - name: Test audit handling
+        run: node --test scripts/check-dependency-audit.test.mjs
+      - name: Check production and development npm dependencies at every severity
+        run: node scripts/audit-dependencies.mjs --monitor
+      - name: Leave a review link on failure
+        if: failure()
+        run: |
+          echo '### Dependency check needs attention' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Read the failed step to distinguish a known advisory from an incomplete check.' >> "$GITHUB_STEP_SUMMARY"
+          echo "See [Dependabot alerts](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/security/dependabot)." >> "$GITHUB_STEP_SUMMARY"
