@@ -90,32 +90,6 @@ function studentLoginNumberExists(loginNumber, campusId, ignoreUserId = null) {
     });
 }
 
-async function createAdminStudentAuthAccount(userDataId, studentNumber, passcode, mode = 'create') {
-    if (!REQUIRE_SUPABASE_AUTH || !supabase) {
-        throw new Error('Supabase Auth設定が有効な環境で使用してください。');
-    }
-
-    const user = users[userDataId];
-    const campusId = getUserCampusId(user);
-    const data = await invokeLessonFunction('admin-create-student', {
-        userDataId,
-        displayName: getUserDisplayName(userDataId),
-        studentNumber,
-        passcode,
-        authUserId: user?.authUserId || '',
-        mode,
-        campusId,
-        campusCode: getCampusCode(campusId),
-        group: user?.group || ''
-    });
-
-    user.loginNumber = studentNumber;
-    user.authUserId = data.authUserId;
-    user.authPasscodeIssuedAt = new Date().toISOString();
-    await refreshCurrentLessonAccess();
-    await reloadManagedStudent(userDataId);
-    return data;
-}
 
 function getCampusInputValue(id) {
     return normalizeCampusId(document.getElementById(id)?.value || DEFAULT_CAMPUS_ID);

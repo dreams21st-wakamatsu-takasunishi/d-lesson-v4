@@ -5,15 +5,12 @@ import {
 } from '../utils/keyboard-progression.js';
 import {
     canManageScopedUserRow,
-    createUserDataId,
-    deleteCloudUserRows,
     ensureStaffRoster,
     DEFAULT_CAMPUS_ID,
     GLOBAL_SETTINGS_ID,
     getLearningSettings,
     currentLessonAccess,
     formatPracticeActivity,
-    getCampusCode,
     getCampusName,
     getLatestPracticeActivity,
     getPracticeLogs,
@@ -21,17 +18,8 @@ import {
     getUserCampusId,
     getUserDisplayName,
     hasLessonRole,
-    invokeLessonFunction,
     isSystemUserId,
-    normalizeCampusId,
-    refreshCurrentLessonAccess,
-    REQUIRE_SUPABASE_AUTH,
     saveManagedUserRows,
-    patchStudentFields,
-    reloadManagedStudent,
-    getRegistrationCampuses,
-    supabase,
-    userDisplayNameExists,
     users
 } from '../api/user.js';
 import { escapeCsvCell, getBackupDateStamp } from '../utils/export-format.js';
@@ -47,8 +35,6 @@ import {
     renderVisionRadarChart
 } from './admin-report-utils.js';
 import { openStudentReportPanel } from './admin-student-report.js';
-import { openStudentLoginCardsPrintWindow } from './student-login-cards.js';
-import { studentStateLabels, studentState, nextStudentNumber } from '../utils/student-management.js';
 
 const TEACHER_STATUS_STALE_DAYS = 14;
 const TEACHER_STATUS_LOW_KEYBOARD_PERCENT = 40;
@@ -58,7 +44,7 @@ const TEACHER_MENU_MODES = new Set(['students', 'grades', 'history', 'reports', 
 const TEACHER_MENU_ITEMS = [
     { mode: 'grades', icon: '📊', title: '生徒成績', note: '進捗・文章課題・要確認を見る', color: '#E91E63' },
     { mode: 'history', icon: '🗓️', title: '取り組み確認', note: '前回の練習や未実施を確認', color: '#795548' },
-    { mode: 'students', icon: '👥', title: '生徒管理/Auth作成', note: '追加・編集・削除を担当範囲だけで実行', color: '#2196F3' },
+    { mode: 'students', icon: '👥', title: '児童一覧', note: '担当児童の情報・レポートを確認', color: '#2196F3' },
     { mode: 'textTasks', icon: '📝', title: '文章課題', note: '担当児童の課題状況を確認', color: '#4CAF50' },
     { mode: 'rewards', icon: '🎟️', title: 'チケット・コイン', note: '担当児童への付与と履歴確認', color: '#FF9800' },
     { mode: 'reports', icon: '🖨️', title: 'レポート印刷', note: '個別詳細から印刷', color: '#607D8B' },
@@ -946,23 +932,6 @@ function attachTeacherStatusControlHandlers(modal) {
                 return;
             }
 
-            const deleteButton = event.target.closest('[data-teacher-delete-user-id]');
-            if (deleteButton) {
-                deleteTeacherStudent(deleteButton.dataset.teacherDeleteUserId || '');
-                return;
-            }
-
-            const passcodeButton = event.target.closest('[data-teacher-passcode-user-id]');
-            if (passcodeButton) {
-                void resetTeacherStudentPasscode(passcodeButton.dataset.teacherPasscodeUserId || '');
-                return;
-            }
-
-            const addButton = event.target.closest('[data-teacher-add-student]');
-            if (addButton) {
-                void addTeacherStudentFromForm();
-                return;
-            }
 
             const textExportButton = event.target.closest('[data-teacher-text-export-task]');
             if (textExportButton) {
@@ -1035,22 +1004,6 @@ function attachTeacherStatusControlHandlers(modal) {
                 return;
             }
 
-            const nameUserId = target.dataset.teacherEditName;
-            if (nameUserId) {
-                void updateTeacherStudentName(nameUserId, target.value);
-                return;
-            }
-
-            const birthUserId = target.dataset.teacherEditBirthdate;
-            if (birthUserId) {
-                void updateTeacherStudentBirthdate(birthUserId, target.value);
-                return;
-            }
-
-            const groupUserId = target.dataset.teacherEditGroup;
-            if (groupUserId) {
-                void updateTeacherStudentGroup(groupUserId, target.value);
-            }
         });
     }
 }
@@ -1064,345 +1017,6 @@ function renderProgressBar(percent) {
     `;
 }
 
-function getTeacherStudentRow(userId) {
-    return getStudentRows().find(row => row.userId === userId) || null;
-}
-
-function canManageTeacherStudent(userId) {
-    return hasLessonRole('admin') || canManageScopedUserRow(userId);
-}
-
-function parseTeacherScopeValues(value) {
-    return String(value || '')
-        .split(',')
-        .map(item => item.trim())
-        .filter(Boolean);
-}
-
-function getTeacherDefaultCampusId() {
-    const available = getRegistrationCampuses();
-    if (available.length === 1) return available[0].id;
-    if (hasLessonRole('admin')) return DEFAULT_CAMPUS_ID;
-    const teacherAccess = currentLessonAccess.filter(access => access?.role === 'teacher');
-    const campusAccess = teacherAccess.find(access => access.scope_type === 'campus' && parseTeacherScopeValues(access.scope_value).length);
-    if (campusAccess) return normalizeCampusId(parseTeacherScopeValues(campusAccess.scope_value)[0]);
-
-    const campusGroupAccess = teacherAccess.find(access => access.scope_type === 'campus_group' && parseTeacherScopeValues(access.scope_value).length);
-    if (campusGroupAccess) {
-        const first = parseTeacherScopeValues(campusGroupAccess.scope_value)[0] || '';
-        return normalizeCampusId(first.split(':')[0] || DEFAULT_CAMPUS_ID);
-    }
-
-    return DEFAULT_CAMPUS_ID;
-}
-
-function createTeacherStudentRecord(name, birthdate, group) {
-    const campusId = getTeacherDefaultCampusId();
-    let userDataId = createUserDataId();
-    while (users[userDataId]) userDataId = createUserDataId();
-
-    users[userDataId] = {
-        displayName: name,
-        userDataId,
-        birthdate,
-        grade: calculateGrade(birthdate),
-        campusId,
-        mouseLevel: 0,
-        keyboardSequence: 0,
-        coins: 0,
-        items: [],
-        tickets: [],
-        loginStamps: [],
-        group
-    };
-    return userDataId;
-}
-
-function generateTeacherPasscode(length = 6) {
-    const cryptoApi = globalThis.crypto;
-    const digits = [];
-    for (let i = 0; i < length; i++) {
-        const buffer = new Uint8Array(1);
-        if (cryptoApi?.getRandomValues) {
-            cryptoApi.getRandomValues(buffer);
-            digits.push(String(buffer[0] % 10));
-        } else {
-            digits.push(String(Math.floor(Math.random() * 10)));
-        }
-    }
-    return digits.join('');
-}
-
-async function createTeacherStudentAuthAccount(userDataId, studentNumber, passcode, mode = 'create') {
-    if (!REQUIRE_SUPABASE_AUTH || !supabase) {
-        throw new Error('Supabase Auth is not enabled.');
-    }
-
-    const user = users[userDataId];
-    const campusId = getUserCampusId(user);
-    const data = await invokeLessonFunction('admin-create-student', {
-        userDataId,
-        displayName: getUserDisplayName(userDataId),
-        studentNumber,
-        passcode,
-        authUserId: user?.authUserId || '',
-        mode,
-        campusId,
-        campusCode: getCampusCode(campusId),
-        group: user?.group || ''
-    });
-
-    user.loginNumber = String(studentNumber || '').replace(/\D/g, '');
-    user.authUserId = data.authUserId;
-    user.authPasscodeIssuedAt = new Date().toISOString();
-    await refreshCurrentLessonAccess();
-    await reloadManagedStudent(userDataId);
-    return data;
-}
-
-async function addTeacherStudentFromForm() {
-    const nameInput = document.getElementById('teacher-add-name');
-    const birthInput = document.getElementById('teacher-add-birthdate');
-    const groupInput = document.getElementById('teacher-add-group');
-    const numberInput = document.getElementById('teacher-add-login-number');
-    const passcodeInput = document.getElementById('teacher-add-passcode');
-
-    const name = String(nameInput?.value || '').trim();
-    const birthdate = String(birthInput?.value || '').trim();
-    const group = String(groupInput?.value || '').trim();
-    const loginNumber = String(numberInput?.value || '').replace(/\D/g, '') || nextStudentNumber(users, getTeacherDefaultCampusId());
-    const passcode = String(passcodeInput?.value || '').replace(/\D/g, '') || generateTeacherPasscode();
-
-    if (!name) return showCustomAlert('児童名を入力してください。');
-    if (userDisplayNameExists(name)) return showCustomAlert('同じ名前の児童がすでに登録されています。');
-    if (!birthdate) return showCustomAlert('生年月日を入力してください。');
-    if (!loginNumber) return showCustomAlert('児童番号を入力してください。');
-    if (passcode.length < 6) return showCustomAlert('あいことばは6けた以上の数字で入力してください。');
-
-    const targetCampus = getTeacherDefaultCampusId();
-    if (!getRegistrationCampuses().some(campus => campus.id === targetCampus)) return showCustomAlert('新規登録先の校舎を特定できません。管理者に校舎の担当範囲を確認してください。');
-    showCustomConfirm(`登録内容を確認してください。\n${name}／${birthdate}\n校舎：${getCampusName(targetCampus)}\n児童番号：${loginNumber}\n\n既存アカウントがないことを確認し、ログイン設定まで作成しますか？`,async()=>{
-    const userDataId = createTeacherStudentRecord(name, birthdate, group);
-    const saved = await saveManagedUserRows(userDataId);
-    if (!saved) {
-        delete users[userDataId];
-        renderTeacherStatus();
-        showCustomAlert('児童データの保存に失敗しました。先生の担当校舎権限、または Supabase の teacher_campus_write_policies.sql 実行状況を確認してください。');
-        return;
-    }
-
-    try {
-        const authData = await createTeacherStudentAuthAccount(userDataId, loginNumber, passcode);
-        recordAdminAudit('teacher_student_added', {
-            user: name,
-            userDataId,
-            campusId: getUserCampusId(users[userDataId]),
-            group,
-            authUserId: authData.authUserId,
-            loginNumber
-        });
-        if (nameInput) nameInput.value = '';
-        if (birthInput) birthInput.value = '';
-        if (groupInput) groupInput.value = '';
-        if (numberInput) numberInput.value = '';
-        if (passcodeInput) passcodeInput.value = '';
-        renderTeacherStatus();
-        renderTeacherMenuHome();
-        openStudentLoginCardsPrintWindow([{
-            student_number: loginNumber,
-            display_name: name,
-            password: passcode
-        }], {
-            title: 'Dレッスン ログインカード',
-            cardsPerPage: 6
-        });
-        showCustomAlert(`${name}さんを追加し、ログイン用アカウントを作成しました。\n番号: ${loginNumber}`);
-    } catch (error) {
-        console.error('Teacher add student auth failed:', error);
-        renderTeacherStatus();
-        showCustomAlert(`児童データは追加されましたが、ログイン設定に失敗しました。新規登録を繰り返さず管理者に設定を確認してください。\n${error.message}`);
-    }
-    });
-}
-
-async function resetTeacherStudentPasscode(userId) {
-    if (!userId || !users[userId] || !canManageTeacherStudent(userId)) {
-        showCustomAlert('担当範囲内の児童を選択してください。');
-        return;
-    }
-
-    const user = users[userId];
-    const displayName = getUserDisplayName(userId);
-    const numberInput = window.prompt(`${displayName} さんの児童番号を確認してください。`, user.loginNumber || '');
-    if (numberInput === null) return;
-    const studentNumber = String(numberInput || '').replace(/\D/g, '');
-    if (!studentNumber) {
-        showCustomAlert('児童番号を入力してください。');
-        return;
-    }
-
-    const passcodeInput = window.prompt(`${displayName} さんの新しいあいことばを入力してください。\nこの値は保存されず、再発行直後のカードにだけ表示します。`, generateTeacherPasscode(6));
-    if (passcodeInput === null) return;
-    const passcode = String(passcodeInput || '').replace(/\D/g, '');
-    if (passcode.length < 6) {
-        showCustomAlert('あいことばは6けた以上の数字で入力してください。');
-        return;
-    }
-
-    showCustomConfirm(`${displayName} さんのあいことばを再発行しますか？\n古いあいことばではログインできなくなります。`, async () => {
-        try {
-            const authData = await createTeacherStudentAuthAccount(userId, studentNumber, passcode, 'reset');
-            recordAdminAudit('teacher_student_passcode_reset', {
-                user: displayName,
-                userDataId: userId,
-                authUserId: authData.authUserId,
-                loginNumber: studentNumber
-            });
-            renderTeacherStatus();
-            renderTeacherMenuHome();
-            openStudentLoginCardsPrintWindow([{
-                student_number: studentNumber,
-                display_name: displayName,
-                password: passcode
-            }], {
-                title: 'Dレッスン ログインカード',
-                cardsPerPage: 6
-            });
-            showCustomAlert(`${displayName} さんのあいことばを再発行しました。`);
-        } catch (error) {
-            console.error('Teacher reset student passcode failed:', error);
-            showCustomAlert(`あいことばの再発行に失敗しました。\n${error.message}`);
-        }
-    });
-}
-
-async function saveTeacherStudentChange(userId, action, payload, patch) {
-    try { await patchStudentFields(userId, patch); }
-    catch (error) {
-        showCustomAlert(error.message);
-        return false;
-    }
-
-    recordAdminAudit(action, {
-        user: getUserDisplayName(userId),
-        userDataId: userId,
-        ...payload
-    });
-    renderTeacherStatus();
-    renderTeacherMenuHome();
-    return true;
-}
-
-async function updateTeacherStudentName(userId, value) {
-    const user = users[userId];
-    if (!user || !canManageTeacherStudent(userId)) {
-        showCustomAlert('この児童を変更する権限がありません。');
-        renderTeacherStatus();
-        return;
-    }
-
-    const displayName = String(value || '').trim();
-    const before = getUserDisplayName(userId);
-    if (!displayName) {
-        showCustomAlert('児童名を入力してください。');
-        renderTeacherStatus();
-        return;
-    }
-    if (displayName === before) return;
-    if (userDisplayNameExists(displayName, userId)) {
-        showCustomAlert('同じ名前の児童がすでに登録されています。');
-        renderTeacherStatus();
-        return;
-    }
-
-    await saveTeacherStudentChange(
-        userId,
-        'teacher_student_name_updated',
-        { before, after: displayName },
-        { displayName }
-    );
-}
-
-async function updateTeacherStudentBirthdate(userId, value) {
-    const user = users[userId];
-    if (!user || !canManageTeacherStudent(userId)) {
-        showCustomAlert('この児童を変更する権限がありません。');
-        renderTeacherStatus();
-        return;
-    }
-
-    const birthdate = String(value || '').trim();
-    const beforeBirthdate = user.birthdate || user.birth || '';
-    if (!birthdate) {
-        showCustomAlert('生年月日を入力してください。');
-        renderTeacherStatus();
-        return;
-    }
-    if (birthdate === beforeBirthdate) return;
-
-    await saveTeacherStudentChange(
-        userId,
-        'teacher_student_birthdate_updated',
-        { before: beforeBirthdate, after: birthdate },
-        { birthdate, grade: calculateGrade(birthdate) }
-    );
-}
-
-async function updateTeacherStudentGroup(userId, value) {
-    const user = users[userId];
-    if (!user || !canManageTeacherStudent(userId)) {
-        showCustomAlert('この児童を変更する権限がありません。');
-        renderTeacherStatus();
-        return;
-    }
-
-    const group = String(value || '').trim();
-    const before = user.group || '';
-    if (group === before) return;
-
-    await saveTeacherStudentChange(
-        userId,
-        'teacher_student_group_updated',
-        { before, after: group },
-        { group }
-    );
-}
-
-function deleteTeacherStudent(userId) {
-    const row = getTeacherStudentRow(userId);
-    if (!row || !users[userId]) {
-        showCustomAlert('削除できる児童が見つかりません。');
-        renderTeacherStatus();
-        return;
-    }
-    if (!canManageTeacherStudent(userId)) {
-        showCustomAlert('この児童を削除する権限がありません。');
-        renderTeacherStatus();
-        return;
-    }
-
-    showCustomConfirm(`${row.name}さんの利用状態を変更しますか？\n学習記録とログイン情報を残し、${studentState(users[userId]) === 'active' ? '利用を休止します。' : '利用を再開します。'}`, async () => {
-        const backup = users[userId];
-        try {
-            await patchStudentFields(userId, { studentState: studentState(users[userId]) === 'active' ? 'paused' : 'active' });
-            selectedTeacherStatusUserId = '';
-            recordAdminAudit('teacher_student_state_changed', {
-                user: row.name,
-                userDataId: userId,
-                campusId: row.campusId,
-                group: row.group
-            });
-            renderTeacherStatus();
-            renderTeacherMenuHome();
-            showCustomAlert(`${row.name}さんの利用状態を変更しました。学習記録は保持しています。`);
-        } catch (error) {
-            console.error('Teacher delete failed:', error);
-            users[userId] = backup;
-            renderTeacherStatus();
-            showCustomAlert('削除に失敗しました。先生の担当校舎権限、または Supabase の teacher_campus_write_policies.sql 実行状況を確認してください。');
-        }
-    });
-}
 
 function getTeacherTextTasks(rows) {
     const tasks = new Map();
@@ -1732,113 +1346,7 @@ function renderStudentRows(rows) {
 }
 
 function renderTeacherStudentManagementRows(rows) {
-    const addForm = `
-        <div class="teacher-student-add-card">
-            <div>
-                <strong>児童を追加</strong>
-                <small>登録先：${escapeHtml(getCampusName(getTeacherDefaultCampusId()))}。空欄の番号・あいことばは自動提案・作成します。</small>
-            </div>
-            <input id="teacher-add-name" type="text" placeholder="児童名">
-            <input id="teacher-add-birthdate" type="date" title="生年月日">
-            <input id="teacher-add-group" type="text" placeholder="グループ 例: 月曜A">
-            <input id="teacher-add-login-number" type="text" inputmode="numeric" placeholder="番号（自動提案）" value="${nextStudentNumber(users,getTeacherDefaultCampusId())}">
-            <input id="teacher-add-passcode" type="password" inputmode="numeric" placeholder="あいことば（空欄で自動作成）">
-            <button type="button" data-teacher-add-student>登録内容を確認</button>
-        </div>
-    `;
-
-    if (rows.length === 0) {
-        return `
-            ${addForm}
-            <div class="teacher-status-empty">
-                表示できる児童がいません。検索条件、担当校舎、先生ロールの範囲を確認してください。
-            </div>
-        `;
-    }
-
-    return `
-        ${addForm}
-        <div class="teacher-status-table-wrap teacher-student-manage-wrap">
-            <table class="teacher-status-table teacher-student-manage-table">
-                <thead>
-                    <tr>
-                        <th>児童名</th>
-                        <th>校舎</th>
-                        <th>生年月日</th>
-                        <th>学年</th>
-                        <th>グループ</th>
-                        <th>進捗</th>
-                        <th>コイン</th>
-                        <th>操作</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${rows.map(row => {
-                        const canManage = canManageTeacherStudent(row.userId);
-                        return `
-                            <tr>
-                                <td>
-                                    <input
-                                        type="text"
-                                        class="teacher-student-input"
-                                        value="${escapeHtml(row.name)}"
-                                        data-teacher-edit-name="${escapeHtml(row.userId)}"
-                                        ${canManage ? '' : 'disabled'}
-                                    >
-                                    <small>${studentStateLabels[studentState(users[row.userId])]}</small>
-                                </td>
-                                <td><span class="teacher-student-readonly">${escapeHtml(row.campusName)}</span></td>
-                                <td>
-                                    <input
-                                        type="date"
-                                        class="teacher-student-input date"
-                                        value="${escapeHtml(row.birthdate)}"
-                                        data-teacher-edit-birthdate="${escapeHtml(row.userId)}"
-                                        ${canManage ? '' : 'disabled'}
-                                    >
-                                </td>
-                                <td>${escapeHtml(row.grade || '-')}</td>
-                                <td>
-                                    <input
-                                        type="text"
-                                        class="teacher-student-input"
-                                        value="${escapeHtml(row.group === '-' ? '' : row.group)}"
-                                        placeholder="例: 月曜A"
-                                        data-teacher-edit-group="${escapeHtml(row.userId)}"
-                                        ${canManage ? '' : 'disabled'}
-                                    >
-                                </td>
-                                <td>
-                                    <span>マウス Lv.${escapeHtml(row.mouseLevel)}</span>
-                                    <small>キーボード ${escapeHtml(row.keyboardPercent)}% / 文章 ${escapeHtml(row.text.done)} / ${escapeHtml(row.text.total)}</small>
-                                </td>
-                                <td>${escapeHtml(row.coins)}枚</td>
-                                <td>
-                                    <button
-                                        type="button"
-                                        class="teacher-status-detail-btn"
-                                        data-teacher-detail-print-user-id="${escapeHtml(row.userId)}"
-                                    >レポート</button>
-                                    <button
-                                        type="button"
-                                        class="teacher-status-detail-btn"
-                                        data-teacher-passcode-user-id="${escapeHtml(row.userId)}"
-                                        ${canManage ? '' : 'disabled'}
-                                    >合言葉再発行</button>
-                                    <button
-                                        type="button"
-                                        class="teacher-danger-mini"
-                                        data-teacher-delete-user-id="${escapeHtml(row.userId)}"
-                                        ${canManage ? '' : 'disabled'}
-                                    >${studentState(users[row.userId]) === 'active' ? '利用を休止' : '利用を再開'}</button>
-                                </td>
-                            </tr>
-                        `;
-                    }).join('')}
-                </tbody>
-            </table>
-        </div>
-    `;
+    return `<p>児童の追加・合言葉・利用停止・復元は、Dサポートの「Dレッスン管理 → 児童・ログイン管理」で行います。</p>${renderTeacherReportRows(rows)}`;
 }
 
 function getTeacherHistoryEntries(rows) {

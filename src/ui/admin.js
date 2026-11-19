@@ -4,10 +4,7 @@ import {
     backToAdminMenu as backToAdminMenuImpl,
     openAdmin as openAdminImpl
 } from './admin-shell.js';
-import {
-    exportAdminBackupData,
-    importAdminBackupData
-} from './admin-backup.js';
+import { exportAdminBackupData } from './admin-backup.js';
 import {
     openStudentReportPanel,
     closeStudentReportPanel,
@@ -94,8 +91,6 @@ import {
     openStudentLoginCardForUser
 } from './admin-auth-linking.js';
 import {
-    resetUserProgress,
-    forceUserProgress,
     openEditProgress as openEditProgressPanel,
     closeEditProgress,
     saveEditProgress as saveEditProgressPanel
@@ -187,7 +182,6 @@ export {
 
 export {
     exportAdminBackupData as exportData,
-    importAdminBackupData as importData,
     renderPracticeHistoryPanel as renderPracticeHistoryAdmin,
     clearPracticeHistoryPanelFilters as clearPracticeHistoryFilters,
     exportPracticeHistoryPanelCsv as exportPracticeHistoryCsv
@@ -263,13 +257,6 @@ function refreshAdminStudentViews() {
     renderDashboardTable();
 }
 
-export function adminResetUser() {
-    resetUserProgress(getSelUser(), refreshAdminStudentViews);
-}
-
-export function adminForceProgress() {
-    forceUserProgress(getSelUser(), refreshAdminStudentViews);
-}
 
 export function openEditProgress() {
     openEditProgressPanel(getSelUser());

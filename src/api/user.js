@@ -78,8 +78,6 @@ export const IS_DEV_MODE = import.meta.env.VITE_SUPABASE_USE_TEST_TABLE === 'tru
 const TARGET_TABLE = import.meta.env.VITE_SUPABASE_TABLE || (IS_DEV_MODE ? 'test_user_data' : 'user_data');
 const STUDENT_LOGIN_EMAIL_DOMAIN = (import.meta.env.VITE_STUDENT_LOGIN_EMAIL_DOMAIN || '').trim().replace(/^@/, '');
 const STUDENT_LOGIN_EMAIL_PREFIX = import.meta.env.VITE_STUDENT_LOGIN_EMAIL_PREFIX || 'dlesson-student-';
-const STUDENT_LOGIN_CAMPUS_CODES = parseEnvList(import.meta.env.VITE_STUDENT_LOGIN_CAMPUS_CODES);
-const STUDENT_LOGIN_STRICT_CAMPUS = import.meta.env.VITE_STUDENT_LOGIN_STRICT_CAMPUS === 'true';
 const STUDENT_LOGIN_NUMBER_PAD = parseEnvInteger(import.meta.env.VITE_STUDENT_LOGIN_NUMBER_PAD || import.meta.env.VITE_STUDENT_LOGIN_PAD, 3, 1, 8);
 const STUDENT_LOGIN_MIN = parseEnvInteger(import.meta.env.VITE_STUDENT_LOGIN_MIN, 1, 1, 999);
 const STUDENT_LOGIN_MAX = Math.max(STUDENT_LOGIN_MIN, parseEnvInteger(import.meta.env.VITE_STUDENT_LOGIN_MAX, 40, STUDENT_LOGIN_MIN, 999));
@@ -152,13 +150,6 @@ function parseEnvInteger(value, fallback, min, max) {
     const parsed = Number.parseInt(value, 10);
     if (!Number.isFinite(parsed)) return fallback;
     return Math.min(max, Math.max(min, parsed));
-}
-
-function parseEnvList(value) {
-    return String(value || '')
-        .split(',')
-        .map(item => item.trim())
-        .filter(Boolean);
 }
 
 function forEachBrowserStorage(callback) {
@@ -1696,25 +1687,6 @@ export function setCurrentSelectedGrade(value) {
     currentSelectedGrade = value;
 }
 
-export async function replaceUsers(nextUsers, persistCloud = true) {
-    if (!nextUsers || typeof nextUsers !== 'object' || Array.isArray(nextUsers)) {
-        throw new Error('Invalid users data');
-    }
-
-    if (persistCloud) {
-        await pruneCloudStudentRowsMissingFrom(nextUsers);
-    }
-
-    users = nextUsers;
-    normalizeUsersCollection();
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(users));
-    updateVisibleUserUi();
-
-    if (persistCloud) {
-        const saved = await saveUsers(true);
-        if (!saved) throw new Error('Failed to persist users');
-    }
-}
 
 export async function deleteCloudUserRows(userIds) {
     const ids = (Array.isArray(userIds) ? userIds : [userIds])
@@ -1795,26 +1767,6 @@ export async function saveManagedUserRows(userIds) {
     }
 }
 
-async function pruneCloudStudentRowsMissingFrom(nextUsers) {
-    if (!canUseRlsCloudSync() && !canUseLegacyCloudSync()) return [];
-    if (canUseRlsCloudSync() && !hasLessonRole('admin')) {
-        throw new Error('Admin role is required to prune cloud user rows');
-    }
-
-    const desiredIds = new Set(
-        Object.keys(nextUsers)
-            .filter(userId => !isSystemUserId(userId) && shouldPersistUserRow(userId, nextUsers[userId]))
-    );
-
-    const { data, error } = await supabase.from(TARGET_TABLE).select('id');
-    if (error) throw error;
-
-    const missingIds = (data || [])
-        .map(row => row.id)
-        .filter(userId => userId && !isSystemUserId(userId) && !desiredIds.has(userId));
-
-    return deleteCloudUserRows(missingIds);
-}
 
 export async function signOutSupabaseAuth(message = 'ログアウトしました。もう一度ログインしてください。') {
     if (!REQUIRE_SUPABASE_AUTH) return false;

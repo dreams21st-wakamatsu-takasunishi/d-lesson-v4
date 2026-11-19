@@ -4,9 +4,7 @@ import { getStageName } from '../utils/stages.js';
 import { showCustomAlert, showCustomConfirm } from './modal.js';
 import { recordAdminAudit } from './admin-audit.js';
 import {
-    buildForceProgressPatch,
-    buildProgressEditPatch,
-    buildResetProgressPatch
+    buildProgressEditPatch
 } from './admin-progress-editor-utils.js';
 
 let editTargetUser = null;
@@ -15,33 +13,6 @@ function runAfterChange(afterChange) {
     if (typeof afterChange === 'function') afterChange();
 }
 
-export function resetUserProgress(userId, afterChange) {
-    if (!userId) return;
-
-    showCustomConfirm('リセットしますか？', () => {
-        recordAdminAudit('進捗リセット', {
-            user: getUserDisplayName(userId),
-            userDataId: userId
-        });
-        Object.assign(users[userId], buildResetProgressPatch());
-        saveUsers(true);
-        runAfterChange(afterChange);
-    });
-}
-
-export function forceUserProgress(userId, afterChange) {
-    if (!userId) return;
-
-    showCustomConfirm('全開放しますか？', () => {
-        recordAdminAudit('進捗全開放', {
-            user: getUserDisplayName(userId),
-            userDataId: userId
-        });
-        Object.assign(users[userId], buildForceProgressPatch(STAGE_ORDER.length));
-        saveUsers(true);
-        runAfterChange(afterChange);
-    });
-}
 
 export function openEditProgress(userId) {
     if (!userId) {

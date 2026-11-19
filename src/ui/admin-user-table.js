@@ -80,25 +80,6 @@ function studentLoginNumberExistsInCampus(loginNumber, campusId, ignoreUserId = 
     });
 }
 
-async function moveStudentCampusAuth(userId, campusId) {
-    const user = users[userId];
-    const studentNumber = cleanStudentLoginNumber(user?.loginNumber);
-    if (!user?.authUserId) return null;
-    if (!studentNumber) {
-        throw new Error('児童番号が登録されていないため、Authの校舎情報を変更できません。');
-    }
-
-    return invokeLessonFunction('admin-create-student', {
-        userDataId: userId,
-        displayName: getUserDisplayName(userId),
-        studentNumber,
-        authUserId: user.authUserId,
-        mode: 'move',
-        campusId,
-        campusCode: getCampusCode(campusId),
-        group: user.group || ''
-    });
-}
 
 export function updateAdminUserTable(options = {}) {
     const tbody = document.getElementById('admin-user-tbody');
