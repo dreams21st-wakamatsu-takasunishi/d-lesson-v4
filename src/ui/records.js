@@ -9,12 +9,14 @@ import {
     users,
     currentUser,
     GLOBAL_SETTINGS_ID,
+    getPracticeLogs,
     canWriteCurrentUserRow,
     isSystemUserId,
     saveUsers
 } from '../api/user.js';
 import { renderCertificateSection } from './certificates.js';
 import { renderPracticeHistorySection } from './practice-history.js';
+import { renderLearningOverview } from './learning-records.js';
 import { showCustomAlert } from './modal.js';
 import { getValidMistakeEntries, normalizeMistakeCount } from '../utils/weak-mistakes.js';
 import {
@@ -361,12 +363,13 @@ function renderTimeRecordsSection(container, user) {
     let kbTimes = '<h4 class="record-subtitle">⌨️ キーボード タイムアタック</h4><div class="record-chip-list">';
     let hasKbRecord = false;
     EXAMS.forEach(exam => {
-        if (records[exam.id]) {
+        const seconds = Number(records[exam.id]);
+        if (Number.isFinite(seconds) && seconds > 0) {
             hasKbRecord = true;
             let medal = '🥉';
-            if (records[exam.id] <= exam.gold) medal = '🥇';
-            else if (records[exam.id] <= exam.silver) medal = '🥈';
-            kbTimes += `<div class="record-chip">${escapeAttr(exam.title)}: <span>${records[exam.id].toFixed(1)}秒</span> ${medal}</div>`;
+            if (seconds <= exam.gold) medal = '🥇';
+            else if (seconds <= exam.silver) medal = '🥈';
+            kbTimes += `<div class="record-chip">${escapeAttr(exam.title)}: <span>${seconds.toFixed(1)}秒</span> ${medal}</div>`;
         }
     });
     if (!hasKbRecord) kbTimes += '<span class="record-empty-inline">まだきろくがありません</span>';
@@ -379,8 +382,8 @@ function renderTimeRecordsSection(container, user) {
             { suffix: '', label: 'ノーマル', cls: 'normal' },
             { suffix: '_hard', label: 'ハード', cls: 'hard' }
         ].forEach(diff => {
-            const value = records[stage.id + diff.suffix];
-            if (!value) return;
+            const value = Number(records[stage.id + diff.suffix]);
+            if (!Number.isFinite(value) || value <= 0) return;
             hasVisionRecord = true;
             visionTimes += `<div class="record-chip ${diff.cls}">${escapeAttr(stage.title)} (${diff.label}): <span>${value.toFixed(1)}秒</span></div>`;
         });
@@ -395,7 +398,7 @@ function getSharedVisionRadarAverageSnapshot() {
     return snapshot && Array.isArray(snapshot.groups) ? snapshot : null;
 }
 
-function renderGraphSection(container, user) {
+function renderGraphSection(container, user, { showOverview = true } = {}) {
     container.innerHTML = '';
     const graphGrid = document.createElement('div');
     graphGrid.className = 'record-graph-grid';
@@ -405,7 +408,7 @@ function renderGraphSection(container, user) {
     const keyboardTotal = getActiveKeyboardStageIds().length;
     const keyboardPercent = keyboardTotal ? Math.floor((keyboardCompleted / keyboardTotal) * 100) : 0;
     const visionPercent = Math.min(100, Math.floor((countCurrentVisionClears(user) / (VISION_STAGES.length * 3)) * 100));
-    graphGrid.innerHTML += `<div class="record-graph-card">
+    if (showOverview) graphGrid.innerHTML = `<div class="record-graph-card">
         <h4 style="margin-top:0; color:#555; border-bottom:2px solid #eee; padding-bottom:10px;">🎮 ぜんたいのすすみ</h4>
         <div class="record-progress-row"><span>🖱️ マウス</span><b>${Math.floor((mouseLevel / 7) * 100)}%</b></div><div class="record-progress"><div style="width:${Math.floor((mouseLevel / 7) * 100)}%; background:#2196F3;"></div></div>
         <div class="record-progress-row"><span>⌨️ キーボード</span><b>${keyboardPercent}%</b></div><div class="record-progress"><div style="width:${keyboardPercent}%; background:#FF9800;"></div></div>
@@ -474,31 +477,24 @@ function renderGraphSection(container, user) {
 function renderLearningSection(container, user) {
     container.innerHTML = '';
     const layout = document.createElement('div');
-    layout.className = 'record-learning-layout';
-
-    const graph = document.createElement('section');
-    graph.className = 'record-combined-panel record-learning-graph';
-    graph.innerHTML = '<h3>📊 せいせきグラフ</h3>';
-    const graphBody = document.createElement('div');
-    renderGraphSection(graphBody, user);
-    graph.appendChild(graphBody);
-    layout.appendChild(graph);
-
-    const times = document.createElement('section');
-    times.className = 'record-combined-panel record-learning-times';
-    times.innerHTML = '<h3>⏱️ タイムアタック</h3>';
-    const timesBody = document.createElement('div');
-    renderTimeRecordsSection(timesBody, user);
-    times.appendChild(timesBody);
-    layout.appendChild(times);
-
-    const practice = document.createElement('section');
-    practice.className = 'record-combined-panel record-learning-practice';
-    practice.innerHTML = '<h3>📝 とりくみきろく</h3>';
-    const practiceBody = document.createElement('div');
-    renderPracticeHistorySection(practiceBody, currentUser);
-    practice.appendChild(practiceBody);
-    layout.appendChild(practice);
+    layout.className = 'learning-overview';
+    renderLearningOverview(layout, user, users[GLOBAL_SETTINGS_ID], getPracticeLogs(currentUser));
+    const addDetails = (title, render) => {
+        const details = document.createElement('details');
+        details.className = 'learning-details learning-extra';
+        const summary = document.createElement('summary');
+        summary.textContent = title;
+        const body = document.createElement('div');
+        details.append(summary, body);
+        details.addEventListener('toggle', () => {
+            if (details.open && !body.hasChildNodes()) render(body);
+        });
+        layout.appendChild(details);
+    };
+    const userId = currentUser;
+    addDetails('とりくみきろくの一覧', body => renderPracticeHistorySection(body, userId, { filter: true }));
+    addDetails('タイムアタックのきろく', body => renderTimeRecordsSection(body, user));
+    addDetails('ビジョン・にがてなキーのグラフ', body => renderGraphSection(body, user, { showOverview: false }));
     container.appendChild(layout);
 }
 

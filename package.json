@@ -17,7 +17,7 @@
     "check:admin-progress-editor-utils": "node scripts/check-admin-progress-editor-utils.mjs",
     "check:clear-guards": "node scripts/check-clear-guards.mjs",
     "check:word-approval": "node scripts/check-word-approval.mjs && node scripts/check-word-page-progress.mjs && node scripts/check-learning-tasks.mjs && node scripts/check-content-distribution.mjs",
-    "check:keyboard-progression": "node scripts/check-keyboard-progression.mjs",
+    "check:keyboard-progression": "node scripts/check-keyboard-progression.mjs && node scripts/check-learning-records.mjs",
     "check:learning-route": "node scripts/check-learning-route.mjs && node scripts/check-managed-content.mjs && node scripts/check-student-management.mjs && node scripts/check-single-school.mjs",
     "check:romaji-input": "node scripts/check-romaji-input.mjs && node scripts/check-keyboard-extras.mjs",
     "check:student-login-ui": "node scripts/check-student-login-ui.mjs",

@@ -3,6 +3,7 @@ import '@fontsource/m-plus-rounded-1c/700.css';
 import './style.css';
 import './styles/interface.css';
 import './styles/keyboard-extras.css';
+import './styles/learning-records.css';
 
 import { initApp } from './app/bootstrap.js';
 import { initWebAppInstall } from './ui/web-app-install.js';

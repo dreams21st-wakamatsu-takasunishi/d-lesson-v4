@@ -52,7 +52,7 @@ function formatFullDateTime(log) {
     };
 }
 
-export function renderPracticeHistorySection(container, userId) {
+export function renderPracticeHistorySection(container, userId, { filter = false } = {}) {
     container.innerHTML = '';
     const logs = getPracticeLogs(userId);
     const todayKey = new Date().toLocaleDateString('ja-JP');
@@ -90,15 +90,20 @@ export function renderPracticeHistorySection(container, userId) {
 
     const list = document.createElement('div');
     list.style.cssText = 'display:flex; flex-direction:column; gap:8px; max-height:430px; overflow:auto; padding-right:6px;';
-    if (logs.length === 0) {
-        const empty = document.createElement('div');
-        empty.textContent = 'まだれんしゅうのきろくがありません。れんしゅうをおえるとここに出ます。';
-        empty.style.cssText = 'background:#fff; border:1px dashed #b0bec5; border-radius:8px; padding:18px; color:#607d8b; text-align:center;';
-        list.appendChild(empty);
-    } else {
-        logs.slice(0, 50).forEach(log => {
+    const updateList = visibleLogs => {
+        list.replaceChildren();
+        list.scrollTop = 0;
+        if (visibleLogs.length === 0) {
+            const empty = document.createElement('div');
+            empty.textContent = logs.length ? 'この分野のきろくはありません。' : 'まだれんしゅうのきろくがありません。';
+            empty.style.cssText = 'background:#fff; border:1px dashed #b0bec5; border-radius:8px; padding:18px; color:#607d8b; text-align:center;';
+            list.appendChild(empty);
+            return;
+        }
+        visibleLogs.slice(0, 50).forEach(log => {
             const info = formatPracticeActivity(log);
             const row = document.createElement('div');
+            row.className = 'practice-history-row';
             row.style.cssText = 'display:grid; grid-template-columns:minmax(132px, 170px) 1fr auto; gap:12px; align-items:center; background:#fff; border:1px solid #d7dee8; border-radius:8px; padding:10px 12px; text-align:left;';
 
             const whenInfo = formatFullDateTime(log);
@@ -124,6 +129,26 @@ export function renderPracticeHistorySection(container, userId) {
             row.appendChild(coins);
             list.appendChild(row);
         });
+    };
+    if (filter && logs.length) {
+        const categories = {
+            mouse: 'マウス', keyboard: 'キーボード・模擬試験', romaji: 'ローマ字表',
+            text: '文章入力', vision: 'ビジョン', word: 'Word', other: 'そのほか'
+        };
+        const groupOf = log => Object.hasOwn(categories, log.category) ? log.category : 'other';
+        const label = document.createElement('label');
+        label.className = 'learning-select';
+        label.textContent = '分野';
+        const select = document.createElement('select');
+        select.setAttribute('aria-label', '分野');
+        select.append(new Option('すべて', ''));
+        for (const [key, title] of Object.entries(categories)) {
+            if (logs.some(log => groupOf(log) === key)) select.append(new Option(title, key));
+        }
+        select.onchange = () => updateList(select.value ? logs.filter(log => groupOf(log) === select.value) : logs);
+        label.append(select);
+        container.append(label);
     }
+    updateList(logs);
     container.appendChild(list);
 }
